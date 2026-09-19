@@ -62,29 +62,29 @@ hasta la tuya para verla.
 - PR hacia `develop`. Solo tocar tu carpeta de pantalla (y `core/` si agregas
   un token o componente compartido, avisando en el grupo).
 
-## Arquitectura (hexagonal)
+## Arquitectura 
 
 ```
 lib/
 ├── main.dart
-├── app/                         ← arranque
-│   ├── parkwise_app.dart        MaterialApp + tema
-│   └── app_router.dart          rutas con nombre
+├── app/                        
+│   ├── parkwise_app.dart       
+│   └── app_router.dart         
 │
-├── core/                        ← compartido, sin lógica de negocio
-│   ├── design/                  palette, typography, spacing, app_theme
-│   └── widgets/                 componentes reutilizables
+├── core/                        
+│   ├── design/                 
+│   └── widgets/                 
 │
-├── domain/                      ← CENTRO DEL HEXÁGONO (Dart puro, sin Flutter)
-│   ├── entities/                ParkingLot, ParkingLevel, ParkingSpot, ...
-│   └── ports/                   interfaces (ParkingRepository, ...)
+├── domain/                      
+│   ├── entities/                
+│   └── ports/                 
 │
-├── infrastructure/              ← ADAPTADORES (implementan los puertos)
-│   └── mock/                    datos y repositorios de prueba
+├── infrastructure/              
+│   └── mock/                    
 │
-└── presentation/                ← UI
-    ├── root/root_screen.dart    barra de pills + pantalla activa
-    └── screens/                 una carpeta por pantalla
+└── presentation/                
+    ├── root/root_screen.dart    
+    └── screens/                 
 ```
 
 Regla de dependencias: `presentation → domain ← infrastructure`.
