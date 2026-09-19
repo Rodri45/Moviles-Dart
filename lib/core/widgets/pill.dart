@@ -4,10 +4,8 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-/// Pill / chip de filtro. Equivalente a `Pills.swift`.
-///
-/// Seleccionado: fondo Blue 100, borde y texto Blue 700.
-/// No seleccionado: fondo blanco, borde gris, texto oscuro.
+// los botoncitos de filtro tipo "Available", "VIP". si esta seleccionado
+// se pone azul clarito, si no queda blanco
 class Pill extends StatelessWidget {
   const Pill({
     super.key,
@@ -61,8 +59,7 @@ class Pill extends StatelessWidget {
   }
 }
 
-/// Grupo de pills en varias filas. Útil para filtros y para la navegación
-/// de desarrollo del `RootScreen`.
+// varios pills juntos donde solo uno queda seleccionado
 class PillGroup extends StatelessWidget {
   const PillGroup({
     super.key,

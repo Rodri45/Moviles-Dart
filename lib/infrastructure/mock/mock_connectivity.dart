@@ -1,6 +1,6 @@
 import '../../domain/ports/connectivity_port.dart';
 
-/// Adaptador mock de [ConnectivityPort]. Siempre reporta el valor fijado.
+// version de mentira, siempre dice que hay o no hay internet segun se le pase
 class MockConnectivity implements ConnectivityPort {
   const MockConnectivity({this.online = true});
 

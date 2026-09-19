@@ -1,6 +1,6 @@
 import 'parking_spot.dart';
 
-/// Un nivel/piso dentro de un parqueadero (ej. "Level 2").
+// un piso del parqueadero con sus puestos
 class ParkingLevel {
   const ParkingLevel({
     required this.id,

@@ -1,7 +1,7 @@
 import '../../domain/entities/reservation.dart';
 import '../../domain/ports/reservation_repository.dart';
 
-/// Adaptador mock de [ReservationRepository]. Guarda la reserva en memoria.
+// version de mentira, guarda la reserva en una variable y ya
 class MockReservationRepository implements ReservationRepository {
   Reservation? _active;
 

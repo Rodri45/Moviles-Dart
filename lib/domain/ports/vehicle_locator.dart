@@ -1,6 +1,6 @@
 import '../entities/parked_vehicle.dart';
 
-/// Puerto de salida para saber dónde quedó el carro del usuario.
+// interfaz para guardar y consultar donde quedo el carro
 abstract interface class VehicleLocator {
   Future<ParkedVehicle?> getParkedVehicle();
 

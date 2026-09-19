@@ -10,9 +10,7 @@ import '../presentation/screens/no_spots/no_spots_screen.dart';
 import '../presentation/screens/offline/offline_screen.dart';
 import '../presentation/screens/reserve/reserve_screen.dart';
 
-/// Rutas con nombre de ParkWise.
-///
-/// Uso: `Navigator.pushNamed(context, LotDetailScreen.routeName, arguments: lot)`.
+// las rutas de la app, por ahora no se usan porque no hay navegacion
 abstract final class AppRouter {
   static const String root = '/';
 

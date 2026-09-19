@@ -1,4 +1,4 @@
-/// Reserva de una celda hecha por el usuario.
+// una reserva de un puesto
 class Reservation {
   const Reservation({
     required this.id,

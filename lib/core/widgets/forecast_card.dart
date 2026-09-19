@@ -5,8 +5,7 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-/// Tarjeta con el pronóstico de ocupación por hora. Equivalente a
-/// `ForecastCard.swift`. Dibuja barras simples sin dependencias externas.
+// card con la grafica de barras de que tan lleno va a estar por hora
 class ForecastCard extends StatelessWidget {
   const ForecastCard({super.key, required this.forecast});
 

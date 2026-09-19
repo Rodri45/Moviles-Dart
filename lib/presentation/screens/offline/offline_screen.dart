@@ -3,12 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/pw_scaffold.dart';
 import '../../../core/widgets/screen_placeholder.dart';
 
-/// Pantalla 7 — Offline.
-///
-/// Figma: banner o estado completo sin conexión. Muestra los últimos datos
-/// conocidos (con marca de hora) y botón "Retry".
-///
-/// Datos: `ConnectivityPort.isOnline` (mock).
+// pantalla 7, offline. falta hacerla, por ahora solo placeholder
+// en figma es la que sale sin internet, con los datos guardados y el boton retry
 class OfflineScreen extends StatelessWidget {
   const OfflineScreen({super.key});
 

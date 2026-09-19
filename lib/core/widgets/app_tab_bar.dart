@@ -4,12 +4,10 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-/// Pestañas del bottom nav. Equivalente a `AppTabBar.swift`.
 enum AppTab { home, map, reserve, profile }
 
-/// Bottom navigation de ParkWise: Home · Map · Reserve · Profile.
-///
-/// Solo visual: recibe la pestaña activa y la pinta. Sin navegación.
+// la barra de abajo con home, map, reserve y profile. solo pinta cual esta
+// activa, no navega a ningun lado
 class AppTabBar extends StatelessWidget {
   const AppTabBar({super.key, required this.current});
 
@@ -72,7 +70,7 @@ class _TabItem extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Indicador de pestaña activa (línea azul arriba del ícono).
+          // la rayita azul arriba del icono cuando esta activo
           Container(
             height: 2,
             width: 32,

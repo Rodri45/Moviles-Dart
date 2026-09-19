@@ -7,9 +7,7 @@ import '../design/spacing.dart';
 import '../design/typography.dart';
 import 'status_badge.dart';
 
-/// Tarjeta de un nivel del parqueadero. Equivalente a `LevelCard.swift`.
-///
-/// Muestra nombre, celdas libres / totales y barra de ocupación.
+// card de un nivel del parqueadero con cuantos puestos hay libres y la barrita
 class LevelCard extends StatelessWidget {
   const LevelCard({super.key, required this.level, this.onTap});
 

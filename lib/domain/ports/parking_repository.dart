@@ -1,11 +1,8 @@
 import '../entities/forecast.dart';
 import '../entities/parking_lot.dart';
 
-/// Puerto de salida: cómo el dominio obtiene datos de parqueaderos.
-///
-/// La presentación solo conoce esta interfaz. Hoy la implementa
-/// `MockParkingRepository`; más adelante puede implementarla un adaptador
-/// HTTP sin tocar las pantallas.
+// interfaz para pedir los parqueaderos. por ahora la implementa el mock,
+// despues cuando haya backend se hace otra que llame a la api
 abstract interface class ParkingRepository {
   Future<List<ParkingLot>> getLots();
 

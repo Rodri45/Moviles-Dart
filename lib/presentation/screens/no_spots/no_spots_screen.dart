@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/pw_scaffold.dart';
 import '../../../core/widgets/screen_placeholder.dart';
 
-/// Pantalla 5 — No campus spots.
-///
-/// Figma: estado vacío cuando todos los parqueaderos están llenos. Ilustración
-/// o ícono, mensaje, hora estimada de liberación (usar `ForecastCard`) y
-/// botón secundario "Notify me" / "Try again".
+// pantalla 5, no campus spots. falta hacerla, por ahora solo placeholder
+// en figma es la que sale cuando todo esta lleno, con los parqueaderos de afuera
+// y el boton de notify me
 class NoSpotsScreen extends StatelessWidget {
   const NoSpotsScreen({super.key});
 

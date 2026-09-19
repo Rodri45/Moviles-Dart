@@ -4,9 +4,7 @@ import '../../domain/entities/parking_level.dart';
 import '../../domain/entities/parking_lot.dart';
 import '../../domain/entities/parking_spot.dart';
 
-/// Datos de ejemplo para la parte visual. Equivalente a `ParkingData.swift`.
-///
-/// Cualquier pantalla puede usarlos directamente mientras no exista backend.
+// datos inventados mientras no hay backend
 abstract final class ParkingMockData {
   static final List<ParkingLot> lots = [
     ParkingLot(
@@ -67,7 +65,7 @@ abstract final class ParkingMockData {
     parkedAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 14)),
   );
 
-  /// Genera [count] celdas con prefijo [row]; las primeras [free] quedan libres.
+  // arma una lista de puestos, los primeros [free] quedan libres y el resto ocupados
   static List<ParkingSpot> _spots(String row, int count, int free) {
     return List.generate(count, (i) {
       final number = (i + 1).toString().padLeft(2, '0');

@@ -5,12 +5,8 @@ import '../../../core/widgets/screen_placeholder.dart';
 import '../../../domain/entities/parking_lot.dart';
 import '../../../infrastructure/mock/parking_mock_data.dart';
 
-/// Pantalla 2 — Detalle de parqueadero ("P1 · North").
-///
-/// Figma: header con nombre y estado, lista de niveles (`LevelCard`),
-/// pronóstico del día (`ForecastCard`) y botón para ir al mapa / reservar.
-///
-/// Datos: recibe un [ParkingLot]; por defecto usa el primero del mock.
+// pantalla 2, la de P1 · North. falta hacerla, por ahora solo placeholder
+// en figma es la del mapa de puestos con la hoja que sale abajo al escoger uno
 class LotDetailScreen extends StatelessWidget {
   const LotDetailScreen({super.key, this.lot});
 

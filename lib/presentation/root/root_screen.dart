@@ -11,11 +11,9 @@ import '../screens/no_spots/no_spots_screen.dart';
 import '../screens/offline/offline_screen.dart';
 import '../screens/reserve/reserve_screen.dart';
 
-/// Contenedor de desarrollo. Equivalente a `RootView.swift`.
-///
-/// Barra compacta arriba (◀ nombre de la pantalla  3/7 ▶) y debajo la
-/// pantalla seleccionada. Sirve para revisar cada pantalla contra Figma sin
-/// navegar por la app. Se quita cuando exista navegación real.
+// esta es la pantalla que sale al abrir la app. tiene la barrita de arriba
+// con las flechas para ir pasando entre las 7 pantallas y ver como quedan.
+// cuando ya haya navegacion de verdad se quita
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
 
@@ -76,7 +74,7 @@ class _RootScreenState extends State<RootScreen> {
   }
 }
 
-/// ◀  Find a spot  3/7  ▶
+// la barrita oscura de arriba con las flechas y el nombre de la pantalla
 class _DevNavBar extends StatelessWidget {
   const _DevNavBar({
     required this.label,

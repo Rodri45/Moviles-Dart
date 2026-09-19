@@ -1,7 +1,6 @@
-/// Estado de una celda individual de parqueo.
 enum SpotState { free, occupied, reserved, disabled }
 
-/// Una celda de parqueo (ej. "A-12").
+// un puesto de parqueo, tipo "A-12"
 class ParkingSpot {
   const ParkingSpot({
     required this.id,
@@ -12,14 +11,12 @@ class ParkingSpot {
   });
 
   final String id;
-
-  /// Código visible en la celda, ej. "A-12".
   final String code;
   final SpotState state;
 
-  /// Celda para personas con movilidad reducida.
+  // si es para discapacitados
   final bool isAccessible;
 
-  /// Celda con cargador para vehículo eléctrico.
+  // si tiene cargador de carro electrico
   final bool isEv;
 }

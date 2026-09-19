@@ -3,13 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/pw_scaffold.dart';
 import '../../../core/widgets/screen_placeholder.dart';
 
-/// Pantalla 1 — Home.
-///
-/// Figma: lista de parqueaderos del campus con estado (Available / Limited /
-/// Full), distancia y acceso rápido a "Find a spot" y "Find my car".
-///
-/// Datos: `ParkingMockData.lots` (o `ParkingRepository.getLots()`).
-/// Componentes sugeridos: `StatusBadge`, `Pill`, `Card`.
+// pantalla 1, home. falta hacerla, por ahora solo tiene el placeholder
+// en figma es la del saludo, la grafica de ocupacion y las cards de los niveles
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 

@@ -5,7 +5,8 @@ import 'palette.dart';
 import 'spacing.dart';
 import 'typography.dart';
 
-/// ThemeData de ParkWise construido a partir de [Palette] y [AppTypography].
+// el tema de la app, junta los colores y las fuentes para que los botones,
+// cards, etc ya salgan con el estilo del diseño
 abstract final class AppTheme {
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(

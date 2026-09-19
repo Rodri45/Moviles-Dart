@@ -3,12 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/pw_scaffold.dart';
 import '../../../core/widgets/screen_placeholder.dart';
 
-/// Pantalla 6 — Find my car.
-///
-/// Figma: tarjeta grande con parqueadero, nivel y código de la celda donde
-/// quedó el carro, tiempo transcurrido y botón "Navigate" / "I found it".
-///
-/// Datos: `ParkingMockData.parkedVehicle` (o `VehicleLocator`).
+// pantalla 6, find my car. falta hacerla, por ahora solo placeholder
+// en figma es la del mapa del piso con la ruta y los pasos para llegar al carro
 class FindMyCarScreen extends StatelessWidget {
   const FindMyCarScreen({super.key});
 

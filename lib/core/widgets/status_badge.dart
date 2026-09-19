@@ -5,10 +5,7 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-/// Badge de estado (Available / Limited / Full / Offline).
-///
-/// Según el design system, el estado nunca se comunica solo por color:
-/// fondo tintado + ícono + texto.
+// la etiqueta de available / limited / full / offline con su color e icono
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status});
 

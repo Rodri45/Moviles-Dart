@@ -1,16 +1,15 @@
-/// Pronóstico de ocupación de un parqueadero para una hora concreta.
-///
-/// Se muestra en `ForecastCard`.
+// un punto de la grafica: a tal hora va a estar tal porcentaje de lleno
 class ForecastPoint {
   const ForecastPoint({required this.hour, required this.occupancy});
 
-  /// Hora del día (0-23).
+  // hora de 0 a 23
   final int hour;
 
-  /// Ocupación estimada, entre 0.0 y 1.0.
+  // de 0.0 a 1.0
   final double occupancy;
 }
 
+// la grafica completa de un parqueadero
 class Forecast {
   const Forecast({required this.lotId, required this.points});
 

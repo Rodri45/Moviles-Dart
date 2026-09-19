@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/design/app_theme.dart';
 import 'app_router.dart';
 
-/// Widget raíz de la app. Equivalente a `SmartParkingApp.swift`.
+// aqui arranca la app, pone el tema y las rutas
 class ParkWiseApp extends StatelessWidget {
   const ParkWiseApp({super.key});
 

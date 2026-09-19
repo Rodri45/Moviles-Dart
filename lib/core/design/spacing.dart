@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Espaciados de ParkWise. Grid de 8px, 4px para pares ajustados.
+// espacios estandar para no poner numeros a mano por todo lado
 abstract final class Spacing {
   static const double xs = 4;
   static const double sm = 8;
@@ -8,13 +8,14 @@ abstract final class Spacing {
   static const double lg = 24;
   static const double xl = 32;
 
-  /// Padding horizontal de todas las pantallas (16px).
+  // el margen de los lados de todas las pantallas
   static const EdgeInsets screen = EdgeInsets.symmetric(horizontal: md);
 
-  /// Área táctil mínima.
+  // tamaño minimo de un boton para que se pueda tocar bien
   static const double touchTarget = 48;
 }
 
+// los bordes redondeados
 abstract final class Radii {
   static const double badge = 3;
   static const double sm = 6;

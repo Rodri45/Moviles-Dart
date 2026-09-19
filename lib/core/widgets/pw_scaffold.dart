@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../design/spacing.dart';
 
-/// Scaffold base de ParkWise: fondo, padding horizontal y AppBar opcional.
-///
-/// Todas las pantallas deberían usarlo para mantener el mismo look.
+// scaffold base con el fondo gris y los margenes, para que todas las
+// pantallas se vean igual
 class PwScaffold extends StatelessWidget {
   const PwScaffold({
     super.key,
@@ -19,7 +18,7 @@ class PwScaffold extends StatelessWidget {
   final String? title;
   final List<Widget>? actions;
 
-  /// Widget fijado al fondo (ej. botón "Reserve").
+  // algo que va pegado abajo, como un boton
   final Widget? bottom;
   final bool showBack;
 

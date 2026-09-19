@@ -1,9 +1,8 @@
 import 'parking_level.dart';
 
-/// Estado global de un parqueadero (o de un nivel).
 enum OccupancyStatus { available, limited, full, offline }
 
-/// Un parqueadero del campus (ej. "P1 · North").
+// un parqueadero, tipo "P1 · North", con sus niveles
 class ParkingLot {
   const ParkingLot({
     required this.id,

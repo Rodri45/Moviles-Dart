@@ -5,14 +5,9 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 
-/// Pantalla 4 — Reserve. SOLO VISUAL, sin lógica.
-///
-/// Estructura (de arriba a abajo):
-///   1. Header blanco: "Reserve spot" + "P1 · North · Zone B".
-///   2. Card de la celda: código B201, anillo con hold time, botón Confirm.
-///   3. Banner amber "Best time to reserve".
-///   4. "Compliance history": card con filas ✓ / ✗.
-///   5. Bottom nav con "Reserve" activo.
+// pantalla 4, reserve. solo es la vista, el boton de confirmar no hace nada
+// tiene la card del puesto con el circulo del tiempo, el aviso amarillo
+// y abajo el historial
 class ReserveScreen extends StatelessWidget {
   const ReserveScreen({super.key});
 
@@ -54,9 +49,7 @@ class ReserveScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Datos de muestra (solo para la vista)
-// ---------------------------------------------------------------------------
+// datos de mentira para el historial
 
 typedef _HistoryRow = ({String spot, String date, bool ok});
 
@@ -68,9 +61,7 @@ const List<_HistoryRow> _history = [
   (spot: 'Spot B108', date: 'Aug 27', ok: true),
 ];
 
-// ---------------------------------------------------------------------------
-// Header
-// ---------------------------------------------------------------------------
+// titulo de arriba
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -104,9 +95,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Card de la celda + anillo + botón
-// ---------------------------------------------------------------------------
+// la card grande con el puesto, el circulo y el boton de confirmar
 
 class _SpotCard extends StatelessWidget {
   const _SpotCard();
@@ -160,7 +149,7 @@ class _SpotCard extends StatelessWidget {
   }
 }
 
-/// Anillo azul con el countdown en DM Mono y "hold time" debajo.
+// el circulo azul con el 15:00 adentro
 class _HoldTimeRing extends StatelessWidget {
   const _HoldTimeRing({required this.time});
 
@@ -188,9 +177,7 @@ class _HoldTimeRing extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Banner amber "Best time to reserve"
-// ---------------------------------------------------------------------------
+// el aviso amarillo de "best time to reserve"
 
 class _BestTimeBanner extends StatelessWidget {
   const _BestTimeBanner();
@@ -251,9 +238,7 @@ class _BestTimeBanner extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Compliance history
-// ---------------------------------------------------------------------------
+// la lista del historial de abajo
 
 class _ComplianceCard extends StatelessWidget {
   const _ComplianceCard();
@@ -306,7 +291,7 @@ class _ComplianceRow extends StatelessWidget {
   }
 }
 
-/// Cuadrito ✓ verde o ✗ rojo. Color + ícono, nunca solo color.
+// el cuadrito verde con chulo o rojo con x
 class _ComplianceBadge extends StatelessWidget {
   const _ComplianceBadge({required this.ok});
 

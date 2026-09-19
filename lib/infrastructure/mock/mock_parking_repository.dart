@@ -3,7 +3,7 @@ import '../../domain/entities/parking_lot.dart';
 import '../../domain/ports/parking_repository.dart';
 import 'parking_mock_data.dart';
 
-/// Adaptador mock de [ParkingRepository]. Devuelve [ParkingMockData].
+// version de mentira del repositorio, devuelve los datos inventados
 class MockParkingRepository implements ParkingRepository {
   const MockParkingRepository();
 

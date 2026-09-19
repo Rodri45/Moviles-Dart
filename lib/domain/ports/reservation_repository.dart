@@ -1,6 +1,6 @@
 import '../entities/reservation.dart';
 
-/// Puerto de salida para crear y consultar reservas.
+// interfaz para hacer y cancelar reservas
 abstract interface class ReservationRepository {
   Future<Reservation?> getActiveReservation();
 

@@ -6,12 +6,8 @@ import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/pill.dart';
 
-/// Pantalla 3 — Find a spot. SOLO VISUAL, sin lógica.
-///
-/// Estructura (de arriba a abajo):
-///   1. Header blanco: título, barra de búsqueda + botón de micrófono, filtros.
-///   2. Lista gris: "6 spots found" y una card por celda.
-///   3. Bottom nav con "Home" activo.
+// pantalla 3, find a spot. solo es la vista, los botones no hacen nada
+// arriba va el buscador con los filtros y abajo la lista de puestos
 class FindSpotScreen extends StatelessWidget {
   const FindSpotScreen({super.key});
 
@@ -52,9 +48,7 @@ class FindSpotScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Datos de muestra (solo para la vista)
-// ---------------------------------------------------------------------------
+// datos de mentira para que se vea algo en la lista
 
 typedef _SpotRow = ({String code, String lot, String walk, String type});
 
@@ -67,9 +61,7 @@ const List<_SpotRow> _spots = [
   (code: 'D304', lot: 'P2 · Central', walk: '6 min', type: 'Accessible'),
 ];
 
-// ---------------------------------------------------------------------------
-// Header: título + búsqueda + filtros
-// ---------------------------------------------------------------------------
+// la parte blanca de arriba: titulo, buscador y los filtros
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -162,9 +154,7 @@ class _MicButton extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Card de resultado
-// ---------------------------------------------------------------------------
+// cada tarjetica de la lista
 
 class _SpotResultCard extends StatelessWidget {
   const _SpotResultCard({required this.spot});
@@ -199,7 +189,7 @@ class _SpotResultCard extends StatelessWidget {
   }
 }
 
-/// Cuadro azul con el código de la celda en DM Mono (A103, B201...).
+// el cuadrito azul con el codigo del puesto
 class _CodeBadge extends StatelessWidget {
   const _CodeBadge({required this.code});
 
@@ -224,7 +214,7 @@ class _CodeBadge extends StatelessWidget {
   }
 }
 
-/// "⊙ 1 min · Standard", con el ícono del tipo cuando aplica.
+// la linea de "1 min · Standard" con su iconito si es electrico o accesible
 class _MetaRow extends StatelessWidget {
   const _MetaRow({required this.walk, required this.type});
 

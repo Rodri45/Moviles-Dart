@@ -5,9 +5,7 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-/// Celda individual del mapa de parqueo. Equivalente a `SpotCell.swift`.
-///
-/// Color según [SpotState]; con borde azul si está seleccionada.
+// un puesto del mapa de parqueo, cambia de color segun si esta libre u ocupado
 class SpotCell extends StatelessWidget {
   const SpotCell({
     super.key,

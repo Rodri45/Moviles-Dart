@@ -2,7 +2,7 @@ import '../../domain/entities/parked_vehicle.dart';
 import '../../domain/ports/vehicle_locator.dart';
 import 'parking_mock_data.dart';
 
-/// Adaptador mock de [VehicleLocator]. Guarda el carro en memoria.
+// version de mentira, el carro siempre esta en el mismo puesto
 class MockVehicleLocator implements VehicleLocator {
   ParkedVehicle? _vehicle = ParkingMockData.parkedVehicle;
 

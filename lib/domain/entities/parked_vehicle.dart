@@ -1,4 +1,4 @@
-/// Dónde quedó parqueado el carro del usuario. Se usa en "Find my car".
+// donde quedo parqueado el carro, para la pantalla de find my car
 class ParkedVehicle {
   const ParkedVehicle({
     required this.lotId,

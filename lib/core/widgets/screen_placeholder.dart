@@ -4,15 +4,14 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-/// Placeholder temporal para pantallas aún no implementadas.
-///
-/// Borrar de cada pantalla cuando se implemente el diseño de Figma.
+// lo que sale en las pantallas que todavia no estan hechas.
+// cuando hagan su pantalla lo quitan
 class ScreenPlaceholder extends StatelessWidget {
   const ScreenPlaceholder({super.key, required this.name, this.owner});
 
   final String name;
 
-  /// Compañero responsable de esta pantalla.
+  // quien la va a hacer
   final String? owner;
 
   @override
