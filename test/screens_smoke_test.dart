@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:parkwise/core/design/app_theme.dart';
+import 'package:parkwise/presentation/screens/find_my_car/find_my_car_screen.dart';
 import 'package:parkwise/presentation/screens/find_spot/find_spot_screen.dart';
 import 'package:parkwise/presentation/screens/home/home_screen.dart';
 import 'package:parkwise/presentation/screens/lot_detail/lot_detail_screen.dart';
+import 'package:parkwise/presentation/screens/no_spots/no_spots_screen.dart';
+import 'package:parkwise/presentation/screens/offline/offline_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_screen.dart';
 
-/// Renderiza cada pantalla en un teléfono normal (390x844) y en uno angosto
-/// (320x568) y falla si hay overflows u otros errores de layout.
-///
-/// Al implementar una pantalla nueva, agregarla a [screens].
+
 void main() {
   setUpAll(() {
     // Sin red en tests: usar la fuente de fallback en vez de descargar.
@@ -22,6 +22,9 @@ void main() {
     'P1 North': LotDetailScreen(),
     'Find a spot': FindSpotScreen(),
     'Reserve': ReserveScreen(),
+    'No campus spots': NoSpotsScreen(),
+    'Find my car': FindMyCarScreen(),
+    'Offline': OfflineScreen(),
   };
 
   const sizes = <String, Size>{
