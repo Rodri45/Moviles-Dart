@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:parkwise/core/design/app_theme.dart';
 import 'package:parkwise/presentation/screens/find_spot/find_spot_screen.dart';
 import 'package:parkwise/presentation/screens/home/home_screen.dart';
+import 'package:parkwise/presentation/screens/lot_detail/lot_detail_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_screen.dart';
 
 /// Renderiza cada pantalla en un teléfono normal (390x844) y en uno angosto
@@ -18,6 +19,7 @@ void main() {
 
   const screens = <String, Widget>{
     'Home': HomeScreen(),
+    'P1 North': LotDetailScreen(),
     'Find a spot': FindSpotScreen(),
     'Reserve': ReserveScreen(),
   };

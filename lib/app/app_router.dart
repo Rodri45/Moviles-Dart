@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../domain/entities/parking_lot.dart';
 import '../presentation/root/root_screen.dart';
 import '../presentation/screens/find_my_car/find_my_car_screen.dart';
 import '../presentation/screens/find_spot/find_spot_screen.dart';
@@ -18,8 +17,7 @@ abstract final class AppRouter {
     final page = switch (settings.name) {
       root => const RootScreen(),
       HomeScreen.routeName => const HomeScreen(),
-      LotDetailScreen.routeName =>
-        LotDetailScreen(lot: settings.arguments as ParkingLot?),
+      LotDetailScreen.routeName => const LotDetailScreen(),
       FindSpotScreen.routeName => const FindSpotScreen(),
       ReserveScreen.routeName => const ReserveScreen(),
       NoSpotsScreen.routeName => const NoSpotsScreen(),
