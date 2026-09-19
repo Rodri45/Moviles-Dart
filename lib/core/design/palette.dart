@@ -1,39 +1,42 @@
 import 'package:flutter/material.dart';
 
-// los colores de la app, sacados del documento de diseño
-// si falta alguno se agrega aqui y no se pone el hex directo en la pantalla
+/// Colores de ParkWise según el design system (Atlassian-inspired).
+/// Equivalente a `Palette.swift`.
+///
+/// Cada color tiene un significado; no se usa color decorativo.
 abstract final class Palette {
-  // azul principal, para botones y cosas seleccionadas
-  static const Color primary = Color(0xFF0052CC);
-  static const Color primaryHover = Color(0xFF0065FF);
-  static const Color primarySoft = Color(0xFFDEEBFF);
+  // Primary — acciones, estados activos, links
+  static const Color primary = Color(0xFF0052CC); // Blue 700
+  static const Color primaryHover = Color(0xFF0065FF); // Blue 500
+  static const Color primarySoft = Color(0xFFDEEBFF); // Blue 100
 
-  // verde = hay puestos, amarillo = pocos, rojo = lleno, morado = find my car
-  static const Color success = Color(0xFF36B37E);
-  static const Color warning = Color(0xFFFFAB00);
-  static const Color danger = Color(0xFFDE350B);
-  static const Color secondary = Color(0xFF6554C0);
+  // Semánticos
+  static const Color success = Color(0xFF36B37E); // celdas libres, reserva ok
+  static const Color warning = Color(0xFFFFAB00); // poca disponibilidad, caché
+  static const Color danger = Color(0xFFDE350B); // niveles llenos, destructivo
+  static const Color secondary = Color(0xFF6554C0); // flujo Find my car
 
-  // versiones clarita de los de arriba para fondos de badges y avisos
+  // Fondos tintados para badges y banners semánticos
   static const Color successSoft = Color(0xFFE3FCEF);
   static const Color warningSoft = Color(0xFFFFF7D6);
   static const Color warningBorder = Color(0xFFFFE380);
   static const Color warningText = Color(0xFFFF8B00);
   static const Color dangerSoft = Color(0xFFFFEBE6);
+  static const Color secondarySoft = Color(0xFFEAE6FF);
 
-  // fondo de la pantalla, fondo de las cards y color de los bordes
-  static const Color background = Color(0xFFF4F5F7);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFEBECF0);
+  // Superficies
+  static const Color background = Color(0xFFF4F5F7); // page
+  static const Color surface = Color(0xFFFFFFFF); // cards y sheets
+  static const Color border = Color(0xFFEBECF0); // separadores 1px
 
-  // color de la barrita de arriba del root screen, no es del diseño
+  // Barra de navegación de desarrollo (RootScreen); no es parte del diseño.
   static const Color devBar = Color(0xFF172B4D);
 
-  // textos
+  // Texto
   static const Color textPrimary = Color(0xFF172B4D);
   static const Color textSecondary = Color(0xFF6B778C);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
-  // fondo del buscador
+  // Fondo del campo de búsqueda
   static const Color inputFill = Color(0xFFF4F5F7);
 }
