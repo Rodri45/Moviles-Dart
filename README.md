@@ -56,44 +56,6 @@ hasta la tuya para verla.
 | 6 | Find my car | `screens/find_my_car/find_my_car_screen.dart` | Pendiente |
 | 7 | Offline | `screens/offline/offline_screen.dart` | Pendiente |
 
-Todas están en `lib/presentation/screens/`.
-
-## Cómo hacer tu pantalla (paso a paso)
-
-Usa `find_spot_screen.dart` y `reserve_screen.dart` como plantilla: copia su
-estructura.
-
-1. **Abre tu archivo** `lib/presentation/screens/<pantalla>/<pantalla>_screen.dart`.
-   Arriba de la clase hay un comentario con lo que muestra Figma.
-2. **Datos de ejemplo**: escríbelos como `const` privados arriba del archivo
-   (mira `_spots` en Find a spot o `_history` en Reserve). No uses `domain/`
-   ni `infrastructure/` por ahora.
-3. **Layout**: reemplaza `ScreenPlaceholder` por el diseño real.
-   - `Scaffold` con `backgroundColor: Palette.background`.
-   - Contenido dentro de un `ListView` para que haga scroll.
-   - `bottomNavigationBar: AppTabBar(current: AppTab.xxx)` si tu pantalla
-     tiene la barra de abajo.
-4. **Sub-widgets privados** (`_Header`, `_MiCard`, ...) en el mismo archivo.
-   Si un widget se repite en 2+ pantallas, muévelo a `lib/core/widgets/`.
-5. **Colores, fuentes y espaciados**: SOLO desde `lib/core/design/`.
-   - `Palette.primary`, `Palette.success`, `Palette.warningSoft`, ...
-   - `AppTypography.display / heading1 / heading2 / body / caption / overline /
-     monoId / monoData / monoDisplay`
-   - `Spacing.xs/sm/md/lg/xl`, `Radii.card/sm/badge`
-   - Si te falta un color o estilo, agrégalo ahí (no lo hardcodees en tu pantalla).
-6. **Componentes ya hechos** en `lib/core/widgets/`: `Pill`, `AppTabBar`,
-   `StatusBadge`, `LevelCard`, `ForecastCard`, `SpotCell`, `PwScaffold`.
-7. **Botones**: `onPressed: () {}`. Sin navegación ni estado.
-8. **Responsive**: nada de anchos fijos grandes; usa `Expanded`/`Flexible`,
-   y `maxLines: 1, overflow: TextOverflow.ellipsis` en textos que puedan crecer.
-9. **Agrega tu pantalla al test** en `test/screens_smoke_test.dart` (mapa
-   `screens`). Renderiza a 390px y 320px de ancho y falla si algo desborda.
-10. Antes del PR:
-    ```bash
-    flutter analyze   # sin errores
-    flutter test      # todo en verde
-    ```
-
 ## Git
 
 - Rama por pantalla: `feature/home`, `feature/find-my-car`, etc., desde `develop`.
