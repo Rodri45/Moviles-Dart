@@ -9,22 +9,16 @@ import '../../domain/entities/spot_filter.dart';
 import '../../domain/ports/parking_repository.dart';
 import 'parking_mock_data.dart';
 
-// version de mentira del repositorio, devuelve los datos inventados.
-// si error no es null todas las llamadas fallan con ese error
+// version de mentira del repositorio, devuelve los datos inventados
 class MockParkingRepository implements ParkingRepository {
-  MockParkingRepository({LevelsOverview? levels, this.fromCache = false})
+  MockParkingRepository({LevelsOverview? levels})
     : levels = levels ?? ParkingMockData.levels;
 
   LevelsOverview levels;
-  bool fromCache;
-  Object? error;
-  final List<String?> requestedZones = [];
 
   @override
   Future<Cached<LevelsOverview>> getLevels({String? zone}) async {
-    requestedZones.add(zone);
-    _throwIfNeeded();
-    return Cached(levels, savedAt: ParkingMockData.now, fromCache: fromCache);
+    return Cached(levels, savedAt: ParkingMockData.now);
   }
 
   @override
@@ -33,16 +27,14 @@ class MockParkingRepository implements ParkingRepository {
     required String destination,
     Set<SpotFilter> filters = const {},
   }) async {
-    _throwIfNeeded();
     final spots = (ParkingMockData.spots[levelCode] ?? const <ParkingSpot>[])
         .where((spot) => filters.every((f) => f.matches(spot)))
         .toList();
-    return Cached(spots, savedAt: ParkingMockData.now, fromCache: fromCache);
+    return Cached(spots, savedAt: ParkingMockData.now);
   }
 
   @override
   Future<List<Building>> getBuildings() async {
-    _throwIfNeeded();
     return ParkingMockData.buildings;
   }
 
@@ -51,13 +43,11 @@ class MockParkingRepository implements ParkingRepository {
     String? level,
     DateTime? date,
   }) async {
-    _throwIfNeeded();
     return ParkingMockData.forecasts;
   }
 
   @override
   Future<LevelRecommendation> getRecommendedLevel(DateTime arrivalAt) async {
-    _throwIfNeeded();
     return LevelRecommendation(
       arrivalAt: arrivalAt,
       slot: '08:00',
@@ -68,12 +58,6 @@ class MockParkingRepository implements ParkingRepository {
 
   @override
   Future<List<NearbyLot>> getNearbyLots() async {
-    _throwIfNeeded();
     return ParkingMockData.nearbyLots;
-  }
-
-  void _throwIfNeeded() {
-    final e = error;
-    if (e != null) throw e;
   }
 }

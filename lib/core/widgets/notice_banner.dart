@@ -4,7 +4,7 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-enum NoticeTone { info, warning, danger }
+enum NoticeTone { warning, danger }
 
 // el aviso de color con icono, titulo y texto (errores, consejos, alertas)
 class NoticeBanner extends StatelessWidget {
@@ -22,11 +22,6 @@ class NoticeBanner extends StatelessWidget {
   final IconData icon;
 
   ({Color text, Color background, Color border}) get _colors => switch (tone) {
-    NoticeTone.info => (
-      text: Palette.primary,
-      background: Palette.primarySoft,
-      border: Palette.primary.withValues(alpha: 0.3),
-    ),
     NoticeTone.warning => (
       text: Palette.warningText,
       background: Palette.warningSoft,

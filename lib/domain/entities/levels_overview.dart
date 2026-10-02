@@ -20,10 +20,4 @@ class LevelsOverview {
   final DateTime generatedAt;
   final bool campusFull;
   final List<ParkingLevel> levels;
-
-  Map<String, dynamic> toJson() => {
-    'generatedAt': generatedAt.toIso8601String(),
-    'campusFull': campusFull,
-    'levels': [for (final level in levels) level.toJson()],
-  };
 }

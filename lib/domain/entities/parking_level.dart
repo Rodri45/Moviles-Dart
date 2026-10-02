@@ -30,16 +30,6 @@ class ParkingLevel {
   final int reserved;
   final int occupied;
 
-  Map<String, dynamic> toJson() => {
-    'code': code,
-    'name': name,
-    'underground': underground,
-    'total': total,
-    'free': free,
-    'reserved': reserved,
-    'occupied': occupied,
-  };
-
   double get occupancy => total == 0 ? 0 : (reserved + occupied) / total;
 
   OccupancyStatus get status {

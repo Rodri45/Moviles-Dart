@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import '../../domain/entities/geo_point.dart';
@@ -13,13 +12,6 @@ class MockLocationProvider implements LocationProvider {
 
   LocationAccess access;
   GeoPoint? position;
-  GeoPoint? lastKnown;
-  final _positions = StreamController<GeoPoint>.broadcast();
-
-  void moveTo(GeoPoint point) {
-    position = point;
-    _positions.add(point);
-  }
 
   @override
   Future<LocationAccess> checkAccess() async => access;
@@ -35,10 +27,10 @@ class MockLocationProvider implements LocationProvider {
       access == LocationAccess.granted ? position : null;
 
   @override
-  Future<GeoPoint?> lastKnownPosition() async => lastKnown ?? position;
+  Future<GeoPoint?> lastKnownPosition() async => position;
 
   @override
-  Stream<GeoPoint> watchPosition() => _positions.stream;
+  Stream<GeoPoint> watchPosition() => const Stream.empty();
 
   // aproximacion plana, sirve para distancias cortas
   @override

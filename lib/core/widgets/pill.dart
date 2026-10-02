@@ -58,33 +58,3 @@ class Pill extends StatelessWidget {
     );
   }
 }
-
-// varios pills juntos donde solo uno queda seleccionado
-class PillGroup extends StatelessWidget {
-  const PillGroup({
-    super.key,
-    required this.labels,
-    required this.selectedIndex,
-    required this.onSelected,
-  });
-
-  final List<String> labels;
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: Spacing.sm,
-      runSpacing: Spacing.sm,
-      children: [
-        for (var i = 0; i < labels.length; i++)
-          Pill(
-            label: labels[i],
-            selected: i == selectedIndex,
-            onTap: () => onSelected(i),
-          ),
-      ],
-    );
-  }
-}

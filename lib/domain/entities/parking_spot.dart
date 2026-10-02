@@ -44,17 +44,4 @@ class ParkingSpot {
   final bool mine;
 
   bool get isFree => status == SpotStatus.free;
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'code': code,
-    'zone': zone,
-    'levelCode': levelCode,
-    'status': status.name,
-    'walkMinutes': walkMinutes,
-    'isAccessible': isAccessible,
-    'isEv': isEv,
-    'isVip': isVip,
-    'mine': mine,
-  };
 }

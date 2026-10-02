@@ -8,14 +8,9 @@ class MockVehicleLocator implements VehicleLocator {
 
   ParkedVehicle? vehicle;
   CarLocation? location;
-  Object? error;
 
   @override
-  Future<ParkedVehicle?> getParkedVehicle() async {
-    final e = error;
-    if (e != null) throw e;
-    return vehicle;
-  }
+  Future<ParkedVehicle?> getParkedVehicle() async => vehicle;
 
   @override
   Future<CarLocation?> savedLocation() async => location;

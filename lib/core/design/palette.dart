@@ -29,9 +29,6 @@ abstract final class Palette {
   static const Color surface = Color(0xFFFFFFFF); // cards y sheets
   static const Color border = Color(0xFFEBECF0); // separadores 1px
 
-  // Barra de navegación de desarrollo (RootScreen); no es parte del diseño.
-  static const Color devBar = Color(0xFF172B4D);
-
   // Texto
   static const Color textPrimary = Color(0xFF172B4D);
   static const Color textSecondary = Color(0xFF6B778C);
