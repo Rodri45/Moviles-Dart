@@ -1,65 +1,81 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/notice_banner.dart';
+import '../../../domain/ports/location_provider.dart';
 import '../../shell/main_shell.dart';
+import 'find_my_car_view_model.dart';
 
-class FindMyCarScreen extends StatelessWidget {
+// pantalla 6, find my car: el puesto donde quedo el carro y cuanto falta a pie
+class FindMyCarScreen extends StatefulWidget {
   const FindMyCarScreen({super.key});
 
   static const String routeName = '/find-my-car';
 
   @override
+  State<FindMyCarScreen> createState() => _FindMyCarScreenState();
+}
+
+class _FindMyCarScreenState extends State<FindMyCarScreen>
+    with WidgetsBindingObserver {
+  late final FindMyCarViewModel _car;
+
+  @override
+  void initState() {
+    super.initState();
+    _car = context.read<FindMyCarViewModel>();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _car.start());
+  }
+
+  // al volver de los ajustes puede que ya hayan dado el permiso
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _car.refreshAccess();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _car.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final car = context.watch<FindMyCarViewModel>();
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const _Header(),
+            _Header(car: car),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.lg,
-                ),
-                children: [
-                  const Row(
-                    children: [
-                      Expanded(
-                        child: _InfoCard(
-                          label: 'SPOT',
-                          value: 'B201',
-                          mono: true,
-                          caption: 'P1 · North',
-                        ),
-                      ),
-                      SizedBox(width: Spacing.sm),
-                      Expanded(
-                        child: _InfoCard(
-                          label: 'WALK',
-                          value: '~2 min',
-                          mono: false,
-                          caption: 'via Entrance A',
-                        ),
-                      ),
-                    ],
+              child: RefreshIndicator(
+                onRefresh: car.load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    Spacing.md,
+                    Spacing.md,
+                    Spacing.md,
+                    Spacing.lg,
                   ),
-                  const SizedBox(height: Spacing.md),
-                  const _FloorViewCard(),
-                  const SizedBox(height: Spacing.md),
-                  const _RouteToggle(),
-                  const SizedBox(height: Spacing.md),
-                  for (final step in _steps) ...[
-                    _StepCard(step: step),
-                    const SizedBox(height: Spacing.sm),
+                  children: [
+                    if (car.isLoading && !car.hasCar)
+                      const Center(child: CircularProgressIndicator())
+                    else if (!car.hasCar)
+                      const _NoCarCard()
+                    else
+                      ..._carDetails(car),
                   ],
-                ],
+                ),
               ),
             ),
           ],
@@ -71,26 +87,92 @@ class FindMyCarScreen extends StatelessWidget {
       ),
     );
   }
+
+  List<Widget> _carDetails(FindMyCarViewModel car) {
+    final meters = car.distanceMeters;
+    final minutes = car.walkingMinutes;
+    final String walkCaption;
+    if (car.saved?.position == null) {
+      walkCaption = 'No GPS when you parked';
+    } else if (meters == null) {
+      walkCaption = 'Waiting for your location';
+    } else if (car.usingLastKnown) {
+      walkCaption = 'Last known position';
+    } else {
+      walkCaption = '${meters.round()} m away';
+    }
+
+    return [
+      if (car.offline) ...[
+        const NoticeBanner(
+          message: 'No connection. Showing where you saved your car.',
+          icon: Icons.wifi_off,
+        ),
+        const SizedBox(height: Spacing.md),
+      ],
+      if (car.access != null && car.access != LocationAccess.granted) ...[
+        _PermissionCard(car: car),
+        const SizedBox(height: Spacing.md),
+      ],
+      Row(
+        children: [
+          Expanded(
+            child: _InfoCard(
+              label: 'SPOT',
+              value: car.spotCode!,
+              mono: true,
+              caption: car.zone == null
+                  ? 'Level ${car.levelCode}'
+                  : 'Level ${car.levelCode} · Zone ${car.zone}',
+            ),
+          ),
+          const SizedBox(width: Spacing.sm),
+          Expanded(
+            child: _InfoCard(
+              label: 'WALK',
+              value: minutes == null ? '—' : '~$minutes min',
+              mono: false,
+              caption: walkCaption,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: Spacing.md),
+      _FloorViewCard(
+        levelCode: car.levelCode!,
+        spotCode: car.spotCode!,
+        distance: meters == null ? null : '~${meters.round()}m',
+      ),
+      const SizedBox(height: Spacing.md),
+      for (final step in _stepsFor(car)) ...[
+        _StepCard(step: step),
+        const SizedBox(height: Spacing.sm),
+      ],
+    ];
+  }
+
+  // pasos sencillos con lo que se sabe: nivel, zona y puesto
+  List<_Step> _stepsFor(FindMyCarViewModel car) => [
+    (icon: Icons.stairs_outlined, text: 'Go to Level ${car.levelCode}'),
+    if (car.zone != null)
+      (icon: Icons.arrow_upward, text: 'Walk to Zone ${car.zone}'),
+    (icon: Icons.flag_outlined, text: 'Your car is at spot ${car.spotCode}'),
+  ];
 }
 
-// datos de mentira de los pasos
-
 typedef _Step = ({IconData icon, String text});
-
-const List<_Step> _steps = [
-  (icon: Icons.arrow_outward, text: 'Head north toward Zone B'),
-  (icon: Icons.arrow_upward, text: 'Pass Zone A (30m)'),
-  (icon: Icons.turn_left, text: 'Turn left at the ramp (60m)'),
-  (icon: Icons.flag_outlined, text: 'Arrive at Entrance A'),
-];
 
 // titulo de arriba
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.car});
+
+  final FindMyCarViewModel car;
 
   @override
   Widget build(BuildContext context) {
+    final parkedAt = car.parkedAt;
+
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -109,10 +191,107 @@ class _Header extends StatelessWidget {
           Text('Find my car', style: AppTypography.display),
           const SizedBox(height: Spacing.xs),
           Text(
-            'Parked today at 8:14 AM',
+            parkedAt == null
+                ? 'No car parked'
+                : 'Parked ${formatDate(parkedAt)} at ${formatTime(parkedAt)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.body.copyWith(color: Palette.textSecondary),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// cuando no hay carro parqueado
+class _NoCarCard extends StatelessWidget {
+  const _NoCarCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('No car parked', style: AppTypography.heading1),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'Tap "I parked" on your reservation and we will remember '
+              'the spot.',
+              style: AppTypography.caption,
+            ),
+            const SizedBox(height: Spacing.md),
+            OutlinedButton(
+              onPressed: () => MainShell.openTab(context, AppTab.reserve),
+              child: const Text('Go to my reservation'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// la explicacion del gps antes de pedir el permiso, o el boton de ajustes
+// si ya lo negaron para siempre
+class _PermissionCard extends StatelessWidget {
+  const _PermissionCard({required this.car});
+
+  final FindMyCarViewModel car;
+
+  @override
+  Widget build(BuildContext context) {
+    final (message, button, action) = switch (car.access) {
+      LocationAccess.deniedForever => (
+        'Location is blocked for ParkWise. Turn it on in settings to see '
+            'how far your car is.',
+        'Open settings',
+        car.openSettings,
+      ),
+      LocationAccess.serviceDisabled => (
+        'Your phone location is off. Turn it on to see how far your car is.',
+        'Open settings',
+        car.openSettings,
+      ),
+      _ => (
+        'We use your location only to show how far you are from your car. '
+            'It never leaves your phone.',
+        'Allow location',
+        car.requestAccess,
+      ),
+    };
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 18,
+                  color: Palette.secondary,
+                ),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Text(
+                    'Use your location',
+                    style: AppTypography.heading2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Spacing.xs),
+            Text(message, style: AppTypography.caption),
+            const SizedBox(height: Spacing.md),
+            OutlinedButton(onPressed: action, child: Text(button)),
+          ],
+        ),
       ),
     );
   }
@@ -170,7 +349,15 @@ class _InfoCard extends StatelessWidget {
 // la card del mapita del piso
 
 class _FloorViewCard extends StatelessWidget {
-  const _FloorViewCard();
+  const _FloorViewCard({
+    required this.levelCode,
+    required this.spotCode,
+    required this.distance,
+  });
+
+  final String levelCode;
+  final String spotCode;
+  final String? distance;
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +367,10 @@ class _FloorViewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('P1 · NORTH — FLOOR VIEW', style: AppTypography.overline),
+            Text(
+              'LEVEL $levelCode — FLOOR VIEW',
+              style: AppTypography.overline,
+            ),
             const SizedBox(height: Spacing.md),
             Container(
               padding: const EdgeInsets.all(Spacing.md),
@@ -188,7 +378,7 @@ class _FloorViewCard extends StatelessWidget {
                 color: Palette.background,
                 borderRadius: BorderRadius.circular(Radii.card),
               ),
-              child: const _FloorMap(),
+              child: _FloorMap(spotCode: spotCode, distance: distance),
             ),
           ],
         ),
@@ -200,7 +390,12 @@ class _FloorViewCard extends StatelessWidget {
 // el mapa: una cuadricula de puestos grises y encima la ruta, la etiqueta
 // del carro y la de la entrada. todo se calcula con el ancho disponible
 class _FloorMap extends StatelessWidget {
-  const _FloorMap();
+  const _FloorMap({required this.spotCode, required this.distance});
+
+  final String spotCode;
+
+  // "~120m", o null si no hay gps para calcularlo
+  final String? distance;
 
   static const int _cols = 6;
   static const int _rows = 8;
@@ -258,20 +453,21 @@ class _FloorMap extends StatelessWidget {
                 child: const _DashedLine(),
               ),
               // el "~120m" al lado de la linea
-              Positioned(
-                left: lineX + Spacing.sm,
-                top: top(5) - 2,
-                child: Text(
-                  '~120m',
-                  style: AppTypography.monoData.copyWith(fontSize: 9),
+              if (distance != null)
+                Positioned(
+                  left: lineX + Spacing.sm,
+                  top: top(5) - 2,
+                  child: Text(
+                    distance!,
+                    style: AppTypography.monoData.copyWith(fontSize: 9),
+                  ),
                 ),
-              ),
               // la etiqueta del carro
               Positioned(
                 left: 0,
                 top: top(_carRow) - 2,
-                child: const _MapChip(
-                  label: 'B201',
+                child: _MapChip(
+                  label: spotCode,
                   color: Palette.primary,
                   background: Palette.primarySoft,
                   icon: Icons.directions_car,
@@ -321,7 +517,7 @@ class _MapCell extends StatelessWidget {
   }
 }
 
-// las etiquetas del mapa (B201 y ENTRANCE)
+// las etiquetas del mapa (el puesto y ENTRANCE)
 class _MapChip extends StatelessWidget {
   const _MapChip({
     required this.label,
@@ -392,59 +588,6 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedLinePainter oldDelegate) => false;
-}
-
-// los dos botones de direct route y lit route
-
-class _RouteToggle extends StatelessWidget {
-  const _RouteToggle();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: _RouteOption(label: 'Direct route', selected: true)),
-        SizedBox(width: Spacing.sm),
-        Expanded(child: _RouteOption(label: 'Lit route', selected: false)),
-      ],
-    );
-  }
-}
-
-class _RouteOption extends StatelessWidget {
-  const _RouteOption({required this.label, required this.selected});
-
-  final String label;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? Palette.primarySoft : Palette.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.sm),
-        side: BorderSide(
-          color: selected ? Palette.primary : Palette.border,
-          width: selected ? 1.5 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(Radii.sm),
-        child: SizedBox(
-          height: Spacing.touchTarget,
-          child: Center(
-            child: Text(
-              label,
-              style: AppTypography.button.copyWith(
-                color: selected ? Palette.primary : Palette.textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // cada paso de la ruta

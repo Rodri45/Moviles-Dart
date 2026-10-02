@@ -11,10 +11,12 @@ import '../domain/ports/preferences_store.dart';
 import '../domain/ports/reservation_repository.dart';
 import '../domain/ports/vehicle_locator.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
+import '../infrastructure/device/geolocator_location_provider.dart';
 import '../infrastructure/http/api_client.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
+import '../infrastructure/http/http_vehicle_locator.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
@@ -25,6 +27,7 @@ import '../infrastructure/mock/mock_vehicle_locator.dart';
 import '../infrastructure/storage/hive_preferences_store.dart';
 import '../infrastructure/storage/local_cache.dart';
 import '../infrastructure/storage/session_store.dart';
+import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
 import '../presentation/screens/home/home_view_model.dart';
 import '../presentation/screens/level_map/level_map_view_model.dart';
@@ -65,10 +68,10 @@ class AppDependencies {
       auth: HttpAuthRepository(client, session),
       parking: HttpParkingRepository(client, cache),
       reservations: HttpReservationRepository(client, cache),
-      vehicles: MockVehicleLocator(),
+      vehicles: HttpVehicleLocator(client, cache),
       connectivity: ConnectivityPlusAdapter(),
       preferences: HivePreferencesStore(prefsBox),
-      location: MockLocationProvider(),
+      location: GeolocatorLocationProvider(),
     );
   }
 
@@ -94,7 +97,8 @@ class AppDependencies {
     ChangeNotifierProvider(create: (_) => AuthViewModel(auth)),
     ChangeNotifierProvider(create: (_) => ShellViewModel()),
     ChangeNotifierProvider(
-      create: (_) => HomeViewModel(parking, preferences, connectivity),
+      create: (_) =>
+          HomeViewModel(parking, preferences, location, connectivity),
     ),
     ChangeNotifierProvider(
       create: (_) => LevelMapViewModel(parking, preferences, connectivity),
@@ -108,7 +112,11 @@ class AppDependencies {
     ),
     ChangeNotifierProvider(create: (_) => NoSpotsViewModel(parking)),
     ChangeNotifierProvider(
-      create: (_) => ReserveViewModel(reservations, location, connectivity),
+      create: (_) => FindMyCarViewModel(vehicles, location),
+    ),
+    ChangeNotifierProvider(
+      create: (_) =>
+          ReserveViewModel(reservations, vehicles, location, connectivity),
     ),
     ChangeNotifierProvider(create: (_) => ProfileViewModel(reservations)),
   ];

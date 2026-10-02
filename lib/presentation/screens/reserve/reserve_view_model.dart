@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../domain/entities/car_location.dart';
 import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/lead_time_advice.dart';
 import '../../../domain/entities/parking_spot.dart';
@@ -10,6 +11,7 @@ import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../../domain/ports/reservation_repository.dart';
+import '../../../domain/ports/vehicle_locator.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
@@ -17,6 +19,7 @@ import '../../shared/error_messages.dart';
 class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   ReserveViewModel(
     this._reservations,
+    this._vehicles,
     this._location,
     ConnectivityPort connectivity, {
     DateTime Function()? clock,
@@ -28,6 +31,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   static const warnDistanceMeters = 1000;
 
   final ReservationRepository _reservations;
+  final VehicleLocator _vehicles;
   final LocationProvider _location;
   final DateTime Function() _clock;
   Timer? _ticker;
@@ -77,9 +81,17 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     final current = reservation;
     if (current == null) return;
     await _run(() async {
-      _setReservation(await _reservations.checkIn(current.id));
+      final parked = await _reservations.checkIn(current.id);
+      _setReservation(parked);
+      await _saveCarLocation(parked);
     });
   }
+
+  // true si hay que explicar para que se usa el gps antes de pedirlo
+  Future<bool> shouldExplainLocation() async =>
+      await _location.checkAccess() == LocationAccess.denied;
+
+  Future<void> requestLocation() => _location.requestAccess();
 
   // si no ha hecho check-in queda cancelada, si ya parqueo queda liberada
   Future<void> release() async {
@@ -87,6 +99,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     if (current == null) return;
     await _run(() async {
       await _reservations.release(current.id);
+      await _vehicles.clearLocation();
       _setReservation(null);
       await _loadHistory();
     });
@@ -137,6 +150,20 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     }
     if (message.contains('expired')) return 'Your reservation expired.';
     return e.message;
+  }
+
+  // la posicion del carro queda en el celular para find my car. bajo tierra
+  // puede no haber gps y se guarda solo el nivel y el puesto
+  Future<void> _saveCarLocation(Reservation parked) async {
+    final position = await _location.currentPosition();
+    await _vehicles.saveLocation(
+      CarLocation(
+        levelCode: parked.levelCode,
+        spotCode: parked.spotCode,
+        savedAt: parked.checkedInAt ?? _clock(),
+        position: position,
+      ),
+    );
   }
 
   Future<void> _loadActive() async {

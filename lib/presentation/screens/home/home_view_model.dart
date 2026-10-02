@@ -6,6 +6,7 @@ import '../../../domain/entities/level_forecast.dart';
 import '../../../domain/entities/level_recommendation.dart';
 import '../../../domain/entities/levels_overview.dart';
 import '../../../domain/ports/connectivity_port.dart';
+import '../../../domain/ports/location_provider.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
 import '../../shared/connectivity_aware.dart';
@@ -16,6 +17,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   HomeViewModel(
     this._parking,
     this._preferences,
+    this._location,
     ConnectivityPort connectivity, {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
@@ -27,6 +29,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
 
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
+  final LocationProvider _location;
   final DateTime Function() _clock;
 
   Cached<LevelsOverview>? levels;
@@ -87,13 +90,24 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
 
   Future<void> _loadLevels() async {
     try {
-      final result = await _parking.getLevels();
+      final result = await _parking.getLevels(zone: await _zone());
       final wasFull = levels?.data.campusFull ?? false;
       levels = result;
       if (result.data.campusFull && !wasFull) campusFullPending = true;
     } catch (e) {
       errorMessage = errorMessageFor(e);
     }
+  }
+
+  // BQ4: la zona redondeada a 2 decimales para la demanda no atendida. home
+  // solo se ve con sesion, asi que basta con revisar el permiso. no se pide
+  // permiso aqui; se usa la ultima posicion para no demorar los niveles
+  Future<String?> _zone() async {
+    if (await _location.checkAccess() != LocationAccess.granted) return null;
+    final position =
+        await _location.lastKnownPosition() ??
+        await _location.currentPosition();
+    return position?.toZone();
   }
 
   // el destino, la grafica y la recomendacion son extras: si fallan la

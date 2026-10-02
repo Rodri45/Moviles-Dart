@@ -9,6 +9,7 @@ import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/button_spinner.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/reservation_history_card.dart';
+import '../../shared/location_rationale.dart';
 import '../../shell/main_shell.dart';
 import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
@@ -130,6 +131,15 @@ class _SpotCard extends StatelessWidget {
 
   final ReserveViewModel reserve;
 
+  // antes del dialogo del sistema se explica para que sirve el gps
+  Future<void> _checkIn(BuildContext context) async {
+    if (await reserve.shouldExplainLocation() && context.mounted) {
+      final allow = await showLocationRationale(context);
+      if (allow) await reserve.requestLocation();
+    }
+    await reserve.checkIn();
+  }
+
   @override
   Widget build(BuildContext context) {
     final reservation = reserve.reservation;
@@ -179,7 +189,7 @@ class _SpotCard extends StatelessWidget {
         _ActionButton(
           label: 'I parked',
           busy: reserve.isBusy,
-          onPressed: reserve.checkIn,
+          onPressed: () => _checkIn(context),
         ),
         OutlinedButton(
           onPressed: reserve.isBusy ? null : reserve.release,
