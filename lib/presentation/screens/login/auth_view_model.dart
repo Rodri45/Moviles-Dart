@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/auth_repository.dart';
+import '../../shared/error_messages.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -112,19 +113,19 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   static String messageFor(Object error) {
-    if (error is NetworkException) {
-      return 'No connection. Check your internet and try again.';
-    }
     if (error is ApiException) {
-      return switch (error.statusCode) {
-        401 => 'Wrong email or password.',
-        409 => 'This email is already registered.',
-        429 => 'Too many attempts. Wait a minute and try again.',
-        400 => 'Check your data and try again.',
-        _ => 'Something went wrong. Try again.',
-      };
+      switch (error.statusCode) {
+        case 401:
+          return 'Wrong email or password.';
+        case 409:
+          return 'This email is already registered.';
+        case 429:
+          return 'Too many attempts. Wait a minute and try again.';
+        case 400:
+          return 'Check your data and try again.';
+      }
     }
-    return 'Something went wrong. Try again.';
+    return errorMessageFor(error);
   }
 
   void _openOffline(AppUser cached) {

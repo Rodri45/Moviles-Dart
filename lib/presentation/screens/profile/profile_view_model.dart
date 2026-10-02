@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../domain/entities/reservation.dart';
 import '../../../domain/ports/reservation_repository.dart';
-import '../login/auth_view_model.dart';
+import '../../shared/error_messages.dart';
 
 // el historial de reservas del perfil
 class ProfileViewModel extends ChangeNotifier {
@@ -21,7 +21,7 @@ class ProfileViewModel extends ChangeNotifier {
     try {
       history = await _reservations.history();
     } catch (e) {
-      errorMessage = AuthViewModel.messageFor(e);
+      errorMessage = errorMessageFor(e);
     } finally {
       isLoading = false;
       notifyListeners();

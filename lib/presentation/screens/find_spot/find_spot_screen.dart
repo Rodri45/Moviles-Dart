@@ -1,28 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
-import '../../shell/main_shell.dart';
+import '../../../core/widgets/notice_banner.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
+import '../../../domain/entities/parking_spot.dart';
+import '../../../domain/entities/spot_filter.dart';
+import '../../shell/main_shell.dart';
+import 'find_spot_view_model.dart';
 
-// pantalla 3, find a spot. solo es la vista, los botones no hacen nada
-// arriba va el buscador con los filtros y abajo la lista de puestos
-class FindSpotScreen extends StatelessWidget {
+// pantalla 3, find a spot. arriba el buscador con los filtros y abajo la
+// lista de puestos ordenada por minutos a pie
+class FindSpotScreen extends StatefulWidget {
   const FindSpotScreen({super.key});
 
   static const String routeName = '/find-spot';
 
   @override
+  State<FindSpotScreen> createState() => _FindSpotScreenState();
+}
+
+class _FindSpotScreenState extends State<FindSpotScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<FindSpotViewModel>().load(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final finder = context.watch<FindSpotViewModel>();
+    final results = finder.results;
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const _Header(),
+            _Header(finder: finder),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -32,9 +54,30 @@ class FindSpotScreen extends StatelessWidget {
                   Spacing.lg,
                 ),
                 children: [
-                  Text('6 spots found', style: AppTypography.caption),
+                  if (finder.showOffline) ...[
+                    OfflineBanner(
+                      savedAt: finder.savedAt,
+                      online: finder.online,
+                    ),
+                    const SizedBox(height: Spacing.md),
+                  ],
+                  if (finder.errorMessage != null) ...[
+                    NoticeBanner(
+                      message: finder.errorMessage!,
+                      tone: NoticeTone.danger,
+                      icon: Icons.error_outline,
+                    ),
+                    const SizedBox(height: Spacing.md),
+                  ],
+                  if (finder.isLoading && results.isEmpty)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    Text(
+                      '${results.length} spots found',
+                      style: AppTypography.caption,
+                    ),
                   const SizedBox(height: Spacing.md),
-                  for (final spot in _spots) ...[
+                  for (final spot in results) ...[
                     _SpotResultCard(spot: spot),
                     const SizedBox(height: Spacing.md),
                   ],
@@ -52,23 +95,19 @@ class FindSpotScreen extends StatelessWidget {
   }
 }
 
-// datos de mentira para que se vea algo en la lista
-
-typedef _SpotRow = ({String code, String lot, String walk, String type});
-
-const List<_SpotRow> _spots = [
-  (code: 'A103', lot: 'P1 · North', walk: '1 min', type: 'Standard'),
-  (code: 'A205', lot: 'P1 · North', walk: '2 min', type: 'Standard'),
-  (code: 'B201', lot: 'P1 · North', walk: '2 min', type: 'Standard'),
-  (code: 'B108', lot: 'P1 · North', walk: '3 min', type: 'Electric'),
-  (code: 'C012', lot: 'P2 · Central', walk: '5 min', type: 'VIP'),
-  (code: 'D304', lot: 'P2 · Central', walk: '6 min', type: 'Accessible'),
-];
-
 // la parte blanca de arriba: titulo, buscador y los filtros
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.finder});
+
+  final FindSpotViewModel finder;
+
+  static const _filterLabels = {
+    SpotFilter.available: 'Available',
+    SpotFilter.vip: 'VIP',
+    SpotFilter.electric: 'Electric',
+    SpotFilter.accessible: 'Accessible',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -85,75 +124,37 @@ class _Header extends StatelessWidget {
         children: [
           Text('Find a spot', style: AppTypography.display),
           const SizedBox(height: Spacing.md),
-          const Row(
-            children: [
-              Expanded(child: _SearchField()),
-              SizedBox(width: Spacing.sm),
-              _MicButton(),
-            ],
+          TextField(
+            onChanged: finder.setQuery,
+            style: AppTypography.body,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Spot code, zone, level...',
+              hintStyle: AppTypography.body.copyWith(
+                color: Palette.textSecondary,
+              ),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 18,
+                color: Palette.textSecondary,
+              ),
+            ),
           ),
           const SizedBox(height: Spacing.md),
-          const Wrap(
+          Wrap(
             spacing: Spacing.sm,
             runSpacing: Spacing.sm,
             children: [
-              Pill(label: 'Available', selected: true),
-              Pill(label: 'VIP'),
-              Pill(label: 'Electric'),
-              Pill(label: 'Accessible'),
+              for (final entry in _filterLabels.entries)
+                Pill(
+                  label: entry.value,
+                  selected: finder.filters.contains(entry.key),
+                  onTap: () => finder.toggleFilter(entry.key),
+                ),
             ],
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: Spacing.touchTarget,
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-      decoration: BoxDecoration(
-        color: Palette.inputFill,
-        borderRadius: BorderRadius.circular(Radii.card),
-        border: Border.all(color: Palette.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, size: 18, color: Palette.textSecondary),
-          const SizedBox(width: Spacing.sm),
-          Expanded(
-            child: Text(
-              'Spot code, zone, level...',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.body.copyWith(color: Palette.textSecondary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MicButton extends StatelessWidget {
-  const _MicButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: Spacing.touchTarget,
-      height: Spacing.touchTarget,
-      decoration: BoxDecoration(
-        color: Palette.primarySoft,
-        borderRadius: BorderRadius.circular(Radii.card),
-        border: Border.all(color: Palette.primary),
-      ),
-      child: const Icon(Icons.mic_none, size: 20, color: Palette.primary),
     );
   }
 }
@@ -163,7 +164,7 @@ class _MicButton extends StatelessWidget {
 class _SpotResultCard extends StatelessWidget {
   const _SpotResultCard({required this.spot});
 
-  final _SpotRow spot;
+  final ParkingSpot spot;
 
   @override
   Widget build(BuildContext context) {
@@ -178,14 +179,19 @@ class _SpotResultCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(spot.lot, style: AppTypography.heading2),
+                  Text(
+                    'Level ${spot.levelCode} · Zone ${spot.zone}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2,
+                  ),
                   const SizedBox(height: Spacing.xs),
-                  _MetaRow(walk: spot.walk, type: spot.type),
+                  _MetaRow(spot: spot),
                 ],
               ),
             ),
             const SizedBox(width: Spacing.sm),
-            const _ReserveButton(),
+            _ReserveButton(spot: spot),
           ],
         ),
       ),
@@ -210,9 +216,12 @@ class _CodeBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(Radii.sm),
         border: Border.all(color: Palette.primary.withValues(alpha: 0.4)),
       ),
-      child: Text(
-        code,
-        style: AppTypography.monoId.copyWith(color: Palette.primary),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          code,
+          style: AppTypography.monoId.copyWith(color: Palette.primary),
+        ),
       ),
     );
   }
@@ -220,40 +229,39 @@ class _CodeBadge extends StatelessWidget {
 
 // la linea de "1 min · Standard" con su iconito si es electrico o accesible
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.walk, required this.type});
+  const _MetaRow({required this.spot});
 
-  final String walk;
-  final String type;
+  final ParkingSpot spot;
 
-  IconData? get _typeIcon => switch (type) {
-    'Electric' => Icons.bolt,
-    'Accessible' => Icons.accessible,
-    _ => null,
-  };
-
-  Color get _typeIconColor => switch (type) {
-    'Electric' => Palette.warning,
-    'Accessible' => Palette.primary,
-    _ => Palette.textSecondary,
-  };
+  (String, IconData?, Color) get _type {
+    if (spot.isEv) return ('Electric', Icons.bolt, Palette.warning);
+    if (spot.isAccessible) {
+      return ('Accessible', Icons.accessible, Palette.primary);
+    }
+    if (spot.isVip) return ('VIP', null, Palette.textSecondary);
+    return ('Standard', null, Palette.textSecondary);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final (label, icon, color) = _type;
+    final status = spot.isFree ? '' : '  ·  ${spot.status.name}';
+
     return Row(
       children: [
         const Icon(Icons.schedule, size: 12, color: Palette.textSecondary),
         const SizedBox(width: Spacing.xs),
         Flexible(
           child: Text(
-            '$walk  ·  $type',
+            '${spot.walkMinutes} min  ·  $label$status',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTypography.caption,
           ),
         ),
-        if (_typeIcon != null) ...[
+        if (icon != null) ...[
           const SizedBox(width: Spacing.xs),
-          Icon(_typeIcon, size: 12, color: _typeIconColor),
+          Icon(icon, size: 12, color: color),
         ],
       ],
     );
@@ -261,7 +269,9 @@ class _MetaRow extends StatelessWidget {
 }
 
 class _ReserveButton extends StatelessWidget {
-  const _ReserveButton();
+  const _ReserveButton({required this.spot});
+
+  final ParkingSpot spot;
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +280,9 @@ class _ReserveButton extends StatelessWidget {
         minimumSize: const Size(80, 36),
         padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
       ),
-      onPressed: () {},
+      onPressed: spot.isFree
+          ? () => MainShell.openTab(context, AppTab.reserve)
+          : null,
       child: const Text('Reserve'),
     );
   }

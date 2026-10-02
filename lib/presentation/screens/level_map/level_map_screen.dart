@@ -1,25 +1,84 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/notice_banner.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
+import '../../../core/widgets/spot_cell.dart';
+import '../../../domain/entities/parking_spot.dart';
+import '../../../domain/entities/spot_filter.dart';
+import '../../shell/main_shell.dart';
+import '../../shell/shell_view_model.dart';
+import 'level_map_view_model.dart';
 
-// pantalla 2, el mapa de un nivel. solo es la vista, nada funciona
-// arriba el titulo con los botones P1 P2 P3 y la leyenda, en la mitad el mapa
-// de puestos por zonas y abajo la hoja blanca con el puesto seleccionado
-class LevelMapScreen extends StatelessWidget {
+// pantalla 2, el mapa de un nivel. arriba el titulo con los botones P1 P2 P3,
+// la leyenda y los filtros, en la mitad los puestos por zona y abajo la hoja
+// blanca con el puesto seleccionado
+class LevelMapScreen extends StatefulWidget {
   const LevelMapScreen({super.key});
 
   @override
+  State<LevelMapScreen> createState() => _LevelMapScreenState();
+}
+
+class _LevelMapScreenState extends State<LevelMapScreen>
+    with WidgetsBindingObserver {
+  late final LevelMapViewModel _map;
+  bool _resumed = true;
+  bool? _visible;
+
+  @override
+  void initState() {
+    super.initState();
+    _map = context.read<LevelMapViewModel>();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_map.spots.isEmpty) _map.load();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() => _resumed = state == AppLifecycleState.resumed);
+  }
+
+  // el refresco de 5 s solo corre si esta es la tab abierta, no hay otra
+  // pantalla encima y la app esta en primer plano
+  void _syncVisibility(bool visible) {
+    if (visible == _visible) return;
+    _visible = visible;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _map.setVisible(visible);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _map.setVisible(false);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final tab = context.watch<ShellViewModel>().tab;
+    final isTop = ModalRoute.isCurrentOf(context) ?? true;
+    _syncVisibility(tab == AppTab.map && isTop && _resumed);
+
+    final map = context.watch<LevelMapViewModel>();
+    final highlighted = map.highlighted;
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const _Header(),
+            _Header(map: map),
             Expanded(
               child: Stack(
                 children: [
@@ -32,20 +91,50 @@ class LevelMapScreen extends StatelessWidget {
                       200,
                     ),
                     children: [
+                      if (map.showOffline) ...[
+                        OfflineBanner(savedAt: map.savedAt, online: map.online),
+                        const SizedBox(height: Spacing.md),
+                      ],
+                      if (map.notice != null) ...[
+                        NoticeBanner(message: map.notice!),
+                        const SizedBox(height: Spacing.md),
+                      ],
+                      if (map.errorMessage != null && map.spots.isEmpty) ...[
+                        NoticeBanner(
+                          message: map.errorMessage!,
+                          tone: NoticeTone.danger,
+                          icon: Icons.error_outline,
+                        ),
+                        const SizedBox(height: Spacing.md),
+                      ],
                       const _EntranceCard(),
                       const SizedBox(height: Spacing.md),
-                      for (final zone in _zones) ...[
-                        _ZoneSection(zone: zone),
+                      if (map.isLoading && map.spots.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(Spacing.lg),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      for (final zone in map.zones.entries) ...[
+                        _ZoneSection(
+                          name: zone.key,
+                          spots: zone.value,
+                          map: map,
+                        ),
                         const SizedBox(height: Spacing.md),
                       ],
                     ],
                   ),
-                  const Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: _SelectedSpotSheet(),
-                  ),
+                  if (highlighted != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: _SelectedSpotSheet(
+                        spot: highlighted,
+                        isRecommendation: map.selected == null,
+                        onClose: map.clearSelection,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -56,63 +145,19 @@ class LevelMapScreen extends StatelessWidget {
   }
 }
 
-// datos de mentira del mapa
-
-enum _Cell { free, taken, reserved, you, car }
-
-typedef _Zone = ({String name, List<List<_Cell>> rows});
-
-const List<_Zone> _zones = [
-  (
-    name: 'Zone A',
-    rows: [
-      [
-        _Cell.taken,
-        _Cell.taken,
-        _Cell.free,
-        _Cell.free,
-        _Cell.taken,
-        _Cell.free,
-      ],
-      [_Cell.taken, _Cell.free, _Cell.free, _Cell.free, _Cell.free, _Cell.free],
-      [
-        _Cell.reserved,
-        _Cell.free,
-        _Cell.taken,
-        _Cell.free,
-        _Cell.free,
-        _Cell.free,
-      ],
-    ],
-  ),
-  (
-    name: 'Zone B',
-    rows: [
-      [_Cell.free, _Cell.you, _Cell.free, _Cell.taken, _Cell.taken, _Cell.free],
-      [
-        _Cell.car,
-        _Cell.taken,
-        _Cell.reserved,
-        _Cell.free,
-        _Cell.free,
-        _Cell.free,
-      ],
-      [
-        _Cell.free,
-        _Cell.taken,
-        _Cell.free,
-        _Cell.free,
-        _Cell.taken,
-        _Cell.free,
-      ],
-    ],
-  ),
-];
-
-// la parte blanca de arriba: titulo, botones de nivel y la leyenda
+// la parte blanca de arriba: titulo, botones de nivel, leyenda y filtros
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.map});
+
+  final LevelMapViewModel map;
+
+  static const _filterLabels = {
+    SpotFilter.available: 'Available',
+    SpotFilter.vip: 'VIP',
+    SpotFilter.electric: 'Electric',
+    SpotFilter.accessible: 'Accessible',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -122,12 +167,7 @@ class _Header extends StatelessWidget {
         color: Palette.surface,
         border: Border(bottom: BorderSide(color: Palette.border)),
       ),
-      padding: const EdgeInsets.fromLTRB(
-        Spacing.md,
-        Spacing.md,
-        Spacing.md,
-        Spacing.md,
-      ),
+      padding: const EdgeInsets.all(Spacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -141,7 +181,7 @@ class _Header extends StatelessWidget {
                     Text('LEVEL', style: AppTypography.overline),
                     const SizedBox(height: 2),
                     Text(
-                      'P1 · North',
+                      'Level ${map.levelCode}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.display,
@@ -150,79 +190,42 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: Spacing.sm),
-              const Row(
+              Row(
                 children: [
-                  Pill(label: 'P1', selected: true),
-                  SizedBox(width: Spacing.xs),
-                  Pill(label: 'P2'),
-                  SizedBox(width: Spacing.xs),
-                  Pill(label: 'P3'),
+                  for (final code in LevelMapViewModel.levelCodes) ...[
+                    if (code != LevelMapViewModel.levelCodes.first)
+                      const SizedBox(width: Spacing.xs),
+                    Pill(
+                      label: code,
+                      selected: code == map.levelCode,
+                      onTap: () => map.selectLevel(code),
+                    ),
+                  ],
                 ],
               ),
             ],
           ),
           const SizedBox(height: Spacing.md),
-          const Wrap(
-            spacing: Spacing.md,
-            runSpacing: Spacing.xs,
-            children: [
-              _LegendItem(
-                label: 'Free',
-                fill: Palette.successSoft,
-                border: Palette.success,
-              ),
-              _LegendItem(
-                label: 'Taken',
-                fill: Palette.background,
-                border: Palette.border,
-              ),
-              _LegendItem(
-                label: 'Reserved',
-                fill: Palette.warningSoft,
-                border: Palette.warning,
-              ),
-              _LegendItem(
-                label: 'You',
-                fill: Palette.primarySoft,
-                border: Palette.primary,
-              ),
-            ],
+          const SpotLegend(),
+          const SizedBox(height: Spacing.md),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            child: Row(
+              children: [
+                for (final entry in _filterLabels.entries) ...[
+                  Pill(
+                    label: entry.value,
+                    selected: map.filters.contains(entry.key),
+                    onTap: () => map.toggleFilter(entry.key),
+                  ),
+                  const SizedBox(width: Spacing.sm),
+                ],
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
-}
-
-// cuadrito de la leyenda con su nombre
-class _LegendItem extends StatelessWidget {
-  const _LegendItem({
-    required this.label,
-    required this.fill,
-    required this.border,
-  });
-
-  final String label;
-  final Color fill;
-  final Color border;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: fill,
-            borderRadius: BorderRadius.circular(2),
-            border: Border.all(color: border),
-          ),
-        ),
-        const SizedBox(width: Spacing.xs),
-        Text(label, style: AppTypography.caption),
-      ],
     );
   }
 }
@@ -271,12 +274,26 @@ class _EntranceCard extends StatelessWidget {
 // una zona completa: el titulo, la rayita punteada y las filas de puestos
 
 class _ZoneSection extends StatelessWidget {
-  const _ZoneSection({required this.zone});
+  const _ZoneSection({
+    required this.name,
+    required this.spots,
+    required this.map,
+  });
 
-  final _Zone zone;
+  static const _perRow = 6;
+
+  final String name;
+  final List<ParkingSpot> spots;
+  final LevelMapViewModel map;
 
   @override
   Widget build(BuildContext context) {
+    final rows = [
+      for (var i = 0; i < spots.length; i += _perRow)
+        spots.sublist(i, (i + _perRow).clamp(0, spots.length)),
+    ];
+    final recommendedId = map.recommended?.id;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -285,7 +302,7 @@ class _ZoneSection extends StatelessWidget {
             Container(width: 3, height: 14, color: Palette.primary),
             const SizedBox(width: Spacing.sm),
             Text(
-              zone.name,
+              'Zone $name',
               style: AppTypography.heading2.copyWith(color: Palette.primary),
             ),
           ],
@@ -293,9 +310,29 @@ class _ZoneSection extends StatelessWidget {
         const SizedBox(height: Spacing.sm),
         const _RoadLine(),
         const SizedBox(height: Spacing.sm),
-        for (var i = 0; i < zone.rows.length; i++) ...[
-          _SpotRow(number: i + 1, cells: zone.rows[i]),
-          if (i < zone.rows.length - 1) const SizedBox(height: Spacing.sm),
+        for (var r = 0; r < rows.length; r++) ...[
+          Row(
+            children: [
+              SizedBox(
+                width: 14,
+                child: Text('${r + 1}', style: AppTypography.monoData),
+              ),
+              for (var c = 0; c < _perRow; c++) ...[
+                if (c > 0) const SizedBox(width: Spacing.xs),
+                Expanded(
+                  child: c < rows[r].length
+                      ? SpotCell(
+                          spot: rows[r][c],
+                          selected: rows[r][c].id == map.selected?.id,
+                          recommended: rows[r][c].id == recommendedId,
+                          onTap: () => map.selectSpot(rows[r][c]),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+          if (r < rows.length - 1) const SizedBox(height: Spacing.sm),
         ],
       ],
     );
@@ -330,95 +367,22 @@ class _RoadLine extends StatelessWidget {
   }
 }
 
-// una fila de puestos con su numerito a la izquierda
-class _SpotRow extends StatelessWidget {
-  const _SpotRow({required this.number, required this.cells});
-
-  final int number;
-  final List<_Cell> cells;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 14,
-          child: Text('$number', style: AppTypography.monoData),
-        ),
-        for (var i = 0; i < cells.length; i++) ...[
-          if (i > 0) const SizedBox(width: Spacing.xs),
-          Expanded(child: _SpotCell(cell: cells[i])),
-        ],
-      ],
-    );
-  }
-}
-
-// cada puestico del mapa, cambia de color segun el estado
-class _SpotCell extends StatelessWidget {
-  const _SpotCell({required this.cell});
-
-  final _Cell cell;
-
-  Color get _fill => switch (cell) {
-    _Cell.free => Palette.successSoft,
-    _Cell.taken => Palette.surface,
-    _Cell.reserved => Palette.warningSoft,
-    _Cell.you => Palette.primarySoft,
-    _Cell.car => Palette.border,
-  };
-
-  Color get _border => switch (cell) {
-    _Cell.free => Palette.success.withValues(alpha: 0.4),
-    _Cell.taken => Palette.border,
-    _Cell.reserved => Palette.warning.withValues(alpha: 0.6),
-    _Cell.you => Palette.primary,
-    _Cell.car => Palette.border,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 30,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: _fill,
-        borderRadius: BorderRadius.circular(Radii.badge),
-        border: Border.all(color: _border, width: cell == _Cell.you ? 1.5 : 1),
-      ),
-      child: switch (cell) {
-        _Cell.free => const _Dot(color: Palette.success),
-        _Cell.you => const _Dot(color: Palette.primary),
-        _Cell.car => const Icon(
-          Icons.directions_car,
-          size: 14,
-          color: Palette.textSecondary,
-        ),
-        _ => null,
-      },
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 5,
-      height: 5,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
 // la hoja blanca de abajo con el puesto seleccionado y el boton de reservar
 
 class _SelectedSpotSheet extends StatelessWidget {
-  const _SelectedSpotSheet();
+  const _SelectedSpotSheet({
+    required this.spot,
+    required this.isRecommendation,
+    required this.onClose,
+  });
+
+  final ParkingSpot spot;
+  final bool isRecommendation;
+  final VoidCallback onClose;
+
+  void _reserve(BuildContext context) {
+    MainShell.openTab(context, AppTab.reserve);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -457,10 +421,13 @@ class _SelectedSpotSheet extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('SELECTED SPOT', style: AppTypography.overline),
+                    Text(
+                      isRecommendation ? 'RECOMMENDED SPOT' : 'SELECTED SPOT',
+                      style: AppTypography.overline,
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      'B201',
+                      spot.code,
                       style: AppTypography.monoDisplay.copyWith(fontSize: 28),
                     ),
                   ],
@@ -470,10 +437,10 @@ class _SelectedSpotSheet extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Walk from entrance', style: AppTypography.caption),
+                  Text('Walk to destination', style: AppTypography.caption),
                   const SizedBox(height: 2),
                   Text(
-                    '~2 min',
+                    '~${spot.walkMinutes} min',
                     style: AppTypography.heading1.copyWith(fontSize: 18),
                   ),
                 ],
@@ -485,26 +452,28 @@ class _SelectedSpotSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton(
-                  onPressed: () {},
+                  onPressed: () => _reserve(context),
                   child: const Text('Reserve this spot'),
                 ),
               ),
-              const SizedBox(width: Spacing.sm),
-              // el boton de la x para cerrar
-              SizedBox(
-                width: Spacing.touchTarget,
-                height: Spacing.touchTarget,
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    side: const BorderSide(color: Palette.border),
-                    foregroundColor: Palette.textSecondary,
+              if (!isRecommendation) ...[
+                const SizedBox(width: Spacing.sm),
+                // el boton de la x para cerrar
+                SizedBox(
+                  width: Spacing.touchTarget,
+                  height: Spacing.touchTarget,
+                  child: OutlinedButton(
+                    onPressed: onClose,
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      side: const BorderSide(color: Palette.border),
+                      foregroundColor: Palette.textSecondary,
+                    ),
+                    child: const Icon(Icons.close, size: 18),
                   ),
-                  child: const Icon(Icons.close, size: 18),
                 ),
-              ),
+              ],
             ],
           ),
         ],
