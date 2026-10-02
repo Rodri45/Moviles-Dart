@@ -148,3 +148,4 @@ Colores con significado fijo (nunca decorativos):
 
 Grid de 8px, touch target 48px, radio de card 8px, badge 3px, padding de
 página 16px. Sin sombras: profundidad por cards blancas sobre fondo gris.
+
