@@ -5,6 +5,7 @@ import '../../core/design/palette.dart';
 import '../../core/widgets/app_tab_bar.dart';
 import '../screens/login/auth_view_model.dart';
 import '../screens/login/login_screen.dart';
+import '../screens/reserve/reserve_view_model.dart';
 import 'main_shell.dart';
 import 'shell_view_model.dart';
 
@@ -37,6 +38,10 @@ class _AuthGateState extends State<AuthGate> {
     _lastStatus = _auth.status;
     Navigator.of(context).popUntil((route) => route.isFirst);
     context.read<ShellViewModel>().open(AppTab.home);
+    // que la siguiente cuenta no vea la reserva de la anterior
+    if (_auth.status == AuthStatus.unauthenticated) {
+      context.read<ReserveViewModel>().reset();
+    }
   }
 
   @override

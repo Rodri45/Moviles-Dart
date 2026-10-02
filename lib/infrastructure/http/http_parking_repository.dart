@@ -6,7 +6,6 @@ import '../../domain/entities/levels_overview.dart';
 import '../../domain/entities/nearby_lot.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/entities/spot_filter.dart';
-import '../../domain/errors.dart';
 import '../../domain/ports/parking_repository.dart';
 import '../storage/local_cache.dart';
 import 'api_client.dart';
@@ -52,7 +51,7 @@ class HttpParkingRepository implements ParkingRepository {
       );
     } catch (e) {
       // si nunca se pidio con estos filtros, se filtra la copia completa
-      final entry = filters.isEmpty || !_isOutage(e)
+      final entry = filters.isEmpty || !ApiClient.isNetworkFailure(e)
           ? null
           : _cache.read(baseKey);
       if (entry == null) rethrow;
@@ -120,16 +119,11 @@ class HttpParkingRepository implements ParkingRepository {
       await _cache.write(key, json, savedAt: savedAt);
       return Cached(data, savedAt: savedAt);
     } catch (e) {
-      final entry = _isOutage(e) ? _cache.read(key) : null;
+      final entry = ApiClient.isNetworkFailure(e) ? _cache.read(key) : null;
       if (entry == null) rethrow;
       return Cached(parse(entry.data), savedAt: entry.savedAt, fromCache: true);
     }
   }
-
-  // sin red, breaker abierto o servidor caido. un 4xx no se tapa con la cache
-  static bool _isOutage(Object error) =>
-      error is NetworkException ||
-      (error is ApiException && error.statusCode >= 500);
 
   static List<ParkingSpot> _parseSpots(Object? json) => [
     for (final s in json as List)

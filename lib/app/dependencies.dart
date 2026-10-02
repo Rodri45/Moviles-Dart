@@ -5,6 +5,7 @@ import 'package:provider/single_child_widget.dart';
 
 import '../domain/ports/auth_repository.dart';
 import '../domain/ports/connectivity_port.dart';
+import '../domain/ports/location_provider.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
 import '../domain/ports/reservation_repository.dart';
@@ -13,8 +14,10 @@ import '../infrastructure/device/connectivity_plus_adapter.dart';
 import '../infrastructure/http/api_client.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
+import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
+import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
@@ -29,6 +32,7 @@ import '../presentation/screens/login/auth_view_model.dart';
 import '../presentation/screens/no_spots/no_spots_view_model.dart';
 import '../presentation/screens/offline/offline_view_model.dart';
 import '../presentation/screens/profile/profile_view_model.dart';
+import '../presentation/screens/reserve/reserve_view_model.dart';
 import '../presentation/shell/shell_view_model.dart';
 
 // aqui se arma todo lo que usa la app. los view models solo reciben puertos,
@@ -41,6 +45,7 @@ class AppDependencies {
     required this.vehicles,
     required this.connectivity,
     required this.preferences,
+    required this.location,
   });
 
   static Future<AppDependencies> create() async {
@@ -59,10 +64,11 @@ class AppDependencies {
     return AppDependencies(
       auth: HttpAuthRepository(client, session),
       parking: HttpParkingRepository(client, cache),
-      reservations: MockReservationRepository(),
+      reservations: HttpReservationRepository(client, cache),
       vehicles: MockVehicleLocator(),
       connectivity: ConnectivityPlusAdapter(),
       preferences: HivePreferencesStore(prefsBox),
+      location: MockLocationProvider(),
     );
   }
 
@@ -73,6 +79,7 @@ class AppDependencies {
     vehicles: MockVehicleLocator(),
     connectivity: MockConnectivity(),
     preferences: MockPreferencesStore(),
+    location: MockLocationProvider(),
   );
 
   final AuthRepository auth;
@@ -81,6 +88,7 @@ class AppDependencies {
   final VehicleLocator vehicles;
   final ConnectivityPort connectivity;
   final PreferencesStore preferences;
+  final LocationProvider location;
 
   List<SingleChildWidget> get providers => [
     ChangeNotifierProvider(create: (_) => AuthViewModel(auth)),
@@ -99,6 +107,9 @@ class AppDependencies {
           OfflineViewModel(parking, reservations, preferences, connectivity),
     ),
     ChangeNotifierProvider(create: (_) => NoSpotsViewModel(parking)),
+    ChangeNotifierProvider(
+      create: (_) => ReserveViewModel(reservations, location, connectivity),
+    ),
     ChangeNotifierProvider(create: (_) => ProfileViewModel(reservations)),
   ];
 }

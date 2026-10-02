@@ -30,7 +30,8 @@ class ApiClient {
   // se llama cuando el backend rechaza el token, para cerrar la sesion
   VoidCallback? onUnauthorized;
 
-  // los 4xx no cuentan como falla de red para el breaker
+  // sin red, timeout o 5xx. un 4xx no cuenta porque el servidor si respondio;
+  // lo usan el breaker y los repositorios para decidir si sirve la cache
   static bool isNetworkFailure(Object error) =>
       error is NetworkException ||
       (error is ApiException && error.statusCode >= 500);

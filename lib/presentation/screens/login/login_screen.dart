@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/widgets/button_spinner.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../register/register_screen.dart';
 import 'auth_view_model.dart';
@@ -139,23 +140,6 @@ class AuthBrand extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// la rueda chiquita que va dentro del boton mientras carga
-class ButtonSpinner extends StatelessWidget {
-  const ButtonSpinner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 18,
-      height: 18,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        color: Palette.textOnPrimary,
-      ),
     );
   }
 }

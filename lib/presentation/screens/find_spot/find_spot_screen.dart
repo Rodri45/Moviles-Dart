@@ -11,6 +11,7 @@ import '../../../core/widgets/pill.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/spot_filter.dart';
 import '../../shell/main_shell.dart';
+import '../reserve/reserve_view_model.dart';
 import 'find_spot_view_model.dart';
 
 // pantalla 3, find a spot. arriba el buscador con los filtros y abajo la
@@ -281,7 +282,10 @@ class _ReserveButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
       ),
       onPressed: spot.isFree
-          ? () => MainShell.openTab(context, AppTab.reserve)
+          ? () {
+              context.read<ReserveViewModel>().selectSpot(spot);
+              MainShell.openTab(context, AppTab.reserve);
+            }
           : null,
       child: const Text('Reserve'),
     );

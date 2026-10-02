@@ -13,6 +13,7 @@ import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/spot_filter.dart';
 import '../../shell/main_shell.dart';
 import '../../shell/shell_view_model.dart';
+import '../reserve/reserve_view_model.dart';
 import 'level_map_view_model.dart';
 
 // pantalla 2, el mapa de un nivel. arriba el titulo con los botones P1 P2 P3,
@@ -381,6 +382,7 @@ class _SelectedSpotSheet extends StatelessWidget {
   final VoidCallback onClose;
 
   void _reserve(BuildContext context) {
+    context.read<ReserveViewModel>().selectSpot(spot);
     MainShell.openTab(context, AppTab.reserve);
   }
 
