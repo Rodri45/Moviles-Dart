@@ -1,4 +1,7 @@
-// interfaz para saber si hay internet, para la pantalla de offline
+// interfaz para saber si hay internet
 abstract interface class ConnectivityPort {
-  Stream<bool> get isOnline;
+  Future<bool> isOnline();
+
+  // avisa cada vez que se pierde o vuelve la red
+  Stream<bool> get changes;
 }

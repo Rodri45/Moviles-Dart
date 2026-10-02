@@ -6,7 +6,7 @@ import '../../core/design/typography.dart';
 import '../screens/find_my_car/find_my_car_screen.dart';
 import '../screens/find_spot/find_spot_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/lot_detail/lot_detail_screen.dart';
+import '../screens/level_map/level_map_screen.dart';
 import '../screens/no_spots/no_spots_screen.dart';
 import '../screens/offline/offline_screen.dart';
 import '../screens/reserve/reserve_screen.dart';
@@ -26,7 +26,7 @@ class _RootScreenState extends State<RootScreen> {
 
   static const _entries = <({String label, Widget screen})>[
     (label: 'Home', screen: HomeScreen()),
-    (label: 'P1 · North', screen: LotDetailScreen()),
+    (label: 'Level map', screen: LevelMapScreen()),
     (label: 'Find a spot', screen: FindSpotScreen()),
     (label: 'Reserve', screen: ReserveScreen()),
     (label: 'No campus spots', screen: NoSpotsScreen()),

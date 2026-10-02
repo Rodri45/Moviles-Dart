@@ -202,7 +202,11 @@ class _BestTimeBanner extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 1),
-            child: Icon(Icons.info_outline, size: 16, color: Palette.warningText),
+            child: Icon(
+              Icons.info_outline,
+              size: 16,
+              color: Palette.warningText,
+            ),
           ),
           const SizedBox(width: Spacing.sm),
           Expanded(
@@ -211,7 +215,9 @@ class _BestTimeBanner extends StatelessWidget {
               children: [
                 Text(
                   'Best time to reserve',
-                  style: AppTypography.heading2.copyWith(color: Palette.warningText),
+                  style: AppTypography.heading2.copyWith(
+                    color: Palette.warningText,
+                  ),
                 ),
                 const SizedBox(height: Spacing.xs),
                 Text.rich(
@@ -223,8 +229,7 @@ class _BestTimeBanner extends StatelessWidget {
                       ),
                       TextSpan(text: '7:45 AM', style: bold),
                       const TextSpan(
-                        text:
-                            ' to arrive during the low-traffic window. Today\'s lot fills by 8:30 AM.',
+                        text: ' to arrive during the low-traffic window. Today\'s lot fills by 8:30 AM.',
                       ),
                     ],
                   ),
@@ -267,10 +272,7 @@ class _ComplianceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Spacing.md,
-        vertical: 14,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 14),
       child: Row(
         children: [
           _ComplianceBadge(ok: row.ok),

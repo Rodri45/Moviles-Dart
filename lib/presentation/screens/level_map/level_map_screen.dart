@@ -6,13 +6,13 @@ import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/pill.dart';
 
-// pantalla 2, la de P1 · North. solo es la vista, nada funciona
+// pantalla 2, el mapa de un nivel. solo es la vista, nada funciona
 // arriba el titulo con los botones P1 P2 P3 y la leyenda, en la mitad el mapa
 // de puestos por zonas y abajo la hoja blanca con el puesto seleccionado
-class LotDetailScreen extends StatelessWidget {
-  const LotDetailScreen({super.key});
+class LevelMapScreen extends StatelessWidget {
+  const LevelMapScreen({super.key});
 
-  static const String routeName = '/lot';
+  static const String routeName = '/level-map';
 
   @override
   Widget build(BuildContext context) {
@@ -68,20 +68,48 @@ typedef _Zone = ({String name, List<List<_Cell>> rows});
 
 const List<_Zone> _zones = [
   (
-  name: 'Zone A',
-  rows: [
-    [_Cell.taken, _Cell.taken, _Cell.free, _Cell.free, _Cell.taken, _Cell.free],
-    [_Cell.taken, _Cell.free, _Cell.free, _Cell.free, _Cell.free, _Cell.free],
-    [_Cell.reserved, _Cell.free, _Cell.taken, _Cell.free, _Cell.free, _Cell.free],
-  ],
+    name: 'Zone A',
+    rows: [
+      [
+        _Cell.taken,
+        _Cell.taken,
+        _Cell.free,
+        _Cell.free,
+        _Cell.taken,
+        _Cell.free,
+      ],
+      [_Cell.taken, _Cell.free, _Cell.free, _Cell.free, _Cell.free, _Cell.free],
+      [
+        _Cell.reserved,
+        _Cell.free,
+        _Cell.taken,
+        _Cell.free,
+        _Cell.free,
+        _Cell.free,
+      ],
+    ],
   ),
   (
-  name: 'Zone B',
-  rows: [
-    [_Cell.free, _Cell.you, _Cell.free, _Cell.taken, _Cell.taken, _Cell.free],
-    [_Cell.car, _Cell.taken, _Cell.reserved, _Cell.free, _Cell.free, _Cell.free],
-    [_Cell.free, _Cell.taken, _Cell.free, _Cell.free, _Cell.taken, _Cell.free],
-  ],
+    name: 'Zone B',
+    rows: [
+      [_Cell.free, _Cell.you, _Cell.free, _Cell.taken, _Cell.taken, _Cell.free],
+      [
+        _Cell.car,
+        _Cell.taken,
+        _Cell.reserved,
+        _Cell.free,
+        _Cell.free,
+        _Cell.free,
+      ],
+      [
+        _Cell.free,
+        _Cell.taken,
+        _Cell.free,
+        _Cell.free,
+        _Cell.taken,
+        _Cell.free,
+      ],
+    ],
   ),
 ];
 
@@ -142,10 +170,26 @@ class _Header extends StatelessWidget {
             spacing: Spacing.md,
             runSpacing: Spacing.xs,
             children: [
-              _LegendItem(label: 'Free', fill: Palette.successSoft, border: Palette.success),
-              _LegendItem(label: 'Taken', fill: Palette.background, border: Palette.border),
-              _LegendItem(label: 'Reserved', fill: Palette.warningSoft, border: Palette.warning),
-              _LegendItem(label: 'You', fill: Palette.primarySoft, border: Palette.primary),
+              _LegendItem(
+                label: 'Free',
+                fill: Palette.successSoft,
+                border: Palette.success,
+              ),
+              _LegendItem(
+                label: 'Taken',
+                fill: Palette.background,
+                border: Palette.border,
+              ),
+              _LegendItem(
+                label: 'Reserved',
+                fill: Palette.warningSoft,
+                border: Palette.warning,
+              ),
+              _LegendItem(
+                label: 'You',
+                fill: Palette.primarySoft,
+                border: Palette.primary,
+              ),
             ],
           ),
         ],
@@ -209,10 +253,16 @@ class _EntranceCard extends StatelessWidget {
                 'ENTRANCE / EXIT',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.overline.copyWith(color: Palette.textPrimary),
+                style: AppTypography.overline.copyWith(
+                  color: Palette.textPrimary,
+                ),
               ),
             ),
-            const Icon(Icons.arrow_forward, size: 12, color: Palette.textSecondary),
+            const Icon(
+              Icons.arrow_forward,
+              size: 12,
+              color: Palette.textSecondary,
+            ),
             const SizedBox(width: 2),
             Text('N', style: AppTypography.caption),
           ],

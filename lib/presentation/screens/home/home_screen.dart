@@ -64,7 +64,12 @@ class HomeScreen extends StatelessWidget {
 
 enum _Occupancy { low, med, high }
 
-typedef _ForecastBar = ({String hour, double value, _Occupancy level, bool now});
+typedef _ForecastBar = ({
+  String hour,
+  double value,
+  _Occupancy level,
+  bool now,
+});
 
 const List<_ForecastBar> _forecast = [
   (hour: '7', value: 0.35, level: _Occupancy.low, now: false),
@@ -80,42 +85,42 @@ const List<_ForecastBar> _forecast = [
 enum _LevelStatus { available, limited, full }
 
 typedef _Level = ({
-String code,
-String name,
-_LevelStatus status,
-String free,
-int reserved,
-int total,
-double occupancy,
+  String code,
+  String name,
+  _LevelStatus status,
+  String free,
+  int reserved,
+  int total,
+  double occupancy,
 });
 
 const List<_Level> _levels = [
   (
-  code: 'P1',
-  name: 'Level P1 · North',
-  status: _LevelStatus.available,
-  free: '14 free',
-  reserved: 3,
-  total: 80,
-  occupancy: 0.82,
+    code: 'P1',
+    name: 'Level P1 · North',
+    status: _LevelStatus.available,
+    free: '14 free',
+    reserved: 3,
+    total: 80,
+    occupancy: 0.82,
   ),
   (
-  code: 'P2',
-  name: 'Level P2 · Central',
-  status: _LevelStatus.limited,
-  free: '3 free',
-  reserved: 8,
-  total: 60,
-  occupancy: 0.95,
+    code: 'P2',
+    name: 'Level P2 · Central',
+    status: _LevelStatus.limited,
+    free: '3 free',
+    reserved: 8,
+    total: 60,
+    occupancy: 0.95,
   ),
   (
-  code: 'P3',
-  name: 'Level P3 · South',
-  status: _LevelStatus.full,
-  free: 'No spots',
-  reserved: 12,
-  total: 50,
-  occupancy: 1.0,
+    code: 'P3',
+    name: 'Level P3 · South',
+    status: _LevelStatus.full,
+    free: 'No spots',
+    reserved: 12,
+    total: 50,
+    occupancy: 1.0,
   ),
 ];
 
@@ -156,7 +161,9 @@ class _Greeting extends StatelessWidget {
           ),
           child: Text(
             'AM',
-            style: AppTypography.heading2.copyWith(color: Palette.textOnPrimary),
+            style: AppTypography.heading2.copyWith(
+              color: Palette.textOnPrimary,
+            ),
           ),
         ),
       ],
@@ -392,7 +399,11 @@ class _LevelCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: Spacing.sm),
-                      _StatusChip(label: _label, color: _color, background: _soft),
+                      _StatusChip(
+                        label: _label,
+                        color: _color,
+                        background: _soft,
+                      ),
                     ],
                   ),
                   const SizedBox(height: Spacing.xs),
@@ -409,7 +420,7 @@ class _LevelCard extends StatelessWidget {
                         ),
                         TextSpan(
                           text:
-                          '  ${level.reserved} reserved · ${level.total} total',
+                              '  ${level.reserved} reserved · ${level.total} total',
                         ),
                       ],
                     ),

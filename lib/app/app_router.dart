@@ -4,7 +4,7 @@ import '../presentation/root/root_screen.dart';
 import '../presentation/screens/find_my_car/find_my_car_screen.dart';
 import '../presentation/screens/find_spot/find_spot_screen.dart';
 import '../presentation/screens/home/home_screen.dart';
-import '../presentation/screens/lot_detail/lot_detail_screen.dart';
+import '../presentation/screens/level_map/level_map_screen.dart';
 import '../presentation/screens/no_spots/no_spots_screen.dart';
 import '../presentation/screens/offline/offline_screen.dart';
 import '../presentation/screens/reserve/reserve_screen.dart';
@@ -17,7 +17,7 @@ abstract final class AppRouter {
     final page = switch (settings.name) {
       root => const RootScreen(),
       HomeScreen.routeName => const HomeScreen(),
-      LotDetailScreen.routeName => const LotDetailScreen(),
+      LevelMapScreen.routeName => const LevelMapScreen(),
       FindSpotScreen.routeName => const FindSpotScreen(),
       ReserveScreen.routeName => const ReserveScreen(),
       NoSpotsScreen.routeName => const NoSpotsScreen(),

@@ -10,15 +10,23 @@ abstract final class AppTypography {
     required double size,
     required FontWeight weight,
     Color color = Palette.textPrimary,
-  }) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color, height: 1.3);
+  }) => GoogleFonts.inter(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: 1.3,
+  );
 
   static TextStyle _mono({
     required double size,
     required FontWeight weight,
     Color color = Palette.textPrimary,
-  }) =>
-      GoogleFonts.dmMono(fontSize: size, fontWeight: weight, color: color, height: 1.3);
+  }) => GoogleFonts.dmMono(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: 1.3,
+  );
 
   // titulo de la pantalla
   static TextStyle get display => _inter(size: 20, weight: FontWeight.w700);
@@ -38,10 +46,10 @@ abstract final class AppTypography {
 
   // los titulitos en mayuscula tipo "DESTINATION"
   static TextStyle get overline => _inter(
-        size: 11,
-        weight: FontWeight.w600,
-        color: Palette.textSecondary,
-      ).copyWith(letterSpacing: 0.6);
+    size: 11,
+    weight: FontWeight.w600,
+    color: Palette.textSecondary,
+  ).copyWith(letterSpacing: 0.6);
 
   // codigos de puesto tipo B201
   static TextStyle get monoId => _mono(size: 13, weight: FontWeight.w500);
@@ -51,7 +59,8 @@ abstract final class AppTypography {
       _mono(size: 36, weight: FontWeight.w500, color: Palette.primary);
 
   // el 15:00 del circulo
-  static TextStyle get monoCountdown => _mono(size: 16, weight: FontWeight.w500);
+  static TextStyle get monoCountdown =>
+      _mono(size: 16, weight: FontWeight.w500);
 
   // fechas y horas chiquitas
   static TextStyle get monoData =>

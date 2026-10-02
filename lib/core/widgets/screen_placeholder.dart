@@ -20,7 +20,11 @@ class ScreenPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.construction, size: 48, color: Palette.textSecondary),
+          const Icon(
+            Icons.construction,
+            size: 48,
+            color: Palette.textSecondary,
+          ),
           const SizedBox(height: Spacing.md),
           Text(name, style: AppTypography.heading1),
           const SizedBox(height: Spacing.xs),

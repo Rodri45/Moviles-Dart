@@ -66,9 +66,24 @@ enum _Status { available, limited, full }
 typedef _Level = ({String code, String name, String free, _Status status});
 
 const List<_Level> _levels = [
-  (code: 'P1', name: 'Level P1 · North', free: '14 free', status: _Status.available),
-  (code: 'P2', name: 'Level P2 · Central', free: '3 free', status: _Status.limited),
-  (code: 'P3', name: 'Level P3 · South', free: 'No spots', status: _Status.full),
+  (
+    code: 'P1',
+    name: 'Level P1 · North',
+    free: '14 free',
+    status: _Status.available,
+  ),
+  (
+    code: 'P2',
+    name: 'Level P2 · Central',
+    free: '3 free',
+    status: _Status.limited,
+  ),
+  (
+    code: 'P3',
+    name: 'Level P3 · South',
+    free: 'No spots',
+    status: _Status.full,
+  ),
 ];
 
 enum _Cell { gray, free, reserved, you }
@@ -156,7 +171,9 @@ class _NoSignalBanner extends StatelessWidget {
               children: [
                 Text(
                   'No signal',
-                  style: AppTypography.heading2.copyWith(color: Palette.warningText),
+                  style: AppTypography.heading2.copyWith(
+                    color: Palette.warningText,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text.rich(
@@ -186,16 +203,16 @@ class _CachedLevelCard extends StatelessWidget {
   final _Level level;
 
   Color get _color => switch (level.status) {
-        _Status.available => Palette.success,
-        _Status.limited => Palette.warning,
-        _Status.full => Palette.danger,
-      };
+    _Status.available => Palette.success,
+    _Status.limited => Palette.warning,
+    _Status.full => Palette.danger,
+  };
 
   Color get _soft => switch (level.status) {
-        _Status.available => Palette.successSoft,
-        _Status.limited => Palette.warningSoft,
-        _Status.full => Palette.dangerSoft,
-      };
+    _Status.available => Palette.successSoft,
+    _Status.limited => Palette.warningSoft,
+    _Status.full => Palette.dangerSoft,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -430,18 +447,18 @@ class _MapCell extends StatelessWidget {
   final _Cell cell;
 
   Color get _fill => switch (cell) {
-        _Cell.gray => Palette.background,
-        _Cell.free => Palette.successSoft,
-        _Cell.reserved => Palette.warningSoft,
-        _Cell.you => Palette.primarySoft,
-      };
+    _Cell.gray => Palette.background,
+    _Cell.free => Palette.successSoft,
+    _Cell.reserved => Palette.warningSoft,
+    _Cell.you => Palette.primarySoft,
+  };
 
   Color get _border => switch (cell) {
-        _Cell.gray => Palette.border,
-        _Cell.free => Palette.success.withValues(alpha: 0.3),
-        _Cell.reserved => Palette.warning.withValues(alpha: 0.5),
-        _Cell.you => Palette.primary,
-      };
+    _Cell.gray => Palette.border,
+    _Cell.free => Palette.success.withValues(alpha: 0.3),
+    _Cell.reserved => Palette.warning.withValues(alpha: 0.5),
+    _Cell.you => Palette.primary,
+  };
 
   @override
   Widget build(BuildContext context) {

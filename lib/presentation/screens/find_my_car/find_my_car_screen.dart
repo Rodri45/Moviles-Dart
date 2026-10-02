@@ -257,7 +257,10 @@ class _FloorMap extends StatelessWidget {
               Positioned(
                 left: lineX + Spacing.sm,
                 top: top(5) - 2,
-                child: Text('~120m', style: AppTypography.monoData.copyWith(fontSize: 9)),
+                child: Text(
+                  '~120m',
+                  style: AppTypography.monoData.copyWith(fontSize: 9),
+                ),
               ),
               // la etiqueta del carro
               Positioned(
@@ -481,4 +484,3 @@ class _StepCard extends StatelessWidget {
     );
   }
 }
-

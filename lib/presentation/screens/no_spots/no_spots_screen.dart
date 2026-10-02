@@ -5,7 +5,6 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 
-
 class NoSpotsScreen extends StatelessWidget {
   const NoSpotsScreen({super.key});
 
@@ -154,7 +153,11 @@ class _FullBanner extends StatelessWidget {
               color: Palette.danger,
               borderRadius: BorderRadius.circular(Radii.sm),
             ),
-            child: const Icon(Icons.close, size: 18, color: Palette.textOnPrimary),
+            child: const Icon(
+              Icons.close,
+              size: 18,
+              color: Palette.textOnPrimary,
+            ),
           ),
           const SizedBox(width: Spacing.md),
           Expanded(
@@ -168,7 +171,9 @@ class _FullBanner extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'All 3 levels at capacity. Verified nearby options below.',
-                  style: AppTypography.body.copyWith(color: Palette.textSecondary),
+                  style: AppTypography.body.copyWith(
+                    color: Palette.textSecondary,
+                  ),
                 ),
               ],
             ),

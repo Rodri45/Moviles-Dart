@@ -222,16 +222,16 @@ class _MetaRow extends StatelessWidget {
   final String type;
 
   IconData? get _typeIcon => switch (type) {
-        'Electric' => Icons.bolt,
-        'Accessible' => Icons.accessible,
-        _ => null,
-      };
+    'Electric' => Icons.bolt,
+    'Accessible' => Icons.accessible,
+    _ => null,
+  };
 
   Color get _typeIconColor => switch (type) {
-        'Electric' => Palette.warning,
-        'Accessible' => Palette.primary,
-        _ => Palette.textSecondary,
-      };
+    'Electric' => Palette.warning,
+    'Accessible' => Palette.primary,
+    _ => Palette.textSecondary,
+  };
 
   @override
   Widget build(BuildContext context) {
