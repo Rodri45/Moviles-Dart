@@ -5,17 +5,20 @@ import 'package:flutter/foundation.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/auth_repository.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../shared/error_messages.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
 // estado de la sesion y de los formularios de login y registro
 class AuthViewModel extends ChangeNotifier {
-  AuthViewModel(this._repository) {
+  AuthViewModel(this._repository, this._telemetry) {
     _expiredSub = _repository.sessionExpired.listen((_) => _signOut());
   }
 
   final AuthRepository _repository;
+  final Telemetry _telemetry;
+  bool _openReported = false;
   late final StreamSubscription<void> _expiredSub;
 
   AuthStatus status = AuthStatus.unknown;
@@ -104,6 +107,7 @@ class AuthViewModel extends ChangeNotifier {
       offlineSession = false;
       name = email = password = confirmPassword = '';
       status = AuthStatus.authenticated;
+      _reportOpen();
     } catch (e) {
       errorMessage = messageFor(e);
     } finally {
@@ -142,7 +146,15 @@ class AuthViewModel extends ChangeNotifier {
 
   void _setStatus(AuthStatus value) {
     status = value;
+    if (value == AuthStatus.authenticated) _reportOpen();
     notifyListeners();
+  }
+
+  // BQ3 cuenta usuarios activos con app_opened, por eso se manda ya con token
+  void _reportOpen() {
+    if (_openReported) return;
+    _openReported = true;
+    _telemetry.track('app_opened', {'platform': 'android'});
   }
 
   void _edit(VoidCallback change) {

@@ -37,9 +37,9 @@ class _LevelMapScreenState extends State<LevelMapScreen>
     super.initState();
     _map = context.read<LevelMapViewModel>();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_map.spots.isEmpty) _map.load();
-    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _map.selectLevel(_map.levelCode),
+    );
   }
 
   @override
@@ -72,6 +72,9 @@ class _LevelMapScreenState extends State<LevelMapScreen>
 
     final map = context.watch<LevelMapViewModel>();
     final highlighted = map.highlighted;
+    if (map.awaitingPaint) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => map.gridPainted());
+    }
 
     return Scaffold(
       backgroundColor: Palette.background,

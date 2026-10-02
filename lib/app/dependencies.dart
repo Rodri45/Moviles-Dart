@@ -3,26 +3,31 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import '../domain/entities/device_description.dart';
 import '../domain/ports/auth_repository.dart';
 import '../domain/ports/connectivity_port.dart';
 import '../domain/ports/location_provider.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
 import '../domain/ports/reservation_repository.dart';
+import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
+import '../infrastructure/device/device_info_reader.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
 import '../infrastructure/http/api_client.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
+import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
+import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
 import '../infrastructure/storage/hive_preferences_store.dart';
 import '../infrastructure/storage/local_cache.dart';
@@ -49,12 +54,15 @@ class AppDependencies {
     required this.connectivity,
     required this.preferences,
     required this.location,
+    required this.telemetry,
+    required this.device,
   });
 
   static Future<AppDependencies> create() async {
     await Hive.initFlutter();
     final cacheBox = await Hive.openBox<String>('cache');
     final prefsBox = await Hive.openBox<String>('prefs');
+    final telemetryBox = await Hive.openBox<String>('telemetry');
 
     final session = SessionStore();
     await session.load();
@@ -63,15 +71,21 @@ class AppDependencies {
       readToken: () => session.token,
     );
     final cache = LocalCache(cacheBox);
+    final connectivity = ConnectivityPlusAdapter();
+    // manda lo que haya quedado en la cola de la vez pasada
+    final telemetry = TelemetryClient(client, telemetryBox, connectivity)
+      ..flush();
 
     return AppDependencies(
       auth: HttpAuthRepository(client, session),
       parking: HttpParkingRepository(client, cache),
       reservations: HttpReservationRepository(client, cache),
       vehicles: HttpVehicleLocator(client, cache),
-      connectivity: ConnectivityPlusAdapter(),
+      connectivity: connectivity,
       preferences: HivePreferencesStore(prefsBox),
       location: GeolocatorLocationProvider(),
+      telemetry: telemetry,
+      device: await readDeviceDescription(),
     );
   }
 
@@ -83,6 +97,8 @@ class AppDependencies {
     connectivity: MockConnectivity(),
     preferences: MockPreferencesStore(),
     location: MockLocationProvider(),
+    telemetry: MockTelemetry(),
+    device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
   );
 
   final AuthRepository auth;
@@ -92,19 +108,28 @@ class AppDependencies {
   final ConnectivityPort connectivity;
   final PreferencesStore preferences;
   final LocationProvider location;
+  final Telemetry telemetry;
+  final DeviceDescription device;
 
   List<SingleChildWidget> get providers => [
-    ChangeNotifierProvider(create: (_) => AuthViewModel(auth)),
+    ChangeNotifierProvider(create: (_) => AuthViewModel(auth, telemetry)),
     ChangeNotifierProvider(create: (_) => ShellViewModel()),
     ChangeNotifierProvider(
       create: (_) =>
           HomeViewModel(parking, preferences, location, connectivity),
     ),
     ChangeNotifierProvider(
-      create: (_) => LevelMapViewModel(parking, preferences, connectivity),
+      create: (_) => LevelMapViewModel(
+        parking,
+        preferences,
+        telemetry,
+        device,
+        connectivity,
+      ),
     ),
     ChangeNotifierProvider(
-      create: (_) => FindSpotViewModel(parking, preferences, connectivity),
+      create: (_) =>
+          FindSpotViewModel(parking, preferences, telemetry, connectivity),
     ),
     ChangeNotifierProvider(
       create: (_) =>

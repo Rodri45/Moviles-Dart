@@ -5,6 +5,7 @@ import '../../../domain/entities/spot_filter.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 import '../level_map/level_map_view_model.dart';
@@ -14,6 +15,7 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   FindSpotViewModel(
     this._parking,
     this._preferences,
+    this._telemetry,
     ConnectivityPort connectivity,
   ) {
     watchConnectivity(connectivity, load);
@@ -21,6 +23,7 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
 
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
+  final Telemetry _telemetry;
 
   Set<SpotFilter> filters = {SpotFilter.available};
   String query = '';
@@ -44,9 +47,12 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   Future<void> toggleFilter(SpotFilter filter) async {
-    filters = filters.contains(filter)
-        ? ({...filters}..remove(filter))
-        : {...filters, filter};
+    if (filters.contains(filter)) {
+      filters = {...filters}..remove(filter);
+    } else {
+      filters = {...filters, filter};
+      _telemetry.track('filter_applied', {'filter': filter.name});
+    }
     await load();
   }
 

@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../domain/entities/device_description.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/spot_filter.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../../domain/services/recommend_spot.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
@@ -16,9 +18,12 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   LevelMapViewModel(
     this._parking,
     this._preferences,
+    this._telemetry,
+    this._device,
     ConnectivityPort connectivity, {
     this.refreshEvery = const Duration(seconds: 5),
-  }) {
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now {
     watchConnectivity(connectivity, load);
   }
 
@@ -26,8 +31,14 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
 
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
+  final Telemetry _telemetry;
+  final DeviceDescription _device;
+  final DateTime Function() _clock;
   final Duration refreshEvery;
   Timer? _timer;
+
+  // BQ1: desde que se elige el nivel hasta que la cuadricula se pinta
+  DateTime? _mapLoadStartedAt;
 
   String levelCode = levelCodes.first;
   List<ParkingSpot> spots = const [];
@@ -42,6 +53,9 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   String? notice;
 
   bool get showOffline => !online || fromCache;
+
+  // la pantalla avisa con gridPainted cuando ya dibujo los puestos
+  bool get awaitingPaint => _mapLoadStartedAt != null && spots.isNotEmpty;
 
   ParkingSpot? get recommended => recommendSpot(spots, filters);
 
@@ -70,20 +84,40 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
     levelCode = code;
     spots = const [];
     selected = null;
+    _mapLoadStartedAt = _clock();
     await load();
   }
 
   void toggleFilter(SpotFilter filter) {
-    filters = filters.contains(filter)
-        ? ({...filters}..remove(filter))
-        : {...filters, filter};
+    if (filters.contains(filter)) {
+      filters = {...filters}..remove(filter);
+    } else {
+      filters = {...filters, filter};
+      _telemetry.track('filter_applied', {'filter': filter.name});
+    }
     notifyListeners();
   }
 
   void selectSpot(ParkingSpot spot) {
     selected = spot;
     notice = null;
+    _telemetry.track('walking_time_viewed', {
+      'spotCode': spot.code,
+      'levelCode': spot.levelCode,
+      'minutes': spot.walkMinutes,
+      'source': 'level_map',
+    });
     notifyListeners();
+  }
+
+  void gridPainted() {
+    final started = _mapLoadStartedAt;
+    if (started == null) return;
+    _reportMapLoad(
+      started,
+      success: !fromCache,
+      errorType: fromCache ? 'offline_cache' : null,
+    );
   }
 
   void clearSelection() {
@@ -110,12 +144,37 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
       fromCache = result.fromCache;
       errorMessage = null;
       _refreshSelection();
+      // un nivel sin puestos no pinta nada, se reporta de una vez
+      final started = _mapLoadStartedAt;
+      if (spots.isEmpty && started != null) {
+        _reportMapLoad(started, success: true);
+      }
     } catch (e) {
-      if (code == levelCode) errorMessage = errorMessageFor(e);
+      if (code != levelCode) return;
+      errorMessage = errorMessageFor(e);
+      final started = _mapLoadStartedAt;
+      if (started != null) {
+        _reportMapLoad(started, success: false, errorType: errorTypeFor(e));
+      }
     } finally {
       if (code == levelCode) isLoading = false;
       notifyListeners();
     }
+  }
+
+  void _reportMapLoad(
+    DateTime started, {
+    required bool success,
+    String? errorType,
+  }) {
+    _mapLoadStartedAt = null;
+    _telemetry.track('map_loaded', {
+      'levelCode': levelCode,
+      'durationMs': _clock().difference(started).inMilliseconds,
+      'success': success,
+      'errorType': ?errorType,
+      ..._device.toProperties(),
+    });
   }
 
   void _refreshSelection() {
