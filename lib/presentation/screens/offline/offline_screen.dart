@@ -1,24 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/offline_banner.dart';
+import '../../../core/widgets/spot_cell.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../domain/entities/parking_level.dart';
+import '../../../domain/entities/parking_spot.dart';
+import '../../../domain/entities/reservation.dart';
+import '../../shell/main_shell.dart';
+import 'offline_view_model.dart';
 
-class OfflineScreen extends StatelessWidget {
+class OfflineScreen extends StatefulWidget {
   const OfflineScreen({super.key});
 
   static const String routeName = '/offline';
 
   @override
+  State<OfflineScreen> createState() => _OfflineScreenState();
+}
+
+class _OfflineScreenState extends State<OfflineScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<OfflineViewModel>().load(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final offline = context.watch<OfflineViewModel>();
+    final levels = offline.levels;
+    final reservation = offline.reservation;
+    final map = offline.map;
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const _Header(),
+            _Header(offline: offline),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -28,61 +56,70 @@ class OfflineScreen extends StatelessWidget {
                   Spacing.lg,
                 ),
                 children: [
-                  const _NoSignalBanner(),
-                  const SizedBox(height: Spacing.lg),
+                  if (!offline.recovered) ...[
+                    OfflineBanner(
+                      savedAt: levels?.savedAt,
+                      online: offline.online,
+                    ),
+                    const SizedBox(height: Spacing.lg),
+                  ],
                   Text('CACHED AVAILABILITY', style: AppTypography.overline),
                   const SizedBox(height: Spacing.sm),
-                  for (final level in _levels) ...[
-                    _CachedLevelCard(level: level),
+                  if (levels == null)
+                    Text('Nothing saved yet', style: AppTypography.caption),
+                  for (final level in levels?.data.levels ?? const []) ...[
+                    _CachedLevelCard(level: level, savedAt: levels!.savedAt),
                     const SizedBox(height: Spacing.sm),
                   ],
                   const SizedBox(height: Spacing.md),
                   Text('YOUR SAVED RESERVATION', style: AppTypography.overline),
                   const SizedBox(height: Spacing.sm),
-                  const _SavedReservationCard(),
+                  if (reservation == null)
+                    Text('No open reservation', style: AppTypography.caption)
+                  else
+                    _SavedReservationCard(reservation: reservation),
+                  if (map != null && map.data.isNotEmpty) ...[
+                    const SizedBox(height: Spacing.md),
+                    _CachedMapCard(level: offline.mapLevel, spots: map.data),
+                  ],
                   const SizedBox(height: Spacing.md),
-                  const _CachedMapCard(),
-                  const SizedBox(height: Spacing.md),
-                  FilledButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('Retry connection'),
-                  ),
+                  if (offline.recovered)
+                    FilledButton.icon(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Back to the app'),
+                    )
+                  else
+                    FilledButton.icon(
+                      onPressed: offline.isLoading ? null : offline.load,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Retry connection'),
+                    ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.home),
+      bottomNavigationBar: AppTabBar(
+        current: AppTab.home,
+        onSelected: (tab) => MainShell.openTab(context, tab),
+      ),
     );
   }
 }
 
-// datos de mentira
-
-enum _Status { available, limited, full }
-
-typedef _Level = ({String code, String name, String free, _Status status});
-
-const List<_Level> _levels = [
-  (code: 'P1', name: 'Level P1 · North', free: '14 free', status: _Status.available),
-  (code: 'P2', name: 'Level P2 · Central', free: '3 free', status: _Status.limited),
-  (code: 'P3', name: 'Level P3 · South', free: 'No spots', status: _Status.full),
-];
-
-enum _Cell { gray, free, reserved, you }
-
-const List<List<_Cell>> _map = [
-  [_Cell.gray, _Cell.free, _Cell.free, _Cell.gray, _Cell.reserved, _Cell.free],
-  [_Cell.gray, _Cell.gray, _Cell.free, _Cell.you, _Cell.gray, _Cell.free],
-  [_Cell.reserved, _Cell.free, _Cell.gray, _Cell.free, _Cell.free, _Cell.gray],
-];
-
-// titulo de arriba
-
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.offline});
+
+  final OfflineViewModel offline;
+
+  String get _subtitle {
+    if (offline.recovered) return 'Back online · data updated';
+    final minutes = offline.minutesSinceSync;
+    if (minutes == null) return 'Offline mode';
+    return 'Offline mode · last sync $minutes min ago';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +141,7 @@ class _Header extends StatelessWidget {
           Text('ParkWise', style: AppTypography.display),
           const SizedBox(height: Spacing.xs),
           Text(
-            'Offline mode · last sync 41 min ago',
+            _subtitle,
             style: AppTypography.body.copyWith(color: Palette.textSecondary),
           ),
         ],
@@ -113,98 +150,26 @@ class _Header extends StatelessWidget {
   }
 }
 
-// el aviso amarillo de "no signal"
-
-class _NoSignalBanner extends StatelessWidget {
-  const _NoSignalBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final body = AppTypography.body.copyWith(color: Palette.textSecondary);
-    final bold = body.copyWith(
-      color: Palette.textPrimary,
-      fontWeight: FontWeight.w600,
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(Spacing.md),
-      decoration: BoxDecoration(
-        color: Palette.warningSoft,
-        borderRadius: BorderRadius.circular(Radii.card),
-        border: Border.all(color: Palette.warningBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Palette.warningText,
-              borderRadius: BorderRadius.circular(Radii.sm),
-            ),
-            child: const Icon(
-              Icons.wifi_off,
-              size: 18,
-              color: Palette.textOnPrimary,
-            ),
-          ),
-          const SizedBox(width: Spacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'No signal',
-                  style: AppTypography.heading2.copyWith(color: Palette.warningText),
-                ),
-                const SizedBox(height: 2),
-                Text.rich(
-                  TextSpan(
-                    style: body,
-                    children: [
-                      const TextSpan(text: 'Showing cached data from '),
-                      TextSpan(text: '8:03 AM', style: bold),
-                      const TextSpan(text: ' · Sep 4, 2026'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// card de cada nivel con los datos guardados
-
 class _CachedLevelCard extends StatelessWidget {
-  const _CachedLevelCard({required this.level});
+  const _CachedLevelCard({required this.level, required this.savedAt});
 
-  final _Level level;
-
-  Color get _color => switch (level.status) {
-        _Status.available => Palette.success,
-        _Status.limited => Palette.warning,
-        _Status.full => Palette.danger,
-      };
-
-  Color get _soft => switch (level.status) {
-        _Status.available => Palette.successSoft,
-        _Status.limited => Palette.warningSoft,
-        _Status.full => Palette.dangerSoft,
-      };
+  final ParkingLevel level;
+  final DateTime savedAt;
 
   @override
   Widget build(BuildContext context) {
+    final color = StatusBadge.colorOf(level.status);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Spacing.md),
         child: Row(
           children: [
-            _CodeBadge(code: level.code, color: _color, background: _soft),
+            _CodeBadge(
+              code: level.code,
+              color: color,
+              background: StatusBadge.softOf(level.status),
+            ),
             const SizedBox(width: Spacing.md),
             Expanded(
               child: Column(
@@ -221,14 +186,16 @@ class _CachedLevelCard extends StatelessWidget {
                     TextSpan(
                       children: [
                         TextSpan(
-                          text: level.free,
+                          text: level.free == 0
+                              ? 'No spots'
+                              : '${level.free} free',
                           style: AppTypography.caption.copyWith(
-                            color: _color,
+                            color: color,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         TextSpan(
-                          text: '   cached 8:03 AM',
+                          text: '   cached ${formatTime(savedAt)}',
                           style: AppTypography.monoData.copyWith(fontSize: 11),
                         ),
                       ],
@@ -252,7 +219,6 @@ class _CachedLevelCard extends StatelessWidget {
   }
 }
 
-// cuadrito con el codigo (P1, P2, P3, B201)
 class _CodeBadge extends StatelessWidget {
   const _CodeBadge({
     required this.code,
@@ -281,7 +247,6 @@ class _CodeBadge extends StatelessWidget {
   }
 }
 
-// etiqueta chiquita tipo CACHED / SAVED
 class _Tag extends StatelessWidget {
   const _Tag({
     required this.label,
@@ -306,13 +271,18 @@ class _Tag extends StatelessWidget {
   }
 }
 
-// la card azul de la reserva guardada
-
 class _SavedReservationCard extends StatelessWidget {
-  const _SavedReservationCard();
+  const _SavedReservationCard({required this.reservation});
+
+  final Reservation reservation;
 
   @override
   Widget build(BuildContext context) {
+    final parked = reservation.status == ReservationStatus.fulfilled;
+    final detail = parked
+        ? 'Parked · since ${formatTime(reservation.checkedInAt!)}'
+        : 'Reserved · expires ${formatTime(reservation.expiresAt)}';
+
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.card),
@@ -322,8 +292,8 @@ class _SavedReservationCard extends StatelessWidget {
         padding: const EdgeInsets.all(Spacing.md),
         child: Row(
           children: [
-            const _CodeBadge(
-              code: 'B201',
+            _CodeBadge(
+              code: reservation.spotCode,
               color: Palette.primary,
               background: Palette.primarySoft,
             ),
@@ -333,14 +303,14 @@ class _SavedReservationCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Spot B201 — P1 North',
+                    'Spot ${reservation.spotCode} — Level ${reservation.levelCode}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.heading2,
                   ),
                   const SizedBox(height: Spacing.xs),
                   Text(
-                    'Reserved today · expires 8:30 AM',
+                    detail,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.caption,
@@ -361,13 +331,19 @@ class _SavedReservationCard extends StatelessWidget {
   }
 }
 
-// la card del mapita guardado
-
 class _CachedMapCard extends StatelessWidget {
-  const _CachedMapCard();
+  const _CachedMapCard({required this.level, required this.spots});
+
+  static const _perRow = 6;
+  static const _rows = 3;
+
+  final String level;
+  final List<ParkingSpot> spots;
 
   @override
   Widget build(BuildContext context) {
+    final shown = spots.take(_perRow * _rows).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Spacing.md),
@@ -378,7 +354,7 @@ class _CachedMapCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'P1 North · cached map',
+                    'Level $level · cached map',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.heading2,
@@ -395,16 +371,20 @@ class _CachedMapCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Spacing.md),
-            for (var r = 0; r < _map.length; r++) ...[
+            for (var r = 0; r * _perRow < shown.length; r++) ...[
+              if (r > 0) const SizedBox(height: Spacing.sm),
               Row(
                 children: [
-                  for (var c = 0; c < _map[r].length; c++) ...[
+                  for (var c = 0; c < _perRow; c++) ...[
                     if (c > 0) const SizedBox(width: Spacing.sm),
-                    Expanded(child: _MapCell(cell: _map[r][c])),
+                    Expanded(
+                      child: r * _perRow + c < shown.length
+                          ? SpotCell(spot: shown[r * _perRow + c])
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ],
               ),
-              if (r < _map.length - 1) const SizedBox(height: Spacing.sm),
             ],
             const SizedBox(height: Spacing.sm),
             Center(
@@ -418,39 +398,6 @@ class _CachedMapCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// cada puestico del mapa
-class _MapCell extends StatelessWidget {
-  const _MapCell({required this.cell});
-
-  final _Cell cell;
-
-  Color get _fill => switch (cell) {
-        _Cell.gray => Palette.background,
-        _Cell.free => Palette.successSoft,
-        _Cell.reserved => Palette.warningSoft,
-        _Cell.you => Palette.primarySoft,
-      };
-
-  Color get _border => switch (cell) {
-        _Cell.gray => Palette.border,
-        _Cell.free => Palette.success.withValues(alpha: 0.3),
-        _Cell.reserved => Palette.warning.withValues(alpha: 0.5),
-        _Cell.you => Palette.primary,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 26,
-      decoration: BoxDecoration(
-        color: _fill,
-        borderRadius: BorderRadius.circular(Radii.badge),
-        border: Border.all(color: _border, width: cell == _Cell.you ? 1.5 : 1),
       ),
     );
   }

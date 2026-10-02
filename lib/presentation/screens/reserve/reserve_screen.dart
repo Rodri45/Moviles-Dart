@@ -1,70 +1,92 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/button_spinner.dart';
+import '../../../core/widgets/notice_banner.dart';
+import '../../../core/widgets/reservation_history_card.dart';
+import '../../shared/location_rationale.dart';
+import '../../shell/main_shell.dart';
+import '../find_my_car/find_my_car_screen.dart';
+import '../find_spot/find_spot_screen.dart';
+import 'reserve_view_model.dart';
 
-// pantalla 4, reserve. solo es la vista, el boton de confirmar no hace nada
-// tiene la card del puesto con el circulo del tiempo, el aviso amarillo
-// y abajo el historial
 class ReserveScreen extends StatelessWidget {
   const ReserveScreen({super.key});
 
-  static const String routeName = '/reserve';
-
   @override
   Widget build(BuildContext context) {
+    final reserve = context.watch<ReserveViewModel>();
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            const _Header(),
+            _Header(reserve: reserve),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.lg,
-                  Spacing.md,
-                  Spacing.lg,
+              child: RefreshIndicator(
+                onRefresh: reserve.load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    Spacing.md,
+                    Spacing.lg,
+                    Spacing.md,
+                    Spacing.lg,
+                  ),
+                  children: [
+                    if (reserve.errorMessage != null) ...[
+                      NoticeBanner(
+                        message: reserve.errorMessage!,
+                        tone: NoticeTone.danger,
+                        icon: Icons.error_outline,
+                      ),
+                      const SizedBox(height: Spacing.md),
+                    ],
+                    _SpotCard(reserve: reserve),
+                    const SizedBox(height: Spacing.md),
+                    NoticeBanner(
+                      title: 'Best time to reserve',
+                      message:
+                          reserve.advice?.message ??
+                          'Reserve when you are about ${reserve.holdMinutes} '
+                              'minutes away so you arrive before the hold '
+                              'expires.',
+                    ),
+                    const SizedBox(height: Spacing.lg),
+                    Text('Compliance history', style: AppTypography.heading1),
+                    const SizedBox(height: Spacing.sm),
+                    ReservationHistoryCard(reservations: reserve.history),
+                  ],
                 ),
-                children: [
-                  const _SpotCard(),
-                  const SizedBox(height: Spacing.md),
-                  const _BestTimeBanner(),
-                  const SizedBox(height: Spacing.lg),
-                  Text('Compliance history', style: AppTypography.heading1),
-                  const SizedBox(height: Spacing.sm),
-                  const _ComplianceCard(),
-                ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.reserve),
     );
   }
 }
 
-// datos de mentira para el historial
-
-typedef _HistoryRow = ({String spot, String date, bool ok});
-
-const List<_HistoryRow> _history = [
-  (spot: 'Spot B201', date: 'Sep 3, 2026', ok: true),
-  (spot: 'Spot A103', date: 'Sep 2, 2026', ok: true),
-  (spot: 'Spot C012', date: 'Aug 30', ok: false),
-  (spot: 'Spot A205', date: 'Aug 28', ok: true),
-  (spot: 'Spot B108', date: 'Aug 27', ok: true),
-];
-
-// titulo de arriba
-
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.reserve});
+
+  final ReserveViewModel reserve;
+
+  String get _subtitle {
+    final reservation = reserve.reservation;
+    if (reservation != null) {
+      return 'Level ${reservation.levelCode} · Spot ${reservation.spotCode}';
+    }
+    final spot = reserve.pendingSpot;
+    if (spot != null) return 'Level ${spot.levelCode} · Zone ${spot.zone}';
+    return 'Pick a spot on the map';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +108,9 @@ class _Header extends StatelessWidget {
           Text('Reserve spot', style: AppTypography.display),
           const SizedBox(height: Spacing.xs),
           Text(
-            'P1 · North · Zone B',
+            _subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.body.copyWith(color: Palette.textSecondary),
           ),
         ],
@@ -95,13 +119,94 @@ class _Header extends StatelessWidget {
   }
 }
 
-// la card grande con el puesto, el circulo y el boton de confirmar
-
 class _SpotCard extends StatelessWidget {
-  const _SpotCard();
+  const _SpotCard({required this.reserve});
+
+  final ReserveViewModel reserve;
+
+  Future<void> _checkIn(BuildContext context) async {
+    if (await reserve.shouldExplainLocation() && context.mounted) {
+      final allow = await showLocationRationale(context);
+      if (allow) await reserve.requestLocation();
+    }
+    await reserve.checkIn();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final reservation = reserve.reservation;
+    final spot = reserve.pendingSpot;
+
+    if (reservation == null && spot == null) return const _EmptyCard();
+
+    final String code;
+    final String detail;
+    final Widget ring;
+    final List<Widget> actions;
+
+    if (reservation != null && reserve.isParked) {
+      code = reservation.spotCode;
+      detail = 'Parked since ${formatTime(reservation.checkedInAt!)}';
+      ring = const _HoldTimeRing(
+        label: 'P',
+        caption: 'parked',
+        color: Palette.success,
+      );
+      actions = [
+        OutlinedButton(
+          onPressed: () =>
+              Navigator.of(context).pushNamed(FindMyCarScreen.routeName),
+          child: const Text('Find my car'),
+        ),
+        _ActionButton(
+          label: 'I left',
+          busy: reserve.isBusy,
+          onPressed: reserve.release,
+        ),
+      ];
+    } else if (reservation != null) {
+      final remaining = reserve.remaining;
+      code = reservation.spotCode;
+      detail =
+          'Level ${reservation.levelCode} · expires '
+          '${formatTime(reservation.expiresAt)}';
+      ring = _HoldTimeRing(
+        label: formatCountdown(remaining),
+        caption: 'hold time left',
+        color: remaining <= ReserveViewModel.warnBefore
+            ? Palette.warning
+            : Palette.primary,
+      );
+      actions = [
+        _ActionButton(
+          label: 'I parked',
+          busy: reserve.isBusy,
+          onPressed: () => _checkIn(context),
+        ),
+        OutlinedButton(
+          onPressed: reserve.isBusy ? null : reserve.release,
+          child: const Text('Cancel reservation'),
+        ),
+      ];
+    } else {
+      code = spot!.code;
+      detail =
+          'Level ${spot.levelCode} · Zone ${spot.zone} · '
+          '${spot.walkMinutes} min walk';
+      ring = _HoldTimeRing(
+        label: formatCountdown(Duration(minutes: reserve.holdMinutes)),
+        caption: 'hold time',
+        color: Palette.primary,
+      );
+      actions = [
+        _ActionButton(
+          label: 'Confirm reservation',
+          busy: reserve.isBusy,
+          onPressed: reserve.confirm,
+        ),
+      ];
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Spacing.md),
@@ -121,12 +226,12 @@ class _SpotCard extends StatelessWidget {
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: Text('B201', style: AppTypography.monoDisplay),
+                        child: Text(code, style: AppTypography.monoDisplay),
                       ),
                       const SizedBox(height: Spacing.xs),
                       Text(
-                        'Level P1 · North · Row 2',
-                        maxLines: 1,
+                        detail,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.caption,
                       ),
@@ -134,13 +239,48 @@ class _SpotCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                const _HoldTimeRing(time: '15:00'),
+                ring,
               ],
             ),
             const SizedBox(height: Spacing.lg),
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(height: Spacing.sm),
+              actions[i],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('No spot selected', style: AppTypography.heading1),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'Choose a free spot on the map or search one to reserve it.',
+              style: AppTypography.caption,
+            ),
+            const SizedBox(height: Spacing.md),
             FilledButton(
-              onPressed: () {},
-              child: const Text('Confirm reservation'),
+              onPressed: () => MainShell.openTab(context, AppTab.map),
+              child: const Text('Open map'),
+            ),
+            const SizedBox(height: Spacing.sm),
+            OutlinedButton(
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(FindSpotScreen.routeName),
+              child: const Text('Find a spot'),
             ),
           ],
         ),
@@ -149,11 +289,36 @@ class _SpotCard extends StatelessWidget {
   }
 }
 
-// el circulo azul con el 15:00 adentro
-class _HoldTimeRing extends StatelessWidget {
-  const _HoldTimeRing({required this.time});
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.busy,
+    required this.onPressed,
+  });
 
-  final String time;
+  final String label;
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: busy ? null : onPressed,
+      child: busy ? const ButtonSpinner() : Text(label),
+    );
+  }
+}
+
+class _HoldTimeRing extends StatelessWidget {
+  const _HoldTimeRing({
+    required this.label,
+    required this.caption,
+    required this.color,
+  });
+
+  final String label;
+  final String caption;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -166,149 +331,13 @@ class _HoldTimeRing extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Palette.primary, width: 5),
+            border: Border.all(color: color, width: 5),
           ),
-          child: Text(time, style: AppTypography.monoCountdown),
+          child: Text(label, style: AppTypography.monoCountdown),
         ),
         const SizedBox(height: Spacing.sm),
-        Text('hold time', style: AppTypography.caption),
+        Text(caption, style: AppTypography.caption),
       ],
-    );
-  }
-}
-
-// el aviso amarillo de "best time to reserve"
-
-class _BestTimeBanner extends StatelessWidget {
-  const _BestTimeBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final body = AppTypography.body.copyWith(color: Palette.textSecondary);
-    final bold = body.copyWith(
-      color: Palette.textPrimary,
-      fontWeight: FontWeight.w600,
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(Spacing.md),
-      decoration: BoxDecoration(
-        color: Palette.warningSoft,
-        borderRadius: BorderRadius.circular(Radii.card),
-        border: Border.all(color: Palette.warningBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(Icons.info_outline, size: 16, color: Palette.warningText),
-          ),
-          const SizedBox(width: Spacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Best time to reserve',
-                  style: AppTypography.heading2.copyWith(color: Palette.warningText),
-                ),
-                const SizedBox(height: Spacing.xs),
-                Text.rich(
-                  TextSpan(
-                    style: body,
-                    children: [
-                      const TextSpan(
-                        text: 'Based on your commute, reserve at ',
-                      ),
-                      TextSpan(text: '7:45 AM', style: bold),
-                      const TextSpan(
-                        text:
-                            ' to arrive during the low-traffic window. Today\'s lot fills by 8:30 AM.',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// la lista del historial de abajo
-
-class _ComplianceCard extends StatelessWidget {
-  const _ComplianceCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < _history.length; i++) ...[
-            _ComplianceRow(row: _history[i]),
-            if (i < _history.length - 1) const Divider(),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ComplianceRow extends StatelessWidget {
-  const _ComplianceRow({required this.row});
-
-  final _HistoryRow row;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Spacing.md,
-        vertical: 14,
-      ),
-      child: Row(
-        children: [
-          _ComplianceBadge(ok: row.ok),
-          const SizedBox(width: Spacing.md),
-          Expanded(
-            child: Text(
-              row.spot,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.body,
-            ),
-          ),
-          const SizedBox(width: Spacing.sm),
-          Text(row.date, style: AppTypography.monoData),
-        ],
-      ),
-    );
-  }
-}
-
-// el cuadrito verde con chulo o rojo con x
-class _ComplianceBadge extends StatelessWidget {
-  const _ComplianceBadge({required this.ok});
-
-  final bool ok;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = ok ? Palette.success : Palette.danger;
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        color: ok ? Palette.successSoft : Palette.dangerSoft,
-        borderRadius: BorderRadius.circular(Radii.badge),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Icon(ok ? Icons.check : Icons.close, size: 14, color: color),
     );
   }
 }

@@ -1,10 +1,12 @@
+import '../entities/car_location.dart';
 import '../entities/parked_vehicle.dart';
 
-// interfaz para guardar y consultar donde quedo el carro
 abstract interface class VehicleLocator {
   Future<ParkedVehicle?> getParkedVehicle();
 
-  Future<void> saveParkedVehicle(ParkedVehicle vehicle);
+  Future<CarLocation?> savedLocation();
 
-  Future<void> clear();
+  Future<void> saveLocation(CarLocation location);
+
+  Future<void> clearLocation();
 }

@@ -1,21 +1,39 @@
 # ParkWise (Flutter · Android)
 
 App de parqueaderos del campus (Universidad de los Andes). Este repo es la
-versión Flutter; el subgrupo de Swift tiene la misma estructura.
+versión Android en Flutter; la app iOS (SwiftUI) usa el mismo backend
+(`Moviles-Backend`), así que una reserva hecha en una se ve en la otra.
 
-**Por ahora solo hacemos la parte visual.** Nada de lógica, estado ni backend:
-las pantallas muestran datos escritos a mano y los botones no hacen nada.
+El contrato de la API está en `../Moviles-Backend/docs/API.md`.
 
 ## Correr la app
 
 Requisitos: Flutter 3.47+ (`flutter doctor` sin errores en "Android toolchain").
 
 ```bash
-git clone <url-del-repo>
-cd Moviles-Dart
 flutter pub get
+
+# contra el backend desplegado en Render (es el valor por defecto)
 flutter run
+
+# contra el backend local desde el emulador
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+
+# APK para instalar en cualquier celular
+flutter build apk --release
 ```
+
+`API_BASE_URL` se lee en `lib/core/config/api_config.dart`. Sin ese valor la
+app usa `https://parkwise-api-a1f0.onrender.com`. El tráfico `http://` solo
+está permitido en builds de debug.
+
+Render se duerme después de 15 minutos sin uso y tarda cerca de un minuto en
+despertar. Si la app dice que el servidor no responde, abre
+`https://parkwise-api-a1f0.onrender.com/health` y espera a que conteste.
+
+Para probar en un celular contra el backend local, conéctalo por cable y usa
+`adb reverse tcp:3000 tcp:3000` con
+`--dart-define=API_BASE_URL=http://localhost:3000`.
 
 ### En un celular Android (recomendado)
 
@@ -31,6 +49,8 @@ flutter run
 ### En emulador
 
 Android Studio → Device Manager → crear un Pixel → Play. Luego `flutter run`.
+Desde el emulador, `http://10.0.2.2:3000` es el `localhost` del computador,
+por si quieres usar el backend local.
 
 ### Mientras corre
 
@@ -40,95 +60,72 @@ Android Studio → Device Manager → crear un Pixel → Play. Luego `flutter ru
 | `R` | Reinicio completo |
 | `q` | Cerrar |
 
-Al abrir la app sale el **RootScreen**: una barra oscura arriba con flechas
-◀ ▶ para pasar entre las 7 pantallas (muestra el nombre y `3 / 7`). Navega
-hasta la tuya para verla.
+## Pruebas
 
-## Estado de las pantallas
+```bash
+flutter analyze   # sin warnings
+flutter test      # unitarias + smoke test de pantallas
+```
 
-| # | Pantalla | Archivo | Estado |
-|---|---|---|---|
-| 1 | Home | `screens/home/home_screen.dart` | Pendiente |
-| 2 | P1 · North | `screens/lot_detail/lot_detail_screen.dart` | Pendiente |
-| 3 | Find a spot | `screens/find_spot/find_spot_screen.dart` | ✅ Hecha (referencia) |
-| 4 | Reserve | `screens/reserve/reserve_screen.dart` | ✅ Hecha (referencia) |
-| 5 | No campus spots | `screens/no_spots/no_spots_screen.dart` | Pendiente |
-| 6 | Find my car | `screens/find_my_car/find_my_car_screen.dart` | Pendiente |
-| 7 | Offline | `screens/offline/offline_screen.dart` | Pendiente |
+Las pruebas no llaman al backend: usan los mocks de
+`lib/infrastructure/mock/` y, para el repositorio HTTP, un `MockClient` de
+`package:http/testing.dart` con una caja de Hive temporal.
 
-Todas están en `lib/presentation/screens/`.
+| Archivo | Qué prueba |
+|---|---|
+| `test/circuit_breaker_test.dart` | Estados cerrado, abierto y semiabierto; los 4xx no cuentan |
+| `test/http_parking_repository_test.dart` | Devuelve la copia de Hive (`fromCache`) cuando falla la red |
+| `test/reserve_view_model_test.dart` | Reserva 201, los dos 409, cuenta regresiva con `expiresAt`, check-in, aviso de vencimiento |
+| `test/auth_view_model_test.dart` | Login, errores, registro y restauración de la sesión |
+| `test/recommend_spot_test.dart` | El puesto recomendado es el libre con menos minutos; zona BQ4 |
+| `test/no_spots_view_model_test.dart` | Parqueaderos cercanos, Navigate y el aviso de Notify me |
+| `test/screens_smoke_test.dart` | Cada pantalla a 390 px y 320 px de ancho sin overflow |
 
-## Cómo hacer tu pantalla (paso a paso)
+## Arquitectura
 
-Usa `find_spot_screen.dart` y `reserve_screen.dart` como plantilla: copia su
-estructura.
-
-1. **Abre tu archivo** `lib/presentation/screens/<pantalla>/<pantalla>_screen.dart`.
-   Arriba de la clase hay un comentario con lo que muestra Figma.
-2. **Datos de ejemplo**: escríbelos como `const` privados arriba del archivo
-   (mira `_spots` en Find a spot o `_history` en Reserve). No uses `domain/`
-   ni `infrastructure/` por ahora.
-3. **Layout**: reemplaza `ScreenPlaceholder` por el diseño real.
-   - `Scaffold` con `backgroundColor: Palette.background`.
-   - Contenido dentro de un `ListView` para que haga scroll.
-   - `bottomNavigationBar: AppTabBar(current: AppTab.xxx)` si tu pantalla
-     tiene la barra de abajo.
-4. **Sub-widgets privados** (`_Header`, `_MiCard`, ...) en el mismo archivo.
-   Si un widget se repite en 2+ pantallas, muévelo a `lib/core/widgets/`.
-5. **Colores, fuentes y espaciados**: SOLO desde `lib/core/design/`.
-   - `Palette.primary`, `Palette.success`, `Palette.warningSoft`, ...
-   - `AppTypography.display / heading1 / heading2 / body / caption / overline /
-     monoId / monoData / monoDisplay`
-   - `Spacing.xs/sm/md/lg/xl`, `Radii.card/sm/badge`
-   - Si te falta un color o estilo, agrégalo ahí (no lo hardcodees en tu pantalla).
-6. **Componentes ya hechos** en `lib/core/widgets/`: `Pill`, `AppTabBar`,
-   `StatusBadge`, `LevelCard`, `ForecastCard`, `SpotCell`, `PwScaffold`.
-7. **Botones**: `onPressed: () {}`. Sin navegación ni estado.
-8. **Responsive**: nada de anchos fijos grandes; usa `Expanded`/`Flexible`,
-   y `maxLines: 1, overflow: TextOverflow.ellipsis` en textos que puedan crecer.
-9. **Agrega tu pantalla al test** en `test/screens_smoke_test.dart` (mapa
-   `screens`). Renderiza a 390px y 320px de ancho y falla si algo desborda.
-10. Antes del PR:
-    ```bash
-    flutter analyze   # sin errores
-    flutter test      # todo en verde
-    ```
-
-## Git
-
-- Rama por pantalla: `feature/home`, `feature/find-my-car`, etc., desde `develop`.
-- PR hacia `develop`. Solo tocar tu carpeta de pantalla (y `core/` si agregas
-  un token o componente compartido, avisando en el grupo).
-
-## Arquitectura (hexagonal)
+Hexagonal (puertos y adaptadores) con MVVM en la presentación:
 
 ```
 lib/
-├── main.dart
-├── app/                         ← arranque
+├── main.dart                    abre Hive, carga la sesión y arranca
+├── app/
+│   ├── dependencies.dart        arma adaptadores y view models (MultiProvider)
 │   ├── parkwise_app.dart        MaterialApp + tema
-│   └── app_router.dart          rutas con nombre
-│
-├── core/                        ← compartido, sin lógica de negocio
+│   └── app_router.dart          rutas de las pantallas que se abren encima
+├── core/
+│   ├── config/                  API_BASE_URL
 │   ├── design/                  palette, typography, spacing, app_theme
-│   └── widgets/                 componentes reutilizables
-│
-├── domain/                      ← CENTRO DEL HEXÁGONO (Dart puro, sin Flutter)
-│   ├── entities/                ParkingLot, ParkingLevel, ParkingSpot, ...
-│   └── ports/                   interfaces (ParkingRepository, ...)
-│
-├── infrastructure/              ← ADAPTADORES (implementan los puertos)
-│   └── mock/                    datos y repositorios de prueba
-│
-└── presentation/                ← UI
-    ├── root/root_screen.dart    barra de pills + pantalla activa
-    └── screens/                 una carpeta por pantalla
+│   ├── widgets/                 componentes reutilizables
+│   └── format.dart              fechas, horas y cuenta regresiva
+├── domain/                      Dart puro, sin Flutter ni paquetes
+│   ├── entities/                ParkingLevel, ParkingSpot, Reservation, ...
+│   ├── ports/                   ParkingRepository, ReservationRepository, ...
+│   ├── services/                recommendSpot
+│   └── errors.dart              ApiException, NetworkException, CircuitOpenException
+├── infrastructure/              implementaciones de los puertos
+│   ├── http/                    ApiClient, CircuitBreaker, repositorios, TelemetryClient
+│   ├── device/                  geolocator, connectivity_plus, device_info_plus, url_launcher
+│   ├── storage/                 SessionStore (secure storage), Hive
+│   └── mock/                    versiones de mentira para las pruebas
+└── presentation/
+    ├── shell/                   AuthGate (login o app) y MainShell (tabs)
+    ├── shared/                  manejo de red y mensajes de error
+    └── screens/<pantalla>/      <pantalla>_screen.dart + <pantalla>_view_model.dart
 ```
 
-Regla de dependencias: `presentation → domain ← infrastructure`.
-`domain/` no importa Flutter ni `infrastructure/`. Cuando exista backend se
-agrega `infrastructure/http/` implementando los mismos puertos y las pantallas
-no cambian. **En esta fase visual, `domain/` e `infrastructure/` no se tocan.**
+Regla de dependencias: `presentation → domain ← infrastructure`. Las
+pantallas solo escuchan su `ChangeNotifier` con `provider`; no hacen HTTP, ni
+tocan Hive ni el GPS. Solo `app/dependencies.dart` conoce las
+implementaciones concretas.
+
+### Almacenamiento local
+
+| Dónde | Qué |
+|---|---|
+| `flutter_secure_storage` | Token y usuario (el token nunca va a Hive ni a logs) |
+| Hive `cache` | Última respuesta de niveles, puestos por nivel, edificios, reserva abierta y posición del carro |
+| Hive `prefs` | Edificio destino elegido |
+| Hive `telemetry` | Cola de eventos pendientes (máx. 200) |
 
 ## Design system
 

@@ -1,130 +1,145 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/forecast_card.dart';
+import '../../../core/widgets/level_card.dart';
+import '../../../core/widgets/notice_banner.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
+import '../../../domain/entities/app_user.dart';
+import '../../shell/main_shell.dart';
+import '../find_my_car/find_my_car_screen.dart';
+import '../find_spot/find_spot_screen.dart';
+import '../level_map/level_map_view_model.dart';
+import '../login/auth_view_model.dart';
+import '../no_spots/no_spots_screen.dart';
+import '../offline/offline_screen.dart';
+import 'home_view_model.dart';
 
-/// Pantalla 1 — Home. SOLO VISUAL, sin lógica.
-///
-/// Estructura (de arriba a abajo):
-///   1. Saludo + nombre + avatar.
-///   2. DESTINATION: pills en fila horizontal.
-///   3. Card "Occupancy forecast · today" con barras por hora y leyenda.
-///   4. PARKING LEVELS: una card por nivel con badge, estado y barra.
-///   5. Acciones rápidas: "Find a spot" y "Find my car".
-///   6. Bottom nav con "Home" activo.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static const String routeName = '/home';
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late final HomeViewModel _home;
+
+  @override
+  void initState() {
+    super.initState();
+    _home = context.read<HomeViewModel>()..addListener(_openNoSpotsIfFull);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _home.load());
+  }
+
+  void _openNoSpotsIfFull() {
+    if (!_home.campusFullPending || !mounted) return;
+    _home.campusFullHandled();
+    Navigator.of(context).pushNamed(NoSpotsScreen.routeName);
+  }
+
+  @override
+  void dispose() {
+    _home.removeListener(_openNoSpotsIfFull);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final home = context.watch<HomeViewModel>();
+    final user = context.watch<AuthViewModel>().user;
+    final levels = home.levels;
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            Spacing.md,
-            Spacing.md,
-            Spacing.md,
-            Spacing.lg,
-          ),
-          children: [
-            const _Greeting(),
-            const SizedBox(height: Spacing.lg),
-            Text('DESTINATION', style: AppTypography.overline),
-            const SizedBox(height: Spacing.sm),
-            const _DestinationPills(),
-            const SizedBox(height: Spacing.md),
-            const _ForecastCard(),
-            const SizedBox(height: Spacing.lg),
-            Text('PARKING LEVELS', style: AppTypography.overline),
-            const SizedBox(height: Spacing.sm),
-            for (final level in _levels) ...[
-              _LevelCard(level: level),
+        child: RefreshIndicator(
+          onRefresh: home.load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Spacing.md,
+              Spacing.md,
+              Spacing.md,
+              Spacing.lg,
+            ),
+            children: [
+              _Greeting(user: user, hour: home.currentHour),
+              if (home.showOffline) ...[
+                const SizedBox(height: Spacing.md),
+                OfflineBanner(
+                  savedAt: levels?.savedAt,
+                  online: home.online,
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(OfflineScreen.routeName),
+                ),
+              ],
+              if (home.errorMessage != null && levels == null) ...[
+                const SizedBox(height: Spacing.md),
+                NoticeBanner(
+                  message: home.errorMessage!,
+                  tone: NoticeTone.danger,
+                  icon: Icons.error_outline,
+                ),
+              ],
+              const SizedBox(height: Spacing.lg),
+              Text('DESTINATION', style: AppTypography.overline),
               const SizedBox(height: Spacing.sm),
+              _DestinationPills(home: home),
+              const SizedBox(height: Spacing.md),
+              ForecastCard(
+                hours: home.forecast,
+                currentHour: home.currentHour,
+                live: !home.showOffline,
+              ),
+              const SizedBox(height: Spacing.lg),
+              Text('PARKING LEVELS', style: AppTypography.overline),
+              const SizedBox(height: Spacing.sm),
+              _ArrivalCard(home: home),
+              const SizedBox(height: Spacing.sm),
+              if (levels == null && home.isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(Spacing.lg),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              for (final level in levels?.data.levels ?? const []) ...[
+                LevelCard(
+                  level: level,
+                  recommended: level.code == home.recommendation?.recommended,
+                  onTap: () {
+                    context.read<LevelMapViewModel>().selectLevel(level.code);
+                    MainShell.openTab(context, AppTab.map);
+                  },
+                ),
+                const SizedBox(height: Spacing.sm),
+              ],
+              const SizedBox(height: Spacing.sm),
+              const _QuickActions(),
             ],
-            const SizedBox(height: Spacing.sm),
-            const _QuickActions(),
-          ],
+          ),
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.home),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Datos de muestra (solo para la vista)
-// ---------------------------------------------------------------------------
-
-enum _Occupancy { low, med, high }
-
-typedef _ForecastBar = ({String hour, double value, _Occupancy level, bool now});
-
-const List<_ForecastBar> _forecast = [
-  (hour: '7', value: 0.35, level: _Occupancy.low, now: false),
-  (hour: '8', value: 0.65, level: _Occupancy.med, now: true),
-  (hour: '9', value: 0.95, level: _Occupancy.high, now: false),
-  (hour: '10', value: 0.85, level: _Occupancy.high, now: false),
-  (hour: '11', value: 0.60, level: _Occupancy.med, now: false),
-  (hour: '12', value: 0.45, level: _Occupancy.low, now: false),
-  (hour: '1', value: 0.40, level: _Occupancy.low, now: false),
-  (hour: '2', value: 0.58, level: _Occupancy.med, now: false),
-];
-
-enum _LevelStatus { available, limited, full }
-
-typedef _Level = ({
-String code,
-String name,
-_LevelStatus status,
-String free,
-int reserved,
-int total,
-double occupancy,
-});
-
-const List<_Level> _levels = [
-  (
-  code: 'P1',
-  name: 'Level P1 · North',
-  status: _LevelStatus.available,
-  free: '14 free',
-  reserved: 3,
-  total: 80,
-  occupancy: 0.82,
-  ),
-  (
-  code: 'P2',
-  name: 'Level P2 · Central',
-  status: _LevelStatus.limited,
-  free: '3 free',
-  reserved: 8,
-  total: 60,
-  occupancy: 0.95,
-  ),
-  (
-  code: 'P3',
-  name: 'Level P3 · South',
-  status: _LevelStatus.full,
-  free: 'No spots',
-  reserved: 12,
-  total: 50,
-  occupancy: 1.0,
-  ),
-];
-
-// ---------------------------------------------------------------------------
-// Saludo + avatar
-// ---------------------------------------------------------------------------
-
 class _Greeting extends StatelessWidget {
-  const _Greeting();
+  const _Greeting({required this.user, required this.hour});
+
+  final AppUser? user;
+  final int hour;
+
+  String get _greeting {
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,10 +149,10 @@ class _Greeting extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Good evening', style: AppTypography.caption),
+              Text(_greeting, style: AppTypography.caption),
               const SizedBox(height: 2),
               Text(
-                'Andrés Morales',
+                user?.displayName ?? '',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.display,
@@ -155,8 +170,10 @@ class _Greeting extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Text(
-            'AM',
-            style: AppTypography.heading2.copyWith(color: Palette.textOnPrimary),
+            user?.initials ?? '',
+            style: AppTypography.heading2.copyWith(
+              color: Palette.textOnPrimary,
+            ),
           ),
         ),
       ],
@@ -164,348 +181,107 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Pills de destino (scroll horizontal)
-// ---------------------------------------------------------------------------
-
 class _DestinationPills extends StatelessWidget {
-  const _DestinationPills();
+  const _DestinationPills({required this.home});
+
+  final HomeViewModel home;
 
   @override
   Widget build(BuildContext context) {
-    return const SingleChildScrollView(
+    if (home.buildings.isEmpty) {
+      return Text('Destinations unavailable', style: AppTypography.caption);
+    }
+
+    return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       clipBehavior: Clip.none,
       child: Row(
         children: [
-          Pill(label: 'Main Campus — Blk 20', selected: true),
-          SizedBox(width: Spacing.sm),
-          Pill(label: 'Library'),
-          SizedBox(width: Spacing.sm),
-          Pill(label: 'Admin Building'),
-          SizedBox(width: Spacing.sm),
-          Pill(label: 'Sports Center'),
+          for (final building in home.buildings) ...[
+            Pill(
+              label: building.name,
+              selected: building.id == home.destination,
+              onTap: () => home.selectDestination(building.id),
+            ),
+            const SizedBox(width: Spacing.sm),
+          ],
         ],
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Card de pronóstico
-// ---------------------------------------------------------------------------
+class _ArrivalCard extends StatelessWidget {
+  const _ArrivalCard({required this.home});
 
-class _ForecastCard extends StatelessWidget {
-  const _ForecastCard();
+  final HomeViewModel home;
+
+  Future<void> _pickTime(BuildContext context) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(home.arrivalAt),
+    );
+    if (picked != null) await home.setArrivalTime(picked.hour, picked.minute);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final best = home.recommendation?.recommended;
+    final body = AppTypography.caption;
+    final bold = body.copyWith(
+      color: Palette.textPrimary,
+      fontWeight: FontWeight.w600,
+    );
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Occupancy forecast · today',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.heading1,
-                  ),
-                ),
-                const SizedBox(width: Spacing.sm),
-                const _LiveBadge(),
-              ],
-            ),
-            const SizedBox(height: Spacing.md),
-            SizedBox(
-              height: 72,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < _forecast.length; i++) ...[
-                    if (i > 0) const SizedBox(width: Spacing.xs),
-                    Expanded(child: _Bar(bar: _forecast[i])),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: Spacing.md),
-            const Wrap(
-              spacing: Spacing.md,
-              runSpacing: Spacing.xs,
-              children: [
-                _LegendItem(color: Palette.success, label: 'Low < 55%'),
-                _LegendItem(color: Palette.warning, label: 'Med 55-80%'),
-                _LegendItem(color: Palette.danger, label: 'High > 80%'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LiveBadge extends StatelessWidget {
-  const _LiveBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.sm, vertical: 2),
-      decoration: BoxDecoration(
-        color: Palette.successSoft,
-        borderRadius: BorderRadius.circular(Radii.badge),
-      ),
-      child: Text(
-        'LIVE',
-        style: AppTypography.overline.copyWith(color: Palette.success),
-      ),
-    );
-  }
-}
-
-class _Bar extends StatelessWidget {
-  const _Bar({required this.bar});
-
-  final _ForecastBar bar;
-
-  Color get _base => switch (bar.level) {
-    _Occupancy.low => Palette.success,
-    _Occupancy.med => Palette.warning,
-    _Occupancy.high => Palette.danger,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    // La hora actual va en color sólido; el resto en tinte suave.
-    final fill = bar.now ? _base : _base.withValues(alpha: 0.25);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: FractionallySizedBox(
-              heightFactor: bar.value,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: fill,
-                  borderRadius: BorderRadius.circular(Radii.badge),
-                ),
-              ),
-            ),
+      child: InkWell(
+        onTap: () => _pickTime(context),
+        borderRadius: BorderRadius.circular(Radii.card),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.md,
+            vertical: 12,
           ),
-        ),
-        const SizedBox(height: Spacing.xs),
-        Text(
-          bar.hour,
-          style: AppTypography.monoData.copyWith(
-            color: bar.now ? Palette.textPrimary : Palette.textSecondary,
-            fontWeight: bar.now ? FontWeight.w500 : FontWeight.w400,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LegendItem extends StatelessWidget {
-  const _LegendItem({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: Spacing.xs),
-        Text(label, style: AppTypography.caption),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Card de nivel
-// ---------------------------------------------------------------------------
-
-class _LevelCard extends StatelessWidget {
-  const _LevelCard({required this.level});
-
-  final _Level level;
-
-  Color get _color => switch (level.status) {
-    _LevelStatus.available => Palette.success,
-    _LevelStatus.limited => Palette.warning,
-    _LevelStatus.full => Palette.danger,
-  };
-
-  Color get _soft => switch (level.status) {
-    _LevelStatus.available => Palette.successSoft,
-    _LevelStatus.limited => Palette.warningSoft,
-    _LevelStatus.full => Palette.dangerSoft,
-  };
-
-  String get _label => switch (level.status) {
-    _LevelStatus.available => 'Available',
-    _LevelStatus.limited => 'Limited',
-    _LevelStatus.full => 'Full',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Row(
-          children: [
-            _CodeBadge(code: level.code, color: _color, background: _soft),
-            const SizedBox(width: Spacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          child: Row(
+            children: [
+              const Icon(Icons.schedule, size: 16, color: Palette.primary),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: body,
                     children: [
-                      Expanded(
-                        child: Text(
-                          level.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.heading2,
-                        ),
+                      const TextSpan(text: 'Arriving '),
+                      TextSpan(text: formatTime(home.arrivalAt), style: bold),
+                      TextSpan(
+                        text: best == null ? ' · no history yet' : ' · best ',
                       ),
-                      const SizedBox(width: Spacing.sm),
-                      _StatusChip(label: _label, color: _color, background: _soft),
+                      if (best != null) TextSpan(text: best, style: bold),
                     ],
                   ),
-                  const SizedBox(height: Spacing.xs),
-                  Text.rich(
-                    TextSpan(
-                      style: AppTypography.caption,
-                      children: [
-                        TextSpan(
-                          text: level.free,
-                          style: TextStyle(
-                            color: _color,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        TextSpan(
-                          text:
-                          '  ${level.reserved} reserved · ${level.total} total',
-                        ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: Spacing.sm),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                    child: LinearProgressIndicator(
-                      value: level.occupancy,
-                      minHeight: 4,
-                      backgroundColor: Palette.border,
-                      color: _color,
-                    ),
-                  ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const SizedBox(width: Spacing.sm),
-            const Icon(Icons.chevron_right, size: 20, color: Palette.border),
-          ],
+              const SizedBox(width: Spacing.sm),
+              Text(
+                'Change',
+                style: AppTypography.button.copyWith(color: Palette.primary),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
-/// Cuadro tintado con el código del nivel (P1, P2, P3).
-class _CodeBadge extends StatelessWidget {
-  const _CodeBadge({
-    required this.code,
-    required this.color,
-    required this.background,
-  });
-
-  final String code;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 36,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(Radii.sm),
-      ),
-      child: Text(code, style: AppTypography.monoId.copyWith(color: color)),
-    );
-  }
-}
-
-/// Chip de estado de texto sobre fondo tintado (Available / Limited / Full).
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.label,
-    required this.color,
-    required this.background,
-  });
-
-  final String label;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.sm, vertical: 2),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(Radii.badge),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.caption.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Acciones rápidas
-// ---------------------------------------------------------------------------
 
 class _QuickActions extends StatelessWidget {
   const _QuickActions();
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
         Expanded(
           child: _QuickActionCard(
@@ -513,15 +289,19 @@ class _QuickActions extends StatelessWidget {
             label: 'Find a spot',
             color: Palette.primary,
             background: Palette.primarySoft,
+            onTap: () =>
+                Navigator.of(context).pushNamed(FindSpotScreen.routeName),
           ),
         ),
-        SizedBox(width: Spacing.sm),
+        const SizedBox(width: Spacing.sm),
         Expanded(
           child: _QuickActionCard(
             icon: Icons.directions_car_outlined,
             label: 'Find my car',
             color: Palette.secondary,
             background: Palette.secondarySoft,
+            onTap: () =>
+                Navigator.of(context).pushNamed(FindMyCarScreen.routeName),
           ),
         ),
       ],
@@ -535,18 +315,20 @@ class _QuickActionCard extends StatelessWidget {
     required this.label,
     required this.color,
     required this.background,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final Color color;
   final Color background;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.circular(Radii.card),
         child: Padding(
           padding: const EdgeInsets.all(Spacing.md),

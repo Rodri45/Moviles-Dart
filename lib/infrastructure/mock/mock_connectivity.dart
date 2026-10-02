@@ -1,11 +1,21 @@
+import 'dart:async';
+
 import '../../domain/ports/connectivity_port.dart';
 
-// version de mentira, siempre dice que hay o no hay internet segun se le pase
 class MockConnectivity implements ConnectivityPort {
-  const MockConnectivity({this.online = true});
+  MockConnectivity({this.online = true});
 
-  final bool online;
+  bool online;
+  final _controller = StreamController<bool>.broadcast();
+
+  void setOnline(bool value) {
+    online = value;
+    _controller.add(value);
+  }
 
   @override
-  Stream<bool> get isOnline => Stream.value(online);
+  Future<bool> isOnline() async => online;
+
+  @override
+  Stream<bool> get changes => _controller.stream;
 }

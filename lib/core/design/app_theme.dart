@@ -5,8 +5,6 @@ import 'palette.dart';
 import 'spacing.dart';
 import 'typography.dart';
 
-// el tema de la app, junta los colores y las fuentes para que los botones,
-// cards, etc ya salgan con el estilo del diseño
 abstract final class AppTheme {
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
@@ -60,6 +58,16 @@ abstract final class AppTheme {
           ),
         ),
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Palette.inputFill,
+        labelStyle: AppTypography.body.copyWith(color: Palette.textSecondary),
+        border: _inputBorder(Palette.border),
+        enabledBorder: _inputBorder(Palette.border),
+        focusedBorder: _inputBorder(Palette.primary),
+        errorBorder: _inputBorder(Palette.danger),
+        focusedErrorBorder: _inputBorder(Palette.danger),
+      ),
       dividerTheme: const DividerThemeData(
         color: Palette.border,
         thickness: 1,
@@ -67,4 +75,9 @@ abstract final class AppTheme {
       ),
     );
   }
+
+  static OutlineInputBorder _inputBorder(Color color) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(Radii.card),
+    borderSide: BorderSide(color: color),
+  );
 }

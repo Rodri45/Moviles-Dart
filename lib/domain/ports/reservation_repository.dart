@@ -1,14 +1,16 @@
+import '../entities/lead_time_advice.dart';
 import '../entities/reservation.dart';
 
-// interfaz para hacer y cancelar reservas
 abstract interface class ReservationRepository {
-  Future<Reservation?> getActiveReservation();
+  Future<Reservation> create(String spotId);
 
-  Future<Reservation> reserve({
-    required String lotId,
-    required String spotId,
-    required Duration duration,
-  });
+  Future<Reservation> checkIn(String reservationId);
 
-  Future<void> cancel(String reservationId);
+  Future<Reservation> release(String reservationId);
+
+  Future<Reservation?> active();
+
+  Future<List<Reservation>> history();
+
+  Future<LeadTimeAdvice> leadTime();
 }
