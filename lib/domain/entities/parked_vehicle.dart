@@ -1,16 +1,23 @@
-// donde quedo parqueado el carro, para la pantalla de find my car
 class ParkedVehicle {
   const ParkedVehicle({
-    required this.lotId,
-    required this.lotName,
-    required this.levelName,
+    required this.spotId,
     required this.spotCode,
+    required this.levelCode,
+    required this.zone,
     required this.parkedAt,
   });
 
-  final String lotId;
-  final String lotName;
-  final String levelName;
+  factory ParkedVehicle.fromJson(Map<String, dynamic> json) => ParkedVehicle(
+    spotId: json['spotId'] as String,
+    spotCode: json['spotCode'] as String,
+    levelCode: json['levelCode'] as String,
+    zone: json['zone'] as String,
+    parkedAt: DateTime.parse(json['parkedAt'] as String),
+  );
+
+  final String spotId;
   final String spotCode;
+  final String levelCode;
+  final String zone;
   final DateTime parkedAt;
 }

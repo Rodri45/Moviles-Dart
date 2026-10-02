@@ -1,0 +1,154 @@
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
+
+import '../domain/entities/device_description.dart';
+import '../domain/ports/auth_repository.dart';
+import '../domain/ports/connectivity_port.dart';
+import '../domain/ports/directions_launcher.dart';
+import '../domain/ports/location_provider.dart';
+import '../domain/ports/parking_repository.dart';
+import '../domain/ports/preferences_store.dart';
+import '../domain/ports/reservation_repository.dart';
+import '../domain/ports/telemetry.dart';
+import '../domain/ports/vehicle_locator.dart';
+import '../infrastructure/device/connectivity_plus_adapter.dart';
+import '../infrastructure/device/device_info_reader.dart';
+import '../infrastructure/device/geolocator_location_provider.dart';
+import '../infrastructure/device/url_launcher_directions.dart';
+import '../infrastructure/http/api_client.dart';
+import '../infrastructure/http/http_auth_repository.dart';
+import '../infrastructure/http/http_parking_repository.dart';
+import '../infrastructure/http/http_reservation_repository.dart';
+import '../infrastructure/http/http_vehicle_locator.dart';
+import '../infrastructure/http/telemetry_client.dart';
+import '../infrastructure/mock/mock_auth_repository.dart';
+import '../infrastructure/mock/mock_connectivity.dart';
+import '../infrastructure/mock/mock_directions_launcher.dart';
+import '../infrastructure/mock/mock_location_provider.dart';
+import '../infrastructure/mock/mock_parking_repository.dart';
+import '../infrastructure/mock/mock_preferences_store.dart';
+import '../infrastructure/mock/mock_reservation_repository.dart';
+import '../infrastructure/mock/mock_telemetry.dart';
+import '../infrastructure/mock/mock_vehicle_locator.dart';
+import '../infrastructure/storage/hive_preferences_store.dart';
+import '../infrastructure/storage/local_cache.dart';
+import '../infrastructure/storage/session_store.dart';
+import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
+import '../presentation/screens/find_spot/find_spot_view_model.dart';
+import '../presentation/screens/home/home_view_model.dart';
+import '../presentation/screens/level_map/level_map_view_model.dart';
+import '../presentation/screens/login/auth_view_model.dart';
+import '../presentation/screens/no_spots/no_spots_view_model.dart';
+import '../presentation/screens/offline/offline_view_model.dart';
+import '../presentation/screens/profile/profile_view_model.dart';
+import '../presentation/screens/reserve/reserve_view_model.dart';
+import '../presentation/shell/shell_view_model.dart';
+
+class AppDependencies {
+  AppDependencies({
+    required this.auth,
+    required this.parking,
+    required this.reservations,
+    required this.vehicles,
+    required this.connectivity,
+    required this.preferences,
+    required this.location,
+    required this.directions,
+    required this.telemetry,
+    required this.device,
+  });
+
+  static Future<AppDependencies> create() async {
+    await Hive.initFlutter();
+    final cacheBox = await Hive.openBox<String>('cache');
+    final prefsBox = await Hive.openBox<String>('prefs');
+    final telemetryBox = await Hive.openBox<String>('telemetry');
+
+    final session = SessionStore();
+    await session.load();
+    final client = ApiClient(
+      httpClient: http.Client(),
+      readToken: () => session.token,
+    );
+    final cache = LocalCache(cacheBox);
+    final connectivity = ConnectivityPlusAdapter();
+    final telemetry = TelemetryClient(client, telemetryBox, connectivity)
+      ..flush();
+
+    return AppDependencies(
+      auth: HttpAuthRepository(client, session, cache),
+      parking: HttpParkingRepository(client, cache),
+      reservations: HttpReservationRepository(client, cache),
+      vehicles: HttpVehicleLocator(client, cache),
+      connectivity: connectivity,
+      preferences: HivePreferencesStore(prefsBox),
+      location: GeolocatorLocationProvider(),
+      directions: UrlLauncherDirections(),
+      telemetry: telemetry,
+      device: await readDeviceDescription(),
+    );
+  }
+
+  factory AppDependencies.mock() => AppDependencies(
+    auth: MockAuthRepository(saved: MockAuthRepository.user),
+    parking: MockParkingRepository(),
+    reservations: MockReservationRepository(),
+    vehicles: MockVehicleLocator(),
+    connectivity: MockConnectivity(),
+    preferences: MockPreferencesStore(),
+    location: MockLocationProvider(),
+    directions: MockDirectionsLauncher(),
+    telemetry: MockTelemetry(),
+    device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
+  );
+
+  final AuthRepository auth;
+  final ParkingRepository parking;
+  final ReservationRepository reservations;
+  final VehicleLocator vehicles;
+  final ConnectivityPort connectivity;
+  final PreferencesStore preferences;
+  final LocationProvider location;
+  final DirectionsLauncher directions;
+  final Telemetry telemetry;
+  final DeviceDescription device;
+
+  List<SingleChildWidget> get providers => [
+    ChangeNotifierProvider(create: (_) => AuthViewModel(auth, telemetry)),
+    ChangeNotifierProvider(create: (_) => ShellViewModel()),
+    ChangeNotifierProvider(
+      create: (_) =>
+          HomeViewModel(parking, preferences, location, connectivity),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => LevelMapViewModel(
+        parking,
+        preferences,
+        telemetry,
+        device,
+        connectivity,
+      ),
+    ),
+    ChangeNotifierProvider(
+      create: (_) =>
+          FindSpotViewModel(parking, preferences, telemetry, connectivity),
+    ),
+    ChangeNotifierProvider(
+      create: (_) =>
+          OfflineViewModel(parking, reservations, preferences, connectivity),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => NoSpotsViewModel(parking, directions),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => FindMyCarViewModel(vehicles, location),
+    ),
+    ChangeNotifierProvider(
+      create: (_) =>
+          ReserveViewModel(reservations, vehicles, location, connectivity),
+    ),
+    ChangeNotifierProvider(create: (_) => ProfileViewModel(reservations)),
+  ];
+}

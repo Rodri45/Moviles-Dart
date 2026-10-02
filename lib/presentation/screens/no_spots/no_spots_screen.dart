@@ -1,18 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/notice_banner.dart';
+import '../../../domain/entities/nearby_lot.dart';
+import '../../shell/main_shell.dart';
+import 'no_spots_view_model.dart';
 
-
-class NoSpotsScreen extends StatelessWidget {
+class NoSpotsScreen extends StatefulWidget {
   const NoSpotsScreen({super.key});
 
   static const String routeName = '/no-spots';
 
   @override
+  State<NoSpotsScreen> createState() => _NoSpotsScreenState();
+}
+
+class _NoSpotsScreenState extends State<NoSpotsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<NoSpotsViewModel>().load(),
+    );
+  }
+
+  Future<void> _navigate(NearbyLot lot) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await context.read<NoSpotsViewModel>().navigate(lot);
+    if (!opened) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open the maps app.')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final noSpots = context.watch<NoSpotsViewModel>();
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
@@ -33,70 +62,37 @@ class NoSpotsScreen extends StatelessWidget {
                   const SizedBox(height: Spacing.lg),
                   Text('Nearby parking', style: AppTypography.heading1),
                   const SizedBox(height: Spacing.sm),
-                  for (final lot in _nearby) ...[
-                    _NearbyCard(lot: lot),
+                  if (noSpots.errorMessage != null)
+                    NoticeBanner(
+                      message: noSpots.errorMessage!,
+                      tone: NoticeTone.danger,
+                      icon: Icons.error_outline,
+                    ),
+                  if (noSpots.isLoading && noSpots.lots.isEmpty)
+                    const Center(child: CircularProgressIndicator()),
+                  for (final lot in noSpots.lots) ...[
+                    _NearbyCard(
+                      lot: lot,
+                      closest: lot.id == noSpots.closestId,
+                      onNavigate: () => _navigate(lot),
+                    ),
                     const SizedBox(height: Spacing.sm),
                   ],
                   const SizedBox(height: Spacing.sm),
-                  const _NotifyCard(),
+                  _NotifyCard(noSpots: noSpots),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.home),
+      bottomNavigationBar: AppTabBar(
+        current: AppTab.home,
+        onSelected: (tab) => MainShell.openTab(context, tab),
+      ),
     );
   }
 }
-
-// datos de mentira de los parqueaderos cercanos
-
-typedef _Nearby = ({
-  String name,
-  String walk,
-  String free,
-  List<String> tags,
-  String price,
-  bool closest,
-});
-
-const List<_Nearby> _nearby = [
-  (
-    name: 'Parque Central Salitre',
-    walk: '4 min',
-    free: '22 free',
-    tags: ['Lit', 'Guarded'],
-    price: '\$3.500/hr',
-    closest: true,
-  ),
-  (
-    name: 'Parking Av. El Dorado',
-    walk: '6 min',
-    free: '8 free',
-    tags: ['Lit'],
-    price: '\$2.800/hr',
-    closest: false,
-  ),
-  (
-    name: 'Zona Azul — Bloque 14',
-    walk: '8 min',
-    free: '3 free',
-    tags: [],
-    price: '\$2.000/hr',
-    closest: false,
-  ),
-  (
-    name: 'CC Metropolis P3',
-    walk: '11 min',
-    free: '45 free',
-    tags: ['Lit', 'Guarded'],
-    price: '\$4.000/hr',
-    closest: false,
-  ),
-];
-
-// titulo de arriba
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -130,8 +126,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-// el aviso rojo de "campus is full"
-
 class _FullBanner extends StatelessWidget {
   const _FullBanner();
 
@@ -154,7 +148,11 @@ class _FullBanner extends StatelessWidget {
               color: Palette.danger,
               borderRadius: BorderRadius.circular(Radii.sm),
             ),
-            child: const Icon(Icons.close, size: 18, color: Palette.textOnPrimary),
+            child: const Icon(
+              Icons.close,
+              size: 18,
+              color: Palette.textOnPrimary,
+            ),
           ),
           const SizedBox(width: Spacing.md),
           Expanded(
@@ -167,8 +165,10 @@ class _FullBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'All 3 levels at capacity. Verified nearby options below.',
-                  style: AppTypography.body.copyWith(color: Palette.textSecondary),
+                  'All 3 levels at capacity. Nearby options below.',
+                  style: AppTypography.body.copyWith(
+                    color: Palette.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -179,12 +179,26 @@ class _FullBanner extends StatelessWidget {
   }
 }
 
-// cada card de parqueadero cercano. la primera tiene borde azul y "CLOSEST"
-
 class _NearbyCard extends StatelessWidget {
-  const _NearbyCard({required this.lot});
+  const _NearbyCard({
+    required this.lot,
+    required this.closest,
+    required this.onNavigate,
+  });
 
-  final _Nearby lot;
+  final NearbyLot lot;
+  final bool closest;
+  final VoidCallback onNavigate;
+
+  String get _price {
+    final digits = lot.ratePerHour.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    return '\$$buffer/hr';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,8 +206,8 @@ class _NearbyCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.card),
         side: BorderSide(
-          color: lot.closest ? Palette.primary : Palette.border,
-          width: lot.closest ? 1.5 : 1,
+          color: closest ? Palette.primary : Palette.border,
+          width: closest ? 1.5 : 1,
         ),
       ),
       child: Padding(
@@ -201,10 +215,6 @@ class _NearbyCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (lot.closest) ...[
-              const _ClosestBadge(),
-              const SizedBox(height: Spacing.sm),
-            ],
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -212,33 +222,132 @@ class _NearbyCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (closest) ...[
+                        const _ClosestBadge(),
+                        const SizedBox(height: Spacing.sm),
+                      ],
                       Text(
                         lot.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.heading2,
                       ),
-                      const SizedBox(height: Spacing.sm),
-                      _MetaRow(lot: lot),
                     ],
                   ),
                 ),
                 const SizedBox(width: Spacing.md),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      lot.price,
-                      style: AppTypography.monoId.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                    _NavigateButton(primary: lot.closest),
-                  ],
+                Text(
+                  _price,
+                  style: AppTypography.monoId.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            Row(
+              children: [
+                const Icon(
+                  Icons.directions_walk,
+                  size: 12,
+                  color: Palette.textSecondary,
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Text(
+                    '${lot.walkMinutes} min',
+                    style: AppTypography.caption,
+                  ),
+                ),
+                const SizedBox(width: Spacing.sm),
+                _NavigateButton(primary: closest, onPressed: onNavigate),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavigateButton extends StatelessWidget {
+  const _NavigateButton({required this.primary, required this.onPressed});
+
+  final bool primary;
+  final VoidCallback onPressed;
+
+  static const _size = Size(88, 36);
+  static const _padding = EdgeInsets.symmetric(horizontal: Spacing.md);
+
+  @override
+  Widget build(BuildContext context) {
+    if (primary) {
+      return FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(minimumSize: _size, padding: _padding),
+        child: const Text('Navigate'),
+      );
+    }
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: _size,
+        padding: _padding,
+        foregroundColor: Palette.textPrimary,
+        backgroundColor: Palette.background,
+        side: const BorderSide(color: Palette.border),
+      ),
+      child: const Text('Navigate'),
+    );
+  }
+}
+
+class _NotifyCard extends StatelessWidget {
+  const _NotifyCard({required this.noSpots});
+
+  final NoSpotsViewModel noSpots;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Notify when campus opens up',
+                    style: AppTypography.heading2,
+                  ),
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    noSpots.watching
+                        ? 'On. We check every 30 s while the app is open.'
+                        : 'We\'ll ping you the moment a spot opens. Keep the '
+                              'app open.',
+                    style: AppTypography.caption,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            OutlinedButton(
+              onPressed: noSpots.toggleNotify,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(88, 36),
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                foregroundColor: Palette.secondary,
+                backgroundColor: Palette.secondarySoft,
+                side: BorderSide(
+                  color: Palette.secondary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Text(noSpots.watching ? 'Turn off' : 'Notify me'),
             ),
           ],
         ),
@@ -261,146 +370,6 @@ class _ClosestBadge extends StatelessWidget {
       child: Text(
         'CLOSEST',
         style: AppTypography.overline.copyWith(color: Palette.primary),
-      ),
-    );
-  }
-}
-
-// la linea de "4 min · 22 free" con las etiquetas de lit y guarded
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.lot});
-
-  final _Nearby lot;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: Spacing.sm,
-      runSpacing: Spacing.xs,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.directions_walk,
-              size: 12,
-              color: Palette.textSecondary,
-            ),
-            const SizedBox(width: 2),
-            Text(lot.walk, style: AppTypography.caption),
-          ],
-        ),
-        Text(
-          lot.free,
-          style: AppTypography.caption.copyWith(
-            color: Palette.success,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        for (final tag in lot.tags) _Tag(label: tag),
-      ],
-    );
-  }
-}
-
-// etiquetas chiquitas: lit es amarilla y guarded morada
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final isLit = label == 'Lit';
-    final color = isLit ? Palette.warningText : Palette.secondary;
-    final background = isLit ? Palette.warningSoft : Palette.secondarySoft;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(Radii.badge),
-      ),
-      child: Text(
-        label,
-        style: AppTypography.caption.copyWith(fontSize: 11, color: color),
-      ),
-    );
-  }
-}
-
-// boton de navigate: azul en la mas cercana, gris en las demas
-class _NavigateButton extends StatelessWidget {
-  const _NavigateButton({required this.primary});
-
-  final bool primary;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = Size(88, 32);
-    const padding = EdgeInsets.symmetric(horizontal: Spacing.sm);
-
-    if (primary) {
-      return FilledButton(
-        style: FilledButton.styleFrom(
-          minimumSize: size,
-          padding: padding,
-          textStyle: AppTypography.button.copyWith(fontSize: 12),
-        ),
-        onPressed: () {},
-        child: const Text('Navigate'),
-      );
-    }
-
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        minimumSize: size,
-        padding: padding,
-        backgroundColor: Palette.background,
-        foregroundColor: Palette.textPrimary,
-        side: const BorderSide(color: Palette.border),
-        textStyle: AppTypography.button.copyWith(fontSize: 12),
-      ),
-      onPressed: () {},
-      child: const Text('Navigate'),
-    );
-  }
-}
-
-// la card de abajo de "notify when campus opens up"
-
-class _NotifyCard extends StatelessWidget {
-  const _NotifyCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(Radii.card),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.md),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.notifications_none,
-                size: 20,
-                color: Palette.primary,
-              ),
-              const SizedBox(width: Spacing.sm),
-              Expanded(
-                child: Text(
-                  'Notify when campus opens up',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.heading2,
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 20, color: Palette.border),
-            ],
-          ),
-        ),
       ),
     );
   }
