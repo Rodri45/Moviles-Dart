@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
-import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/pill.dart';
 
 /// Pantalla 1 — Home. SOLO VISUAL, sin lógica.
@@ -17,8 +16,6 @@ import '../../../core/widgets/pill.dart';
 ///   6. Bottom nav con "Home" activo.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  static const String routeName = '/home';
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +50,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.home),
     );
   }
 }

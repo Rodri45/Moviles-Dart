@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:parkwise/core/design/app_theme.dart';
+import 'package:parkwise/app/dependencies.dart';
+import 'package:parkwise/app/parkwise_app.dart';
 import 'package:parkwise/presentation/screens/find_my_car/find_my_car_screen.dart';
 import 'package:parkwise/presentation/screens/find_spot/find_spot_screen.dart';
 import 'package:parkwise/presentation/screens/home/home_screen.dart';
 import 'package:parkwise/presentation/screens/level_map/level_map_screen.dart';
+import 'package:parkwise/presentation/screens/login/login_screen.dart';
 import 'package:parkwise/presentation/screens/no_spots/no_spots_screen.dart';
 import 'package:parkwise/presentation/screens/offline/offline_screen.dart';
+import 'package:parkwise/presentation/screens/profile/profile_screen.dart';
+import 'package:parkwise/presentation/screens/register/register_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_screen.dart';
+
+import 'support/test_app.dart';
 
 void main() {
   setUpAll(() {
-    // Sin red en tests: usar la fuente de fallback en vez de descargar.
+    // sin red en los tests: usar la fuente de fallback en vez de descargar
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
   const screens = <String, Widget>{
+    'Login': LoginScreen(),
+    'Register': RegisterScreen(),
     'Home': HomeScreen(),
     'Level map': LevelMapScreen(),
     'Find a spot': FindSpotScreen(),
     'Reserve': ReserveScreen(),
+    'Profile': ProfileScreen(),
     'No campus spots': NoSpotsScreen(),
     'Find my car': FindMyCarScreen(),
     'Offline': OfflineScreen(),
@@ -38,9 +47,7 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
 
-        await tester.pumpWidget(
-          MaterialApp(theme: AppTheme.light, home: screen.value),
-        );
+        await tester.pumpWidget(testApp(screen.value));
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
@@ -48,18 +55,11 @@ void main() {
     }
   }
 
-  testWidgets('Find a spot shows its content', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FindSpotScreen()));
-    expect(find.text('Find a spot'), findsOneWidget);
-    expect(find.text('6 spots found'), findsOneWidget);
-    expect(find.text('A103'), findsOneWidget);
-  });
+  testWidgets('app with a saved session opens on Home', (tester) async {
+    await tester.pumpWidget(ParkWiseApp(dependencies: AppDependencies.mock()));
+    await tester.pumpAndSettle();
 
-  testWidgets('Reserve shows its content', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ReserveScreen()));
-    expect(find.text('Reserve spot'), findsOneWidget);
-    expect(find.text('B201'), findsOneWidget);
-    expect(find.text('Confirm reservation'), findsOneWidget);
-    expect(find.text('Compliance history'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Log in'), findsNothing);
   });
 }

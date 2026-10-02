@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
-import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/pill.dart';
 
 // pantalla 2, el mapa de un nivel. solo es la vista, nada funciona
@@ -11,8 +10,6 @@ import '../../../core/widgets/pill.dart';
 // de puestos por zonas y abajo la hoja blanca con el puesto seleccionado
 class LevelMapScreen extends StatelessWidget {
   const LevelMapScreen({super.key});
-
-  static const String routeName = '/level-map';
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +52,6 @@ class LevelMapScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.map),
     );
   }
 }

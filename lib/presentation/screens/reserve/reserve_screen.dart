@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
-import '../../../core/widgets/app_tab_bar.dart';
 
 // pantalla 4, reserve. solo es la vista, el boton de confirmar no hace nada
 // tiene la card del puesto con el circulo del tiempo, el aviso amarillo
 // y abajo el historial
 class ReserveScreen extends StatelessWidget {
   const ReserveScreen({super.key});
-
-  static const String routeName = '/reserve';
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +41,6 @@ class ReserveScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.reserve),
     );
   }
 }

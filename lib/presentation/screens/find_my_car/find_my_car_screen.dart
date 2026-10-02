@@ -4,6 +4,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../shell/main_shell.dart';
 
 class FindMyCarScreen extends StatelessWidget {
   const FindMyCarScreen({super.key});
@@ -64,7 +65,10 @@ class FindMyCarScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.map),
+      bottomNavigationBar: AppTabBar(
+        current: AppTab.map,
+        onSelected: (tab) => MainShell.openTab(context, tab),
+      ),
     );
   }
 }

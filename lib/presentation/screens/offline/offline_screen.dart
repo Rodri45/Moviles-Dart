@@ -4,6 +4,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../shell/main_shell.dart';
 
 class OfflineScreen extends StatelessWidget {
   const OfflineScreen({super.key});
@@ -54,7 +55,10 @@ class OfflineScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.home),
+      bottomNavigationBar: AppTabBar(
+        current: AppTab.home,
+        onSelected: (tab) => MainShell.openTab(context, tab),
+      ),
     );
   }
 }

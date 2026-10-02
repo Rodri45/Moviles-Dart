@@ -4,6 +4,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../shell/main_shell.dart';
 import '../../../core/widgets/pill.dart';
 
 // pantalla 3, find a spot. solo es la vista, los botones no hacen nada
@@ -43,7 +44,10 @@ class FindSpotScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const AppTabBar(current: AppTab.home),
+      bottomNavigationBar: AppTabBar(
+        current: AppTab.home,
+        onSelected: (tab) => MainShell.openTab(context, tab),
+      ),
     );
   }
 }
