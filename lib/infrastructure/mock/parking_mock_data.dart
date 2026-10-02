@@ -6,7 +6,6 @@ import '../../domain/entities/parking_level.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/entities/reservation.dart';
 
-// datos inventados con la misma forma que el backend, para pruebas
 abstract final class ParkingMockData {
   static final DateTime now = DateTime(2026, 10, 2, 8);
 
@@ -95,8 +94,6 @@ abstract final class ParkingMockData {
     );
   }
 
-  // arma una zona como la del seed del backend: el puesto 1 es accesible,
-  // el 2 electrico y el 3 vip. los primeros [free] quedan libres
   static List<ParkingSpot> _zone(
     String level,
     String zone,

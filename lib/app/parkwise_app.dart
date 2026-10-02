@@ -5,7 +5,6 @@ import '../core/design/app_theme.dart';
 import 'app_router.dart';
 import 'dependencies.dart';
 
-// aqui arranca la app, pone las dependencias, el tema y las rutas
 class ParkWiseApp extends StatelessWidget {
   const ParkWiseApp({super.key, required this.dependencies});
 

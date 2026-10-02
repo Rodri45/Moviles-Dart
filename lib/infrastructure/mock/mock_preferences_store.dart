@@ -1,6 +1,5 @@
 import '../../domain/ports/preferences_store.dart';
 
-// version de mentira, guarda el destino en memoria
 class MockPreferencesStore implements PreferencesStore {
   MockPreferencesStore({this.destination = 'ml'});
 

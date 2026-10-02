@@ -2,16 +2,19 @@ import 'dart:async';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/ports/auth_repository.dart';
+import '../storage/local_cache.dart';
 import '../storage/session_store.dart';
 import 'api_client.dart';
 
 class HttpAuthRepository implements AuthRepository {
-  HttpAuthRepository(this._client, this._session) {
+  HttpAuthRepository(this._client, this._session, this._cache) {
     _client.onUnauthorized = _expire;
   }
 
   final ApiClient _client;
   final SessionStore _session;
+
+  final LocalCache _cache;
   final _expired = StreamController<void>.broadcast();
 
   @override
@@ -42,7 +45,10 @@ class HttpAuthRepository implements AuthRepository {
       _session.token == null ? null : _session.user;
 
   @override
-  Future<void> logout() => _session.clear();
+  Future<void> logout() async {
+    await _session.clear();
+    await _cache.clear();
+  }
 
   @override
   Stream<void> get sessionExpired => _expired.stream;
@@ -55,7 +61,7 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   Future<void> _expire() async {
-    await _session.clear();
+    await logout();
     _expired.add(null);
   }
 }

@@ -7,7 +7,6 @@ class HivePreferencesStore implements PreferencesStore {
 
   static const _destinationKey = 'destination';
 
-  // el mismo default que usa el backend
   static const defaultDestination = 'ml';
 
   final Box<String> _box;

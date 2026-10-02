@@ -10,7 +10,6 @@ import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 import '../level_map/level_map_view_model.dart';
 
-// lista de puestos de todos los niveles con filtros, ordenada por minutos
 class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   FindSpotViewModel(
     this._parking,
@@ -75,7 +74,6 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
             filters: requested,
           ),
       ]);
-      // si cambiaron los filtros mientras cargaba se descarta
       if (requested != filters) return;
       _spots = [for (final level in perLevel) ...level.data]
         ..sort((a, b) => a.walkMinutes.compareTo(b.walkMinutes));

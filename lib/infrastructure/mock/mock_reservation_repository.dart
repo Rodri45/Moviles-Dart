@@ -4,8 +4,6 @@ import '../../domain/errors.dart';
 import '../../domain/ports/reservation_repository.dart';
 import 'parking_mock_data.dart';
 
-// version de mentira, guarda la reserva en una variable y ya.
-// createError sirve para simular el 409 del backend
 class MockReservationRepository implements ReservationRepository {
   MockReservationRepository({this.clock});
 

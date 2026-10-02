@@ -4,8 +4,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../domain/entities/app_user.dart';
 
-// guarda el token y el usuario en el almacenamiento cifrado del celular.
-// tambien los deja en memoria porque ApiClient lee el token en cada peticion
 class SessionStore {
   SessionStore([FlutterSecureStorage? storage])
     : _storage = storage ?? const FlutterSecureStorage();

@@ -4,8 +4,6 @@ import '../../domain/entities/app_user.dart';
 import '../../domain/errors.dart';
 import '../../domain/ports/auth_repository.dart';
 
-// version de mentira. password correcto: "secret123".
-// meError sirve para simular que el token vencio o que no hay red
 class MockAuthRepository implements AuthRepository {
   MockAuthRepository({this.saved});
 

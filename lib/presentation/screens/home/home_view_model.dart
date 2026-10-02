@@ -12,7 +12,6 @@ import '../../../domain/ports/preferences_store.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
-// resumen de niveles, destino, pronostico del dia y nivel recomendado
 class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   HomeViewModel(
     this._parking,
@@ -40,7 +39,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   bool isLoading = false;
   String? errorMessage;
 
-  // se prende cuando el campus pasa a estar lleno, para abrir no_spots una vez
   bool campusFullPending = false;
 
   String get destination => _preferences.destination;
@@ -49,7 +47,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
 
   int get currentHour => _clock().hour;
 
-  // 8 barras empezando una hora antes de ahora
   List<HourlyOccupancy> get forecast {
     if (_forecasts.isEmpty) return const [];
     final start = (currentHour - 1).clamp(0, 16);
@@ -75,7 +72,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
-  // si la hora ya paso hoy se entiende que es mañana
   Future<void> setArrivalTime(int hour, int minute) async {
     final now = _clock();
     var arrival = DateTime(now.year, now.month, now.day, hour, minute);
@@ -99,9 +95,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     }
   }
 
-  // BQ4: la zona redondeada a 2 decimales para la demanda no atendida. home
-  // solo se ve con sesion, asi que basta con revisar el permiso. no se pide
-  // permiso aqui; se usa la ultima posicion para no demorar los niveles
   Future<String?> _zone() async {
     if (await _location.checkAccess() != LocationAccess.granted) return null;
     final position =
@@ -110,8 +103,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     return position?.toZone();
   }
 
-  // el destino, la grafica y la recomendacion son extras: si fallan la
-  // pantalla sigue mostrando los niveles
   Future<void> _loadBuildings() async {
     try {
       buildings = await _parking.getBuildings();

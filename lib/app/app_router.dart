@@ -7,8 +7,6 @@ import '../presentation/screens/offline/offline_screen.dart';
 import '../presentation/screens/register/register_screen.dart';
 import '../presentation/shell/auth_gate.dart';
 
-// las rutas de las pantallas que se abren encima de las tabs. home, mapa,
-// reserva y perfil no son rutas, viven dentro de MainShell
 abstract final class AppRouter {
   static const String root = '/';
 

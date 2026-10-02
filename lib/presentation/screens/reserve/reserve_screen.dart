@@ -15,8 +15,6 @@ import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
 import 'reserve_view_model.dart';
 
-// pantalla 4, reserve. la card del puesto con el circulo del tiempo, el
-// aviso amarillo de cuando reservar y abajo el historial
 class ReserveScreen extends StatelessWidget {
   const ReserveScreen({super.key});
 
@@ -75,8 +73,6 @@ class ReserveScreen extends StatelessWidget {
   }
 }
 
-// titulo de arriba
-
 class _Header extends StatelessWidget {
   const _Header({required this.reserve});
 
@@ -123,15 +119,11 @@ class _Header extends StatelessWidget {
   }
 }
 
-// la card grande con el puesto, el circulo y los botones. cambia segun si
-// no hay nada, hay un puesto elegido, una reserva activa o ya parqueo
-
 class _SpotCard extends StatelessWidget {
   const _SpotCard({required this.reserve});
 
   final ReserveViewModel reserve;
 
-  // antes del dialogo del sistema se explica para que sirve el gps
   Future<void> _checkIn(BuildContext context) async {
     if (await reserve.shouldExplainLocation() && context.mounted) {
       final allow = await showLocationRationale(context);
@@ -262,7 +254,6 @@ class _SpotCard extends StatelessWidget {
   }
 }
 
-// cuando todavia no han elegido puesto
 class _EmptyCard extends StatelessWidget {
   const _EmptyCard();
 
@@ -318,7 +309,6 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-// el circulo con el tiempo que queda adentro
 class _HoldTimeRing extends StatelessWidget {
   const _HoldTimeRing({
     required this.label,

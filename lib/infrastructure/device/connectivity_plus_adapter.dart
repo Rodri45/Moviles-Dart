@@ -2,7 +2,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../domain/ports/connectivity_port.dart';
 
-// el estado de la red real usando connectivity_plus
 class ConnectivityPlusAdapter implements ConnectivityPort {
   ConnectivityPlusAdapter([Connectivity? connectivity])
     : _connectivity = connectivity ?? Connectivity();

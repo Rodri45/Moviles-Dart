@@ -3,7 +3,6 @@ import 'dart:math';
 import '../../domain/entities/geo_point.dart';
 import '../../domain/ports/location_provider.dart';
 
-// version de mentira del gps. position null simula que no hay señal
 class MockLocationProvider implements LocationProvider {
   MockLocationProvider({
     this.access = LocationAccess.granted,
@@ -32,7 +31,6 @@ class MockLocationProvider implements LocationProvider {
   @override
   Stream<GeoPoint> watchPosition() => const Stream.empty();
 
-  // aproximacion plana, sirve para distancias cortas
   @override
   double distanceMeters(GeoPoint from, GeoPoint to) {
     const metersPerDegree = 111320.0;

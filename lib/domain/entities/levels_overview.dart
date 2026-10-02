@@ -1,6 +1,5 @@
 import 'parking_level.dart';
 
-// la respuesta de GET /levels: los niveles y si el campus esta lleno
 class LevelsOverview {
   const LevelsOverview({
     required this.generatedAt,

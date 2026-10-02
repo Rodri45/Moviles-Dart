@@ -4,7 +4,6 @@ import '../../domain/ports/vehicle_locator.dart';
 import '../storage/local_cache.dart';
 import 'api_client.dart';
 
-// GET /vehicle para el puesto y hive para la posicion gps del carro
 class HttpVehicleLocator implements VehicleLocator {
   HttpVehicleLocator(this._client, this._cache);
 

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-// la explicacion que sale antes del dialogo de permiso de android.
-// devuelve true si el usuario quiere dar el permiso
 Future<bool> showLocationRationale(BuildContext context) async {
   final allow = await showDialog<bool>(
     context: context,

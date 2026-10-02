@@ -10,8 +10,6 @@ import '../../domain/ports/parking_repository.dart';
 import '../storage/local_cache.dart';
 import 'api_client.dart';
 
-// niveles, puestos y catalogo desde el backend. guarda la ultima respuesta
-// buena y la devuelve marcada como fromCache si la red o el servidor fallan
 class HttpParkingRepository implements ParkingRepository {
   HttpParkingRepository(this._client, this._cache, {DateTime Function()? clock})
     : _clock = clock ?? DateTime.now;
@@ -50,7 +48,6 @@ class HttpParkingRepository implements ParkingRepository {
         _parseSpots,
       );
     } catch (e) {
-      // si nunca se pidio con estos filtros, se filtra la copia completa
       final entry = filters.isEmpty || !ApiClient.isNetworkFailure(e)
           ? null
           : _cache.read(baseKey);

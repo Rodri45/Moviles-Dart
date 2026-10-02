@@ -15,7 +15,6 @@ import '../../../domain/ports/vehicle_locator.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
-// reservar, la cuenta regresiva, check-in y soltar el puesto
 class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   ReserveViewModel(
     this._reservations,
@@ -37,7 +36,6 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   Timer? _ticker;
   final Set<String> _warned = {};
 
-  // el puesto que eligieron en el mapa o en find a spot, aun sin reservar
   ParkingSpot? pendingSpot;
   Reservation? reservation;
   List<Reservation> history = const [];
@@ -45,14 +43,12 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   bool isBusy = false;
   String? errorMessage;
 
-  // se prende una vez por reserva cuando faltan 3 min y el usuario esta lejos
   bool expiryAlert = false;
 
   bool get isActive => reservation?.status == ReservationStatus.active;
   bool get isParked => reservation?.status == ReservationStatus.fulfilled;
   int get holdMinutes => advice?.holdMinutes ?? 15;
 
-  // se calcula con el expiresAt del servidor, no con un timer local
   Duration get remaining => reservation?.remaining(_clock()) ?? Duration.zero;
 
   Future<void> load() async {
@@ -87,13 +83,11 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     });
   }
 
-  // true si hay que explicar para que se usa el gps antes de pedirlo
   Future<bool> shouldExplainLocation() async =>
       await _location.checkAccess() == LocationAccess.denied;
 
   Future<void> requestLocation() => _location.requestAccess();
 
-  // si no ha hecho check-in queda cancelada, si ya parqueo queda liberada
   Future<void> release() async {
     final current = reservation;
     if (current == null) return;
@@ -137,7 +131,6 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     }
   }
 
-  // el backend manda 409 por varias razones, se distinguen por el mensaje
   String? _conflictMessage(ApiException e) {
     if (e.statusCode != 409) return null;
     final message = e.message.toLowerCase();
@@ -152,8 +145,6 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     return e.message;
   }
 
-  // la posicion del carro queda en el celular para find my car. bajo tierra
-  // puede no haber gps y se guarda solo el nivel y el puesto
   Future<void> _saveCarLocation(Reservation parked) async {
     final position = await _location.currentPosition();
     await _vehicles.saveLocation(
@@ -202,7 +193,6 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     final current = reservation;
     if (current == null) return;
     if (remaining == Duration.zero) {
-      // se vencio: el backend ya la marco como expired
       _setReservation(null);
       errorMessage = 'Your reservation for ${current.spotCode} expired.';
       _loadHistory().then((_) => notifyListeners());
@@ -212,7 +202,6 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
-  // solo avisa si ya hay permiso de gps, no lo pide en medio de la cuenta
   Future<void> _checkDistance() async {
     if (await _location.checkAccess() != LocationAccess.granted) return;
     final position = await _location.currentPosition();

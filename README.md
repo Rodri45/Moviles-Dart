@@ -13,19 +13,27 @@ Requisitos: Flutter 3.47+ (`flutter doctor` sin errores en "Android toolchain").
 ```bash
 flutter pub get
 
-# contra el backend desplegado
-flutter run --dart-define=API_BASE_URL=https://<servicio>.onrender.com
-
-# contra el backend local desde el emulador (es el valor por defecto)
+# contra el backend desplegado en Render (es el valor por defecto)
 flutter run
+
+# contra el backend local desde el emulador
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+
+# APK para instalar en cualquier celular
+flutter build apk --release
 ```
 
 `API_BASE_URL` se lee en `lib/core/config/api_config.dart`. Sin ese valor la
-app usa `http://10.0.2.2:3000`, que es el backend local visto desde el
-emulador. El tráfico `http://` solo está permitido en builds de debug.
+app usa `https://parkwise-api-a1f0.onrender.com`. El tráfico `http://` solo
+está permitido en builds de debug.
 
-Para probar en un celular contra el backend local, usa la IP del computador
-en la red (`--dart-define=API_BASE_URL=http://192.168.x.x:3000`).
+Render se duerme después de 15 minutos sin uso y tarda cerca de un minuto en
+despertar. Si la app dice que el servidor no responde, abre
+`https://parkwise-api-a1f0.onrender.com/health` y espera a que conteste.
+
+Para probar en un celular contra el backend local, conéctalo por cable y usa
+`adb reverse tcp:3000 tcp:3000` con
+`--dart-define=API_BASE_URL=http://localhost:3000`.
 
 ### En un celular Android (recomendado)
 
@@ -35,15 +43,14 @@ en la red (`--dart-define=API_BASE_URL=http://192.168.x.x:3000`).
    - Samsung: si el interruptor está gris, desactiva primero
      **Ajustes → Seguridad y privacidad → Bloqueador automático**.
 3. Conecta el cable, acepta el popup "¿Permitir depuración USB?".
-4. `flutter devices` debe mostrar tu celular. Luego `flutter run` con la URL
-   del backend (ver arriba).
+4. `flutter devices` debe mostrar tu celular. Luego `flutter run`.
 5. La primera compilación tarda 2-3 min; las siguientes son rápidas.
 
 ### En emulador
 
 Android Studio → Device Manager → crear un Pixel → Play. Luego `flutter run`.
 Desde el emulador, `http://10.0.2.2:3000` es el `localhost` del computador,
-así que con el backend corriendo local no hace falta pasar la URL.
+por si quieres usar el backend local.
 
 ### Mientras corre
 
@@ -71,6 +78,7 @@ Las pruebas no llaman al backend: usan los mocks de
 | `test/reserve_view_model_test.dart` | Reserva 201, los dos 409, cuenta regresiva con `expiresAt`, check-in, aviso de vencimiento |
 | `test/auth_view_model_test.dart` | Login, errores, registro y restauración de la sesión |
 | `test/recommend_spot_test.dart` | El puesto recomendado es el libre con menos minutos; zona BQ4 |
+| `test/no_spots_view_model_test.dart` | Parqueaderos cercanos, Navigate y el aviso de Notify me |
 | `test/screens_smoke_test.dart` | Cada pantalla a 390 px y 320 px de ancho sin overflow |
 
 ## Arquitectura
@@ -96,7 +104,7 @@ lib/
 │   └── errors.dart              ApiException, NetworkException, CircuitOpenException
 ├── infrastructure/              implementaciones de los puertos
 │   ├── http/                    ApiClient, CircuitBreaker, repositorios, TelemetryClient
-│   ├── device/                  geolocator, connectivity_plus, device_info_plus
+│   ├── device/                  geolocator, connectivity_plus, device_info_plus, url_launcher
 │   ├── storage/                 SessionStore (secure storage), Hive
 │   └── mock/                    versiones de mentira para las pruebas
 └── presentation/

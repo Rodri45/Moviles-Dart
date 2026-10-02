@@ -1,6 +1,5 @@
 import 'parking_spot.dart';
 
-// los filtros de puestos. el name es el mismo que pide la telemetria
 enum SpotFilter {
   available,
   vip,

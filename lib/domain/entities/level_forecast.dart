@@ -1,5 +1,3 @@
-// un punto de la prediccion: en el slot "08:15" el nivel va a estar asi de
-// lleno (de 0 a 1). null si no hay historia para ese slot
 class ForecastPoint {
   const ForecastPoint({required this.slot, required this.occupancy});
 
@@ -14,7 +12,6 @@ class ForecastPoint {
   int get hour => int.parse(slot.substring(0, 2));
 }
 
-// la prediccion del dia para un nivel, 96 puntos de 15 minutos
 class LevelForecast {
   const LevelForecast({required this.code, required this.points});
 
@@ -30,7 +27,6 @@ class LevelForecast {
   final List<ForecastPoint> points;
 }
 
-// una barra de la grafica de home
 class HourlyOccupancy {
   const HourlyOccupancy({required this.hour, required this.occupancy});
 
@@ -38,8 +34,6 @@ class HourlyOccupancy {
   final double? occupancy;
 }
 
-// junta los slots de 15 min de todos los niveles en un promedio por hora.
-// los slots sin datos no cuentan en el promedio
 List<HourlyOccupancy> hourlyOccupancy(List<LevelForecast> forecasts) {
   final sums = List<double>.filled(24, 0);
   final counts = List<int>.filled(24, 0);

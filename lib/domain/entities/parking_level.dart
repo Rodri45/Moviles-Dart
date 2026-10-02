@@ -1,6 +1,5 @@
 enum OccupancyStatus { available, limited, full, offline }
 
-// un piso del parqueadero (P1, P2, P3) con el conteo que manda el backend
 class ParkingLevel {
   const ParkingLevel({
     required this.code,

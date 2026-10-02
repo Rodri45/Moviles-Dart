@@ -7,8 +7,6 @@ import '../entities/nearby_lot.dart';
 import '../entities/parking_spot.dart';
 import '../entities/spot_filter.dart';
 
-// interfaz para pedir niveles, puestos, predicciones y recomendaciones.
-// getLevels y getSpots pueden devolver la copia local si la red falla
 abstract interface class ParkingRepository {
   Future<Cached<LevelsOverview>> getLevels({String? zone});
 

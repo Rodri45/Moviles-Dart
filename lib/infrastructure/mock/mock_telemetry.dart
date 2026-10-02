@@ -1,6 +1,5 @@
 import '../../domain/ports/telemetry.dart';
 
-// version de mentira, guarda los eventos para revisarlos en las pruebas
 class MockTelemetry implements Telemetry {
   final List<({String name, Map<String, Object> properties})> events = [];
 

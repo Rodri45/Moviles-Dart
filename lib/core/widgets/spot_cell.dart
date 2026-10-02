@@ -5,8 +5,6 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-// un puesto del mapa del nivel. el color depende del estado y adentro van
-// los minutos a pie hasta el edificio destino
 class SpotCell extends StatelessWidget {
   const SpotCell({
     super.key,
@@ -40,11 +38,9 @@ class SpotCell extends StatelessWidget {
     };
   }
 
-  Color get _text {
-    if (spot.mine) return Palette.primary;
-    if (spot.isFree) return Palette.success;
-    return Palette.textSecondary.withValues(alpha: 0.6);
-  }
+  bool get _showDot => onTap != null && (spot.isFree || spot.mine || selected);
+
+  Color get _dot => selected || spot.mine ? Palette.primary : Palette.success;
 
   @override
   Widget build(BuildContext context) {
@@ -62,15 +58,16 @@ class SpotCell extends StatelessWidget {
         child: SizedBox(
           height: 30,
           child: Center(
-            child: Text(
-              '${spot.walkMinutes}m',
-              maxLines: 1,
-              style: AppTypography.monoData.copyWith(
-                fontSize: 10,
-                color: _text,
-                fontWeight: emphasized ? FontWeight.w500 : FontWeight.w400,
-              ),
-            ),
+            child: _showDot
+                ? Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: _dot,
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                : null,
           ),
         ),
       ),
@@ -78,7 +75,6 @@ class SpotCell extends StatelessWidget {
   }
 }
 
-// la explicacion de los colores de SpotCell
 class SpotLegend extends StatelessWidget {
   const SpotLegend({super.key});
 

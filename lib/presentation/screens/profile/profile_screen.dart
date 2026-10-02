@@ -10,7 +10,6 @@ import '../../../domain/entities/app_user.dart';
 import '../login/auth_view_model.dart';
 import 'profile_view_model.dart';
 
-// perfil: iniciales, nombre, email, historial de reservas y cerrar sesion
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -94,7 +93,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-// la card con el circulo de iniciales, el nombre y el email
 class _UserCard extends StatelessWidget {
   const _UserCard({required this.user, required this.offline});
 

@@ -9,8 +9,6 @@ import '../../../core/widgets/notice_banner.dart';
 import '../login/auth_view_model.dart';
 import '../login/login_screen.dart';
 
-// registro: nombre, email, contraseña y confirmacion. el boton queda
-// apagado hasta que todo es valido
 class RegisterScreen extends StatelessWidget {
   const RegisterScreen({super.key});
 

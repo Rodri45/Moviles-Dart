@@ -11,7 +11,6 @@ import '../../../domain/ports/location_provider.dart';
 import '../../shell/main_shell.dart';
 import 'find_my_car_view_model.dart';
 
-// pantalla 6, find my car: el puesto donde quedo el carro y cuanto falta a pie
 class FindMyCarScreen extends StatefulWidget {
   const FindMyCarScreen({super.key});
 
@@ -33,7 +32,6 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) => _car.start());
   }
 
-  // al volver de los ajustes puede que ya hayan dado el permiso
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _car.refreshAccess();
@@ -144,6 +142,8 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
         distance: meters == null ? null : '~${meters.round()}m',
       ),
       const SizedBox(height: Spacing.md),
+      const _RouteToggle(),
+      const SizedBox(height: Spacing.md),
       for (final step in _stepsFor(car)) ...[
         _StepCard(step: step),
         const SizedBox(height: Spacing.sm),
@@ -151,7 +151,6 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
     ];
   }
 
-  // pasos sencillos con lo que se sabe: nivel, zona y puesto
   List<_Step> _stepsFor(FindMyCarViewModel car) => [
     (icon: Icons.stairs_outlined, text: 'Go to Level ${car.levelCode}'),
     if (car.zone != null)
@@ -161,8 +160,6 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
 }
 
 typedef _Step = ({IconData icon, String text});
-
-// titulo de arriba
 
 class _Header extends StatelessWidget {
   const _Header({required this.car});
@@ -204,7 +201,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-// cuando no hay carro parqueado
 class _NoCarCard extends StatelessWidget {
   const _NoCarCard();
 
@@ -235,8 +231,6 @@ class _NoCarCard extends StatelessWidget {
   }
 }
 
-// la explicacion del gps antes de pedir el permiso, o el boton de ajustes
-// si ya lo negaron para siempre
 class _PermissionCard extends StatelessWidget {
   const _PermissionCard({required this.car});
 
@@ -297,8 +291,6 @@ class _PermissionCard extends StatelessWidget {
   }
 }
 
-// las dos cards de arriba (spot y walk)
-
 class _InfoCard extends StatelessWidget {
   const _InfoCard({
     required this.label,
@@ -346,8 +338,6 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-// la card del mapita del piso
-
 class _FloorViewCard extends StatelessWidget {
   const _FloorViewCard({
     required this.levelCode,
@@ -387,14 +377,11 @@ class _FloorViewCard extends StatelessWidget {
   }
 }
 
-// el mapa: una cuadricula de puestos grises y encima la ruta, la etiqueta
-// del carro y la de la entrada. todo se calcula con el ancho disponible
 class _FloorMap extends StatelessWidget {
   const _FloorMap({required this.spotCode, required this.distance});
 
   final String spotCode;
 
-  // "~120m", o null si no hay gps para calcularlo
   final String? distance;
 
   static const int _cols = 6;
@@ -402,7 +389,6 @@ class _FloorMap extends StatelessWidget {
   static const double _gap = Spacing.sm;
   static const double _cellHeight = 22;
 
-  // fila y columna del carro y de las celdas de la ruta (empezando en 0)
   static const _carRow = 2;
   static const _carCol = 0;
   static const _solidCell = (row: 3, col: 1);
@@ -419,7 +405,6 @@ class _FloorMap extends StatelessWidget {
       builder: (context, constraints) {
         final cellWidth = (constraints.maxWidth - _gap * (_cols - 1)) / _cols;
         final gridHeight = _rows * _cellHeight + (_rows - 1) * _gap;
-        // la etiqueta de entrance va debajo de la ultima fila
         const entranceSpace = 28.0;
 
         double left(int col) => col * (cellWidth + _gap);
@@ -430,7 +415,6 @@ class _FloorMap extends StatelessWidget {
           height: gridHeight + entranceSpace,
           child: Stack(
             children: [
-              // la cuadricula
               for (var r = 0; r < _rows; r++)
                 for (var c = 0; c < _cols; c++)
                   Positioned(
@@ -444,7 +428,6 @@ class _FloorMap extends StatelessWidget {
                       hidden: r == _carRow && c == _carCol,
                     ),
                   ),
-              // la linea punteada azul del carro a la entrada
               Positioned(
                 left: lineX - 1,
                 top: top(_carRow) + _cellHeight,
@@ -452,7 +435,6 @@ class _FloorMap extends StatelessWidget {
                 height: gridHeight - top(_carRow) - _cellHeight + Spacing.sm,
                 child: const _DashedLine(),
               ),
-              // el "~120m" al lado de la linea
               if (distance != null)
                 Positioned(
                   left: lineX + Spacing.sm,
@@ -462,7 +444,6 @@ class _FloorMap extends StatelessWidget {
                     style: AppTypography.monoData.copyWith(fontSize: 9),
                   ),
                 ),
-              // la etiqueta del carro
               Positioned(
                 left: 0,
                 top: top(_carRow) - 2,
@@ -473,7 +454,6 @@ class _FloorMap extends StatelessWidget {
                   icon: Icons.directions_car,
                 ),
               ),
-              // la etiqueta de la entrada
               Positioned(
                 left: 0,
                 top: gridHeight + Spacing.xs,
@@ -491,7 +471,6 @@ class _FloorMap extends StatelessWidget {
   }
 }
 
-// un puestico gris del mapa. solid = azul lleno, path = borde azul
 class _MapCell extends StatelessWidget {
   const _MapCell({
     required this.solid,
@@ -517,7 +496,6 @@ class _MapCell extends StatelessWidget {
   }
 }
 
-// las etiquetas del mapa (el puesto y ENTRANCE)
 class _MapChip extends StatelessWidget {
   const _MapChip({
     required this.label,
@@ -557,7 +535,6 @@ class _MapChip extends StatelessWidget {
   }
 }
 
-// linea vertical punteada
 class _DashedLine extends StatelessWidget {
   const _DashedLine();
 
@@ -590,7 +567,67 @@ class _DashedLinePainter extends CustomPainter {
   bool shouldRepaint(_DashedLinePainter oldDelegate) => false;
 }
 
-// cada paso de la ruta
+class _RouteToggle extends StatelessWidget {
+  const _RouteToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(
+          child: _RouteOption(label: 'Direct route', selected: true),
+        ),
+        const SizedBox(width: Spacing.sm),
+        Expanded(
+          child: _RouteOption(
+            label: 'Lit route',
+            selected: false,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Lit route is coming soon.')),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RouteOption extends StatelessWidget {
+  const _RouteOption({required this.label, required this.selected, this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? Palette.primarySoft : Palette.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.sm),
+        side: BorderSide(
+          color: selected ? Palette.primary : Palette.border,
+          width: selected ? 1.5 : 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.sm),
+        child: SizedBox(
+          height: 44,
+          child: Center(
+            child: Text(
+              label,
+              style: AppTypography.button.copyWith(
+                color: selected ? Palette.primary : Palette.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _StepCard extends StatelessWidget {
   const _StepCard({required this.step});

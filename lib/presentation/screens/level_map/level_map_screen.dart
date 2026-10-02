@@ -16,9 +16,6 @@ import '../../shell/shell_view_model.dart';
 import '../reserve/reserve_view_model.dart';
 import 'level_map_view_model.dart';
 
-// pantalla 2, el mapa de un nivel. arriba el titulo con los botones P1 P2 P3,
-// la leyenda y los filtros, en la mitad los puestos por zona y abajo la hoja
-// blanca con el puesto seleccionado
 class LevelMapScreen extends StatefulWidget {
   const LevelMapScreen({super.key});
 
@@ -47,8 +44,6 @@ class _LevelMapScreenState extends State<LevelMapScreen>
     setState(() => _resumed = state == AppLifecycleState.resumed);
   }
 
-  // el refresco de 5 s solo corre si esta es la tab abierta, no hay otra
-  // pantalla encima y la app esta en primer plano
   void _syncVisibility(bool visible) {
     if (visible == _visible) return;
     _visible = visible;
@@ -87,7 +82,6 @@ class _LevelMapScreenState extends State<LevelMapScreen>
               child: Stack(
                 children: [
                   ListView(
-                    // el padding de abajo es para que la hoja no tape el mapa
                     padding: const EdgeInsets.fromLTRB(
                       Spacing.md,
                       Spacing.md,
@@ -148,8 +142,6 @@ class _LevelMapScreenState extends State<LevelMapScreen>
     );
   }
 }
-
-// la parte blanca de arriba: titulo, botones de nivel, leyenda y filtros
 
 class _Header extends StatelessWidget {
   const _Header({required this.map});
@@ -234,8 +226,6 @@ class _Header extends StatelessWidget {
   }
 }
 
-// la card de "ENTRANCE / EXIT" con la flechita del norte
-
 class _EntranceCard extends StatelessWidget {
   const _EntranceCard();
 
@@ -251,16 +241,15 @@ class _EntranceCard extends StatelessWidget {
           children: [
             const Icon(Icons.sync_alt, size: 16, color: Palette.textSecondary),
             const SizedBox(width: Spacing.sm),
-            Expanded(
-              child: Text(
-                'ENTRANCE / EXIT',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.overline.copyWith(
-                  color: Palette.textPrimary,
-                ),
+            Text(
+              'ENTRANCE / EXIT',
+              style: AppTypography.overline.copyWith(
+                color: Palette.textPrimary,
               ),
             ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(child: Container(height: 1, color: Palette.border)),
+            const SizedBox(width: Spacing.sm),
             const Icon(
               Icons.arrow_forward,
               size: 12,
@@ -274,8 +263,6 @@ class _EntranceCard extends StatelessWidget {
     );
   }
 }
-
-// una zona completa: el titulo, la rayita punteada y las filas de puestos
 
 class _ZoneSection extends StatelessWidget {
   const _ZoneSection({
@@ -343,7 +330,6 @@ class _ZoneSection extends StatelessWidget {
   }
 }
 
-// la linea gris punteada que hace como la via
 class _RoadLine extends StatelessWidget {
   const _RoadLine();
 
@@ -370,8 +356,6 @@ class _RoadLine extends StatelessWidget {
     );
   }
 }
-
-// la hoja blanca de abajo con el puesto seleccionado y el boton de reservar
 
 class _SelectedSpotSheet extends StatelessWidget {
   const _SelectedSpotSheet({
@@ -407,7 +391,6 @@ class _SelectedSpotSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // la rayita gris de arriba de la hoja
           Center(
             child: Container(
               width: 36,
@@ -463,7 +446,6 @@ class _SelectedSpotSheet extends StatelessWidget {
               ),
               if (!isRecommendation) ...[
                 const SizedBox(width: Spacing.sm),
-                // el boton de la x para cerrar
                 SizedBox(
                   width: Spacing.touchTarget,
                   height: Spacing.touchTarget,

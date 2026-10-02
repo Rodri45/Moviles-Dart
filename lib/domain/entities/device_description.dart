@@ -1,4 +1,3 @@
-// el celular que se reporta en map_loaded (BQ1)
 class DeviceDescription {
   const DeviceDescription({
     required this.model,

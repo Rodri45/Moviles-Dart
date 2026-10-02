@@ -1,6 +1,5 @@
 enum SpotStatus { free, reserved, occupied, disabled }
 
-// un puesto de parqueo, tipo "A-07" del nivel P1
 class ParkingSpot {
   const ParkingSpot({
     required this.id,
@@ -20,7 +19,6 @@ class ParkingSpot {
     code: json['code'] as String,
     zone: json['zone'] as String,
     levelCode: json['levelCode'] as String,
-    // si el backend manda un estado nuevo lo tratamos como no disponible
     status:
         SpotStatus.values.asNameMap()[json['status']] ?? SpotStatus.disabled,
     walkMinutes: (json['walkMinutes'] as num).toInt(),
@@ -40,7 +38,6 @@ class ParkingSpot {
   final bool isEv;
   final bool isVip;
 
-  // true si es el puesto que tiene reservado el usuario
   final bool mine;
 
   bool get isFree => status == SpotStatus.free;

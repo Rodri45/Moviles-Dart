@@ -1,4 +1,3 @@
-// parqueadero de afuera del campus para cuando todo esta lleno
 class NearbyLot {
   const NearbyLot({
     required this.id,

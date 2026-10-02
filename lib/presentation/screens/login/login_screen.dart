@@ -9,7 +9,6 @@ import '../../../core/widgets/notice_banner.dart';
 import '../register/register_screen.dart';
 import 'auth_view_model.dart';
 
-// pantalla de login: email, contraseña y el boton para ir al registro
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,8 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
-  // registro usa el mismo view model, entonces al ir y volver se limpia
-  // todo para que los campos y el estado no queden distintos
   Future<void> _openRegister() async {
     final auth = context.read<AuthViewModel>()..resetForm();
     await Navigator.of(context).pushNamed(RegisterScreen.routeName);
@@ -107,7 +104,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// el logo de arriba, igual en login y registro
 class AuthBrand extends StatelessWidget {
   const AuthBrand({super.key});
 

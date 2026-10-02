@@ -8,10 +8,8 @@ import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../domain/entities/nearby_lot.dart';
 import '../../shell/main_shell.dart';
-import '../home/home_view_model.dart';
 import 'no_spots_view_model.dart';
 
-// pantalla 5, se abre sola cuando GET /levels dice campusFull
 class NoSpotsScreen extends StatefulWidget {
   const NoSpotsScreen({super.key});
 
@@ -30,13 +28,13 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
     );
   }
 
-  // vuelve a pedir los niveles y si ya hay puestos regresa a home
-  Future<void> _checkAgain() async {
-    final home = context.read<HomeViewModel>();
-    await home.load();
-    if (!mounted) return;
-    if (home.levels?.data.campusFull == false) {
-      Navigator.of(context).maybePop();
+  Future<void> _navigate(NearbyLot lot) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await context.read<NoSpotsViewModel>().navigate(lot);
+    if (!opened) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open the maps app.')),
+      );
     }
   }
 
@@ -73,15 +71,15 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
                   if (noSpots.isLoading && noSpots.lots.isEmpty)
                     const Center(child: CircularProgressIndicator()),
                   for (final lot in noSpots.lots) ...[
-                    _NearbyCard(lot: lot, closest: lot.id == noSpots.closestId),
+                    _NearbyCard(
+                      lot: lot,
+                      closest: lot.id == noSpots.closestId,
+                      onNavigate: () => _navigate(lot),
+                    ),
                     const SizedBox(height: Spacing.sm),
                   ],
                   const SizedBox(height: Spacing.sm),
-                  OutlinedButton.icon(
-                    onPressed: _checkAgain,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('Check campus again'),
-                  ),
+                  _NotifyCard(noSpots: noSpots),
                 ],
               ),
             ),
@@ -95,8 +93,6 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
     );
   }
 }
-
-// titulo de arriba
 
 class _Header extends StatelessWidget {
   const _Header();
@@ -129,8 +125,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
-// el aviso rojo de "campus is full"
 
 class _FullBanner extends StatelessWidget {
   const _FullBanner();
@@ -185,15 +179,17 @@ class _FullBanner extends StatelessWidget {
   }
 }
 
-// cada card de parqueadero cercano. la mas cercana tiene borde azul y "CLOSEST"
-
 class _NearbyCard extends StatelessWidget {
-  const _NearbyCard({required this.lot, required this.closest});
+  const _NearbyCard({
+    required this.lot,
+    required this.closest,
+    required this.onNavigate,
+  });
 
   final NearbyLot lot;
   final bool closest;
+  final VoidCallback onNavigate;
 
-  // 6000 -> "$6.000/hr", como se escriben los precios en colombia
   String get _price {
     final digits = lot.ratePerHour.toString();
     final buffer = StringBuffer();
@@ -219,10 +215,6 @@ class _NearbyCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (closest) ...[
-              const _ClosestBadge(),
-              const SizedBox(height: Spacing.sm),
-            ],
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -230,30 +222,15 @@ class _NearbyCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (closest) ...[
+                        const _ClosestBadge(),
+                        const SizedBox(height: Spacing.sm),
+                      ],
                       Text(
                         lot.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.heading2,
-                      ),
-                      const SizedBox(height: Spacing.sm),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.directions_walk,
-                            size: 12,
-                            color: Palette.textSecondary,
-                          ),
-                          const SizedBox(width: 2),
-                          Flexible(
-                            child: Text(
-                              '${lot.walkMinutes} min  ·  ${lot.address}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.caption,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -267,6 +244,110 @@ class _NearbyCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: Spacing.sm),
+            Row(
+              children: [
+                const Icon(
+                  Icons.directions_walk,
+                  size: 12,
+                  color: Palette.textSecondary,
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Text(
+                    '${lot.walkMinutes} min',
+                    style: AppTypography.caption,
+                  ),
+                ),
+                const SizedBox(width: Spacing.sm),
+                _NavigateButton(primary: closest, onPressed: onNavigate),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavigateButton extends StatelessWidget {
+  const _NavigateButton({required this.primary, required this.onPressed});
+
+  final bool primary;
+  final VoidCallback onPressed;
+
+  static const _size = Size(88, 36);
+  static const _padding = EdgeInsets.symmetric(horizontal: Spacing.md);
+
+  @override
+  Widget build(BuildContext context) {
+    if (primary) {
+      return FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(minimumSize: _size, padding: _padding),
+        child: const Text('Navigate'),
+      );
+    }
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: _size,
+        padding: _padding,
+        foregroundColor: Palette.textPrimary,
+        backgroundColor: Palette.background,
+        side: const BorderSide(color: Palette.border),
+      ),
+      child: const Text('Navigate'),
+    );
+  }
+}
+
+class _NotifyCard extends StatelessWidget {
+  const _NotifyCard({required this.noSpots});
+
+  final NoSpotsViewModel noSpots;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Notify when campus opens up',
+                    style: AppTypography.heading2,
+                  ),
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    noSpots.watching
+                        ? 'On. We check every 30 s while the app is open.'
+                        : 'We\'ll ping you the moment a spot opens. Keep the '
+                              'app open.',
+                    style: AppTypography.caption,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            OutlinedButton(
+              onPressed: noSpots.toggleNotify,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(88, 36),
+                padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+                foregroundColor: Palette.secondary,
+                backgroundColor: Palette.secondarySoft,
+                side: BorderSide(
+                  color: Palette.secondary.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Text(noSpots.watching ? 'Turn off' : 'Notify me'),
             ),
           ],
         ),

@@ -6,7 +6,6 @@ import '../design/spacing.dart';
 import '../design/typography.dart';
 import 'status_badge.dart';
 
-// card de un nivel del parqueadero con cuantos puestos hay libres y la barrita
 class LevelCard extends StatelessWidget {
   const LevelCard({
     super.key,
@@ -17,7 +16,6 @@ class LevelCard extends StatelessWidget {
 
   final ParkingLevel level;
 
-  // el nivel que sugiere el backend para la hora de llegada
   final bool recommended;
   final VoidCallback? onTap;
 
@@ -73,7 +71,17 @@ class LevelCard extends StatelessWidget {
                         StatusBadge(status: status),
                       ],
                     ),
-                    const SizedBox(height: Spacing.xs),
+                    const SizedBox(height: Spacing.sm),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                      child: LinearProgressIndicator(
+                        value: level.occupancy,
+                        minHeight: 4,
+                        backgroundColor: Palette.border,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: Spacing.sm),
                     Text.rich(
                       TextSpan(
                         style: AppTypography.caption,
@@ -93,16 +101,6 @@ class LevelCard extends StatelessWidget {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(Radii.pill),
-                      child: LinearProgressIndicator(
-                        value: level.occupancy,
-                        minHeight: 4,
-                        backgroundColor: Palette.border,
-                        color: color,
-                      ),
                     ),
                   ],
                 ),

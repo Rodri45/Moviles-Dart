@@ -5,7 +5,6 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-// card con la grafica de barras de que tan lleno va a estar por hora
 class ForecastCard extends StatelessWidget {
   const ForecastCard({
     super.key,
@@ -17,7 +16,6 @@ class ForecastCard extends StatelessWidget {
   final List<HourlyOccupancy> hours;
   final int? currentHour;
 
-  // false cuando la grafica sale de datos viejos
   final bool live;
 
   @override
@@ -119,7 +117,6 @@ class _Bar extends StatelessWidget {
     return Palette.danger;
   }
 
-  // la grafica usa horas de 12, como en el diseño
   String get _label {
     final hour = bar.hour % 12;
     return hour == 0 ? '12' : '$hour';
@@ -127,7 +124,6 @@ class _Bar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // la hora actual va en color solido, el resto en tinte suave
     final fill = now ? _base : _base.withValues(alpha: 0.25);
 
     return Column(

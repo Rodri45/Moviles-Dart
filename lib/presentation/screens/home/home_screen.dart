@@ -21,7 +21,6 @@ import '../no_spots/no_spots_screen.dart';
 import '../offline/offline_screen.dart';
 import 'home_view_model.dart';
 
-// pantalla 1, home: saludo, destino, pronostico, niveles y accesos rapidos
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -39,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _home.load());
   }
 
-  // cuando el backend dice campusFull se abre la pantalla de no_spots una vez
   void _openNoSpotsIfFull() {
     if (!_home.campusFullPending || !mounted) return;
     _home.campusFullHandled();
@@ -131,8 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// saludo + avatar
-
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.user, required this.hour});
 
@@ -185,8 +181,6 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-// pills de destino (scroll horizontal)
-
 class _DestinationPills extends StatelessWidget {
   const _DestinationPills({required this.home});
 
@@ -216,8 +210,6 @@ class _DestinationPills extends StatelessWidget {
     );
   }
 }
-
-// la hora de llegada y el nivel que recomienda el backend para esa hora
 
 class _ArrivalCard extends StatelessWidget {
   const _ArrivalCard({required this.home});
@@ -283,8 +275,6 @@ class _ArrivalCard extends StatelessWidget {
     );
   }
 }
-
-// acciones rapidas
 
 class _QuickActions extends StatelessWidget {
   const _QuickActions();

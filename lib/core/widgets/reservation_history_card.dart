@@ -6,7 +6,6 @@ import '../design/spacing.dart';
 import '../design/typography.dart';
 import '../format.dart';
 
-// la lista del historial de reservas, con chulo si llego y x si se vencio
 class ReservationHistoryCard extends StatelessWidget {
   const ReservationHistoryCard({super.key, required this.reservations});
 
@@ -69,7 +68,6 @@ class _HistoryRow extends StatelessWidget {
   }
 }
 
-// el cuadrito verde con chulo, rojo con x, gris si se cancelo, azul si sigue
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
 

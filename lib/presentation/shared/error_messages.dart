@@ -1,6 +1,5 @@
 import '../../domain/errors.dart';
 
-// el tipo de error corto que va en la telemetria (errorType de map_loaded)
 String errorTypeFor(Object error) {
   if (error is CircuitOpenException) return 'circuit_open';
   if (error is NetworkException) {
@@ -10,7 +9,6 @@ String errorTypeFor(Object error) {
   return 'unknown';
 }
 
-// el texto que ve el usuario cuando algo falla
 String errorMessageFor(Object error) {
   if (error is CircuitOpenException) {
     return 'The server is not responding. We\'ll try again in a moment.';

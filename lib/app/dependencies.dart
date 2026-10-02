@@ -6,6 +6,7 @@ import 'package:provider/single_child_widget.dart';
 import '../domain/entities/device_description.dart';
 import '../domain/ports/auth_repository.dart';
 import '../domain/ports/connectivity_port.dart';
+import '../domain/ports/directions_launcher.dart';
 import '../domain/ports/location_provider.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
@@ -15,6 +16,7 @@ import '../domain/ports/vehicle_locator.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
 import '../infrastructure/device/device_info_reader.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
+import '../infrastructure/device/url_launcher_directions.dart';
 import '../infrastructure/http/api_client.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
@@ -23,6 +25,7 @@ import '../infrastructure/http/http_vehicle_locator.dart';
 import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
+import '../infrastructure/mock/mock_directions_launcher.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
@@ -43,8 +46,6 @@ import '../presentation/screens/profile/profile_view_model.dart';
 import '../presentation/screens/reserve/reserve_view_model.dart';
 import '../presentation/shell/shell_view_model.dart';
 
-// aqui se arma todo lo que usa la app. los view models solo reciben puertos,
-// asi en las pruebas se cambian por los mocks
 class AppDependencies {
   AppDependencies({
     required this.auth,
@@ -54,6 +55,7 @@ class AppDependencies {
     required this.connectivity,
     required this.preferences,
     required this.location,
+    required this.directions,
     required this.telemetry,
     required this.device,
   });
@@ -72,18 +74,18 @@ class AppDependencies {
     );
     final cache = LocalCache(cacheBox);
     final connectivity = ConnectivityPlusAdapter();
-    // manda lo que haya quedado en la cola de la vez pasada
     final telemetry = TelemetryClient(client, telemetryBox, connectivity)
       ..flush();
 
     return AppDependencies(
-      auth: HttpAuthRepository(client, session),
+      auth: HttpAuthRepository(client, session, cache),
       parking: HttpParkingRepository(client, cache),
       reservations: HttpReservationRepository(client, cache),
       vehicles: HttpVehicleLocator(client, cache),
       connectivity: connectivity,
       preferences: HivePreferencesStore(prefsBox),
       location: GeolocatorLocationProvider(),
+      directions: UrlLauncherDirections(),
       telemetry: telemetry,
       device: await readDeviceDescription(),
     );
@@ -97,6 +99,7 @@ class AppDependencies {
     connectivity: MockConnectivity(),
     preferences: MockPreferencesStore(),
     location: MockLocationProvider(),
+    directions: MockDirectionsLauncher(),
     telemetry: MockTelemetry(),
     device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
   );
@@ -108,6 +111,7 @@ class AppDependencies {
   final ConnectivityPort connectivity;
   final PreferencesStore preferences;
   final LocationProvider location;
+  final DirectionsLauncher directions;
   final Telemetry telemetry;
   final DeviceDescription device;
 
@@ -135,7 +139,9 @@ class AppDependencies {
       create: (_) =>
           OfflineViewModel(parking, reservations, preferences, connectivity),
     ),
-    ChangeNotifierProvider(create: (_) => NoSpotsViewModel(parking)),
+    ChangeNotifierProvider(
+      create: (_) => NoSpotsViewModel(parking, directions),
+    ),
     ChangeNotifierProvider(
       create: (_) => FindMyCarViewModel(vehicles, location),
     ),

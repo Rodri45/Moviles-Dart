@@ -10,7 +10,6 @@ import '../../shared/error_messages.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
-// estado de la sesion y de los formularios de login y registro
 class AuthViewModel extends ChangeNotifier {
   AuthViewModel(this._repository, this._telemetry) {
     _expiredSub = _repository.sessionExpired.listen((_) => _signOut());
@@ -26,7 +25,6 @@ class AuthViewModel extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  // true si se abrio con el usuario guardado porque no habia red
   bool offlineSession = false;
 
   String name = '';
@@ -62,7 +60,6 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // al abrir la app: con token se valida, sin red se usa el usuario guardado
   Future<void> restoreSession() async {
     final cached = await _repository.cachedUser();
     if (cached == null) return _setStatus(AuthStatus.unauthenticated);
@@ -77,7 +74,7 @@ class AuthViewModel extends ChangeNotifier {
         return _signOut();
       }
       _openOffline(cached);
-    } on NetworkException {
+    } catch (_) {
       _openOffline(cached);
     }
   }
@@ -141,6 +138,7 @@ class AuthViewModel extends ChangeNotifier {
   void _signOut() {
     user = null;
     offlineSession = false;
+    _openReported = false;
     _setStatus(AuthStatus.unauthenticated);
   }
 
@@ -150,7 +148,6 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // BQ3 cuenta usuarios activos con app_opened, por eso se manda ya con token
   void _reportOpen() {
     if (_openReported) return;
     _openReported = true;

@@ -1,4 +1,3 @@
-// donde quedo parqueado el carro segun el backend (GET /vehicle)
 class ParkedVehicle {
   const ParkedVehicle({
     required this.spotId,

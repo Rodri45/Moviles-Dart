@@ -1,4 +1,3 @@
-// el consejo de cuando reservar segun los viajes del usuario (BQ6)
 class LeadTimeAdvice {
   const LeadTimeAdvice({
     required this.holdMinutes,
@@ -15,7 +14,6 @@ class LeadTimeAdvice {
 
   final int holdMinutes;
 
-  // null con menos de 3 reservas
   final int? suggestedMinutes;
   final String message;
 }

@@ -1,4 +1,3 @@
-// la respuesta de GET /recommendations/level
 class LevelRecommendation {
   const LevelRecommendation({
     required this.arrivalAt,
@@ -22,9 +21,7 @@ class LevelRecommendation {
   final DateTime arrivalAt;
   final String slot;
 
-  // null cuando el backend todavia no tiene historia
   final String? recommended;
 
-  // ocupacion esperada de cada nivel en ese slot
   final Map<String, double?> predictions;
 }

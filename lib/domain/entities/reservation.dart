@@ -1,6 +1,5 @@
 enum ReservationStatus { active, fulfilled, released, cancelled, expired }
 
-// una reserva tal cual la devuelve el backend
 class Reservation {
   const Reservation({
     required this.id,
@@ -36,7 +35,6 @@ class Reservation {
   final DateTime? checkedInAt;
   final DateTime? releasedAt;
 
-  // la misma regla que usa GET /reservations/active
   bool get isOpen =>
       status == ReservationStatus.active ||
       (status == ReservationStatus.fulfilled && releasedAt == null);

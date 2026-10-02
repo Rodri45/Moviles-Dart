@@ -8,8 +8,6 @@ import '../../../domain/entities/parked_vehicle.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../../domain/ports/vehicle_locator.dart';
 
-// junta el puesto que dice el backend con la posicion guardada al parquear y
-// calcula en vivo cuanto falta caminando
 class FindMyCarViewModel extends ChangeNotifier {
   FindMyCarViewModel(this._vehicles, this._location);
 
@@ -23,10 +21,8 @@ class FindMyCarViewModel extends ChangeNotifier {
   GeoPoint? me;
   bool isLoading = false;
 
-  // true cuando no se pudo hablar con el backend y se usa lo guardado
   bool offline = false;
 
-  // true cuando no hay señal (bajo tierra) y se muestra la ultima posicion
   bool usingLastKnown = false;
 
   String? get spotCode => vehicle?.spotCode ?? saved?.spotCode;
@@ -65,19 +61,22 @@ class FindMyCarViewModel extends ChangeNotifier {
     try {
       vehicle = await _vehicles.getParkedVehicle();
       offline = false;
-      // si el backend ya no tiene carro parqueado, lo guardado sobra
       if (vehicle == null) await _vehicles.clearLocation();
     } catch (e) {
       offline = true;
       debugPrint('vehicle failed: $e');
     }
     saved = await _vehicles.savedLocation();
-    if (vehicle != null && saved?.spotCode != vehicle!.spotCode) saved = null;
+    final current = vehicle;
+    if (current != null &&
+        (saved?.spotCode != current.spotCode ||
+            saved?.levelCode != current.levelCode)) {
+      saved = null;
+    }
     isLoading = false;
     notifyListeners();
   }
 
-  // se llama al abrir y al volver de los ajustes del celular
   Future<void> refreshAccess() async {
     access = await _location.checkAccess();
     notifyListeners();

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../design/palette.dart';
 
-// la rueda chiquita que va dentro del boton mientras carga
 class ButtonSpinner extends StatelessWidget {
   const ButtonSpinner({super.key});
 

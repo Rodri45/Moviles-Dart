@@ -13,7 +13,6 @@ import '../../../domain/services/recommend_spot.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
-// el mapa de un nivel. se refresca cada 5 s solo mientras se esta viendo
 class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   LevelMapViewModel(
     this._parking,
@@ -37,7 +36,6 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   final Duration refreshEvery;
   Timer? _timer;
 
-  // BQ1: desde que se elige el nivel hasta que la cuadricula se pinta
   DateTime? _mapLoadStartedAt;
 
   String levelCode = levelCodes.first;
@@ -49,20 +47,16 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   bool isLoading = false;
   String? errorMessage;
 
-  // aviso cuando el puesto elegido se lo gano otra persona
   String? notice;
 
   bool get showOffline => !online || fromCache;
 
-  // la pantalla avisa con gridPainted cuando ya dibujo los puestos
   bool get awaitingPaint => _mapLoadStartedAt != null && spots.isNotEmpty;
 
   ParkingSpot? get recommended => recommendSpot(spots, filters);
 
-  // la hoja de abajo muestra el elegido o, si no hay, el recomendado
   ParkingSpot? get highlighted => selected ?? recommended;
 
-  // los puestos agrupados por zona, en el orden que manda el backend
   Map<String, List<ParkingSpot>> get zones {
     final result = <String, List<ParkingSpot>>{};
     for (final spot in spots) {
@@ -125,7 +119,6 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
-  // silent es para el refresco de cada 5 s: no muestra el loader
   Future<void> load({bool silent = false}) async {
     if (!silent) {
       isLoading = true;
@@ -137,14 +130,12 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
         code,
         destination: _preferences.destination,
       );
-      // si cambiaron de nivel mientras cargaba, esta respuesta ya no sirve
       if (code != levelCode) return;
       spots = result.data;
       savedAt = result.savedAt;
       fromCache = result.fromCache;
       errorMessage = null;
       _refreshSelection();
-      // un nivel sin puestos no pinta nada, se reporta de una vez
       final started = _mapLoadStartedAt;
       if (spots.isEmpty && started != null) {
         _reportMapLoad(started, success: true);
@@ -183,8 +174,10 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
     final fresh = spots.where((s) => s.id == current.id).firstOrNull;
     if (fresh != null && fresh.isFree) {
       selected = fresh;
-    } else {
-      selected = null;
+      return;
+    }
+    selected = null;
+    if (fresh == null || !fresh.mine) {
       notice = 'Spot ${current.code} was just taken. Pick another one.';
     }
   }

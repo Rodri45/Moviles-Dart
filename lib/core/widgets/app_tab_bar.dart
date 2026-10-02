@@ -6,7 +6,6 @@ import '../design/typography.dart';
 
 enum AppTab { home, map, reserve, profile }
 
-// la barra de abajo con home, map, reserve y profile
 class AppTabBar extends StatelessWidget {
   const AppTabBar({super.key, required this.current, this.onSelected});
 
@@ -78,7 +77,6 @@ class _TabItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // la rayita azul arriba del icono cuando esta activo
             Container(
               height: 2,
               width: 32,

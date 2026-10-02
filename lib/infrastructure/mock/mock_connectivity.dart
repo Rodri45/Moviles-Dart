@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../../domain/ports/connectivity_port.dart';
 
-// version de mentira, con setOnline se simula que se cae o vuelve la red
 class MockConnectivity implements ConnectivityPort {
   MockConnectivity({this.online = true});
 

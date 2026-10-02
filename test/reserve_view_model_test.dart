@@ -68,7 +68,6 @@ void main() {
   });
 
   test('the countdown follows expiresAt from the server', () async {
-    // la reserva se creo hace 5 minutos en el servidor
     repository.current = ParkingMockData.reservation(
       createdAt: now.subtract(const Duration(minutes: 5)),
     );
@@ -104,7 +103,6 @@ void main() {
     );
     await reserve.load();
 
-    // el timer de la vista corre cada segundo
     await Future<void>.delayed(const Duration(milliseconds: 1100));
     await Future<void>.delayed(Duration.zero);
     expect(reserve.expiryAlert, isTrue);

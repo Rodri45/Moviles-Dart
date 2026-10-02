@@ -2,8 +2,6 @@ import 'dart:convert';
 
 import 'package:hive_ce/hive_ce.dart';
 
-// copia local de las ultimas respuestas del backend. cada entrada es el json
-// de la respuesta guardado como String junto con la hora en que llego
 class LocalCache {
   LocalCache(this._box);
 
@@ -28,4 +26,8 @@ class LocalCache {
   }
 
   Future<void> delete(String key) => _box.delete(key);
+
+  Future<void> clear() async {
+    await _box.clear();
+  }
 }

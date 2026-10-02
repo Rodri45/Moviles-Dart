@@ -4,8 +4,6 @@ import '../../domain/ports/reservation_repository.dart';
 import '../storage/local_cache.dart';
 import 'api_client.dart';
 
-// reservas contra el backend. la reserva abierta se guarda en hive para
-// poder mostrarla en la pantalla de offline
 class HttpReservationRepository implements ReservationRepository {
   HttpReservationRepository(this._client, this._cache);
 
@@ -36,7 +34,6 @@ class HttpReservationRepository implements ReservationRepository {
       await _remember(reservation);
       return reservation;
     } catch (e) {
-      // sin red o con el servidor caido se usa la ultima que se vio
       final outage = ApiClient.isNetworkFailure(e);
       final saved = outage ? _cache.read(_activeKey)?.data : null;
       if (saved == null) rethrow;

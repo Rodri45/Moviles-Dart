@@ -26,7 +26,6 @@ import 'support/test_app.dart';
 
 void main() {
   setUpAll(() {
-    // sin red en los tests: usar la fuente de fallback en vez de descargar
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
@@ -63,7 +62,6 @@ void main() {
     }
   }
 
-  // las pantallas con datos que cambian el layout: reserva activa y carro
   AppDependencies withParkedCar() {
     final deps = AppDependencies.mock();
     (deps.vehicles as MockVehicleLocator)

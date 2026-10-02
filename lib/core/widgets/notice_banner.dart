@@ -6,7 +6,6 @@ import '../design/typography.dart';
 
 enum NoticeTone { warning, danger }
 
-// el aviso de color con icono, titulo y texto (errores, consejos, alertas)
 class NoticeBanner extends StatelessWidget {
   const NoticeBanner({
     super.key,

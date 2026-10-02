@@ -4,7 +4,6 @@ import '../../../domain/entities/reservation.dart';
 import '../../../domain/ports/reservation_repository.dart';
 import '../../shared/error_messages.dart';
 
-// el historial de reservas del perfil
 class ProfileViewModel extends ChangeNotifier {
   ProfileViewModel(this._reservations);
 
@@ -13,6 +12,12 @@ class ProfileViewModel extends ChangeNotifier {
   List<Reservation> history = const [];
   bool isLoading = false;
   String? errorMessage;
+
+  void reset() {
+    history = const [];
+    errorMessage = null;
+    notifyListeners();
+  }
 
   Future<void> load() async {
     isLoading = true;

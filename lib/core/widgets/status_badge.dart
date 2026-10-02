@@ -5,7 +5,6 @@ import '../design/palette.dart';
 import '../design/spacing.dart';
 import '../design/typography.dart';
 
-// la etiqueta de available / limited / full / offline con su color
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status});
 

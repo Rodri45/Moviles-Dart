@@ -1,4 +1,3 @@
-// el usuario con sesion
 class AppUser {
   const AppUser({required this.id, required this.email, required this.name});
 
@@ -11,7 +10,6 @@ class AppUser {
   final String id;
   final String email;
 
-  // el backend manda "" si no puso nombre
   final String name;
 
   String get displayName => name.isEmpty ? email.split('@').first : name;

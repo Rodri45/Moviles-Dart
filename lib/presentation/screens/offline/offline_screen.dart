@@ -15,7 +15,6 @@ import '../../../domain/entities/reservation.dart';
 import '../../shell/main_shell.dart';
 import 'offline_view_model.dart';
 
-// pantalla 7, offline: lo ultimo que se guardo mientras vuelve la red
 class OfflineScreen extends StatefulWidget {
   const OfflineScreen({super.key});
 
@@ -110,8 +109,6 @@ class _OfflineScreenState extends State<OfflineScreen> {
   }
 }
 
-// titulo de arriba
-
 class _Header extends StatelessWidget {
   const _Header({required this.offline});
 
@@ -152,8 +149,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
-// card de cada nivel con los datos guardados
 
 class _CachedLevelCard extends StatelessWidget {
   const _CachedLevelCard({required this.level, required this.savedAt});
@@ -224,7 +219,6 @@ class _CachedLevelCard extends StatelessWidget {
   }
 }
 
-// cuadrito con el codigo (P1, P2, P3, A-07)
 class _CodeBadge extends StatelessWidget {
   const _CodeBadge({
     required this.code,
@@ -253,7 +247,6 @@ class _CodeBadge extends StatelessWidget {
   }
 }
 
-// etiqueta chiquita tipo CACHED / SAVED
 class _Tag extends StatelessWidget {
   const _Tag({
     required this.label,
@@ -277,8 +270,6 @@ class _Tag extends StatelessWidget {
     );
   }
 }
-
-// la card azul de la reserva guardada
 
 class _SavedReservationCard extends StatelessWidget {
   const _SavedReservationCard({required this.reservation});
@@ -339,8 +330,6 @@ class _SavedReservationCard extends StatelessWidget {
     );
   }
 }
-
-// la card del mapita guardado, las primeras filas del nivel
 
 class _CachedMapCard extends StatelessWidget {
   const _CachedMapCard({required this.level, required this.spots});

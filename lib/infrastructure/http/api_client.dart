@@ -9,8 +9,6 @@ import '../../core/config/api_config.dart';
 import '../../domain/errors.dart';
 import 'circuit_breaker.dart';
 
-// el unico que habla http con el backend. pone el token, el timeout y pasa
-// todo por el circuit breaker
 class ApiClient {
   ApiClient({
     required http.Client httpClient,
@@ -27,11 +25,8 @@ class ApiClient {
   final http.Client _http;
   final String? Function() _readToken;
 
-  // se llama cuando el backend rechaza el token, para cerrar la sesion
   VoidCallback? onUnauthorized;
 
-  // sin red, timeout o 5xx. un 4xx no cuenta porque el servidor si respondio;
-  // lo usan el breaker y los repositorios para decidir si sirve la cache
   static bool isNetworkFailure(Object error) =>
       error is NetworkException ||
       (error is ApiException && error.statusCode >= 500);
@@ -65,7 +60,12 @@ class ApiClient {
       final status = response.statusCode;
       if (status == 401 && token != null) onUnauthorized?.call();
       if (status >= 400) throw ApiException(status, _errorOf(response));
-      return response.body.isEmpty ? null : jsonDecode(response.body);
+      if (response.body.isEmpty) return null;
+      try {
+        return jsonDecode(response.body);
+      } on FormatException {
+        throw const NetworkException('bad_response');
+      }
     });
   }
 
@@ -88,7 +88,7 @@ class ApiClient {
       final error = json is Map ? json['error'] : null;
       if (error is String) return error;
     } on FormatException {
-      // render a veces responde html cuando el servicio esta dormido
+      return 'HTTP ${response.statusCode}';
     }
     return 'HTTP ${response.statusCode}';
   }

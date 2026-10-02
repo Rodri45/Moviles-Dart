@@ -9,7 +9,6 @@ import '../../domain/entities/spot_filter.dart';
 import '../../domain/ports/parking_repository.dart';
 import 'parking_mock_data.dart';
 
-// version de mentira del repositorio, devuelve los datos inventados
 class MockParkingRepository implements ParkingRepository {
   MockParkingRepository({LevelsOverview? levels})
     : levels = levels ?? ParkingMockData.levels;

@@ -10,7 +10,6 @@ import '../../../domain/ports/preferences_store.dart';
 import '../../../domain/ports/reservation_repository.dart';
 import '../../shared/connectivity_aware.dart';
 
-// lo que se alcanzo a guardar: niveles, la reserva y el mapa de su nivel
 class OfflineViewModel extends ChangeNotifier with ConnectivityAware {
   OfflineViewModel(
     this._parking,
@@ -34,7 +33,6 @@ class OfflineViewModel extends ChangeNotifier with ConnectivityAware {
 
   String get mapLevel => reservation?.levelCode ?? 'P1';
 
-  // ya hay red y el backend respondio, se puede volver a la app
   bool get recovered => online && levels != null && !levels!.fromCache;
 
   int? get minutesSinceSync {

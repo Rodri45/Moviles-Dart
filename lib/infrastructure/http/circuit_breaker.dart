@@ -2,8 +2,6 @@ import '../../domain/errors.dart';
 
 enum CircuitState { closed, open, halfOpen }
 
-// despues de 3 fallas de red seguidas deja de llamar al backend por 30 s.
-// asi la app no se queda esperando timeouts cuando el servidor esta caido
 class CircuitBreaker {
   CircuitBreaker({
     this.failureThreshold = 3,
@@ -33,7 +31,6 @@ class CircuitBreaker {
 
   Future<T> run<T>(Future<T> Function() action) async {
     final current = state;
-    // en semiabierto solo pasa una peticion de prueba a la vez
     if (current == CircuitState.open ||
         (current == CircuitState.halfOpen && _trialInFlight)) {
       throw const CircuitOpenException();
@@ -46,7 +43,6 @@ class CircuitBreaker {
       _close();
       return result;
     } catch (error) {
-      // un 4xx quiere decir que el servidor si respondio
       if (_isFailure(error)) {
         _recordFailure(isTrial);
       } else {

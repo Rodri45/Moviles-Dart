@@ -3,12 +3,9 @@ import 'package:geolocator/geolocator.dart';
 import '../../domain/entities/geo_point.dart';
 import '../../domain/ports/location_provider.dart';
 
-// el gps real. es el unico archivo de la app que conoce geolocator
 class GeolocatorLocationProvider implements LocationProvider {
-  // velocidad caminando promedio, la misma que usa el backend
   static const _walkingSpeed = 1.3;
 
-  // bajo tierra el gps puede no responder nunca, no se espera mas que esto
   static const _fixTimeout = Duration(seconds: 5);
 
   @override

@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/ports/connectivity_port.dart';
 
-// para los view models que muestran el aviso de offline y recargan solos
-// cuando vuelve la red
 mixin ConnectivityAware on ChangeNotifier {
   bool online = true;
   StreamSubscription<bool>? _connectivitySub;

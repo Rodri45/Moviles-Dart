@@ -1,4 +1,3 @@
-// un edificio destino, se usa para calcular los minutos a pie
 class Building {
   const Building({required this.id, required this.name});
 

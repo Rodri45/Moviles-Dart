@@ -5,7 +5,6 @@ import '../design/spacing.dart';
 import '../design/typography.dart';
 import '../format.dart';
 
-// el aviso amarillo de "no signal" con la hora de la copia guardada
 class OfflineBanner extends StatelessWidget {
   const OfflineBanner({
     super.key,
@@ -14,10 +13,8 @@ class OfflineBanner extends StatelessWidget {
     this.onTap,
   });
 
-  // null si no hay nada guardado todavia
   final DateTime? savedAt;
 
-  // hay red pero el servidor no respondio
   final bool online;
   final VoidCallback? onTap;
 

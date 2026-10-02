@@ -5,19 +5,16 @@ import '../../core/format.dart';
 import '../../core/widgets/app_tab_bar.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/level_map/level_map_screen.dart';
+import '../screens/no_spots/no_spots_view_model.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/profile_view_model.dart';
 import '../screens/reserve/reserve_screen.dart';
 import '../screens/reserve/reserve_view_model.dart';
 import 'shell_view_model.dart';
 
-// las 4 pantallas de la barra de abajo. se quedan vivas en un IndexedStack
-// para no perder el scroll ni volver a cargar al cambiar de tab
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
-  // para las pantallas que se abren encima (find a spot, find my car...):
-  // cierra todo lo de encima y abre la tab
   static void openTab(BuildContext context, AppTab tab) {
     Navigator.of(context).popUntil((route) => route.isFirst);
     context.read<ShellViewModel>().open(tab);
@@ -30,16 +27,16 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late final ReserveViewModel _reserve;
+  late final NoSpotsViewModel _noSpots;
 
   @override
   void initState() {
     super.initState();
     _reserve = context.read<ReserveViewModel>()..addListener(_showExpiryAlert);
-    // al entrar a la app se recupera la reserva activa del backend
+    _noSpots = context.read<NoSpotsViewModel>()..addListener(_showCampusOpened);
     WidgetsBinding.instance.addPostFrameCallback((_) => _reserve.load());
   }
 
-  // el aviso sale en cualquier tab, no solo en la de reserva
   Future<void> _showExpiryAlert() async {
     final reservation = _reserve.reservation;
     if (!_reserve.expiryAlert || reservation == null || !mounted) return;
@@ -68,9 +65,33 @@ class _MainShellState extends State<MainShell> {
     if (cancel ?? false) await _reserve.release();
   }
 
+  Future<void> _showCampusOpened() async {
+    if (!_noSpots.campusOpened || !mounted) return;
+    _noSpots.dismissCampusOpened();
+    final openMap = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('A spot just opened up'),
+        content: const Text('There are free spots on campus again.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Open map'),
+          ),
+        ],
+      ),
+    );
+    if ((openMap ?? false) && mounted) MainShell.openTab(context, AppTab.map);
+  }
+
   @override
   void dispose() {
     _reserve.removeListener(_showExpiryAlert);
+    _noSpots.removeListener(_showCampusOpened);
     super.dispose();
   }
 
