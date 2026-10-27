@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/reservation_history_card.dart';
 import '../../../domain/entities/app_user.dart';
@@ -23,46 +24,38 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: const _Header(),
+          onRefresh: profile.load,
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.lg,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            const _Header(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: profile.load,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Spacing.md,
-                    Spacing.lg,
-                    Spacing.md,
-                    Spacing.lg,
-                  ),
-                  children: [
-                    if (user != null)
-                      _UserCard(user: user, offline: auth.offlineSession),
-                    const SizedBox(height: Spacing.lg),
-                    Text('RESERVATION HISTORY', style: AppTypography.overline),
-                    const SizedBox(height: Spacing.sm),
-                    if (profile.errorMessage != null) ...[
-                      NoticeBanner(message: profile.errorMessage!),
-                      const SizedBox(height: Spacing.sm),
-                    ],
-                    if (profile.isLoading && profile.history.isEmpty)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      ReservationHistoryCard(reservations: profile.history),
-                    const SizedBox(height: Spacing.lg),
-                    OutlinedButton.icon(
-                      onPressed: auth.logout,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Palette.danger,
-                        side: const BorderSide(color: Palette.danger),
-                      ),
-                      icon: const Icon(Icons.logout, size: 18),
-                      label: const Text('Log out'),
-                    ),
-                  ],
-                ),
+            if (user != null)
+              _UserCard(user: user, offline: auth.offlineSession),
+            const SizedBox(height: Spacing.lg),
+            Text('RESERVATION HISTORY', style: AppTypography.overline),
+            const SizedBox(height: Spacing.sm),
+            if (profile.errorMessage != null) ...[
+              NoticeBanner(message: profile.errorMessage!),
+              const SizedBox(height: Spacing.sm),
+            ],
+            if (profile.isLoading && profile.history.isEmpty)
+              const Center(child: CircularProgressIndicator())
+            else
+              ReservationHistoryCard(reservations: profile.history),
+            const SizedBox(height: Spacing.lg),
+            OutlinedButton.icon(
+              onPressed: auth.logout,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Palette.danger,
+                side: const BorderSide(color: Palette.danger),
               ),
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('Log out'),
             ),
           ],
         ),

@@ -6,6 +6,7 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/spot_cell.dart';
 import '../../../core/widgets/status_badge.dart';
@@ -44,60 +45,54 @@ class _OfflineScreenState extends State<OfflineScreen> {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: _Header(offline: offline),
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            _Header(offline: offline),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.lg,
-                ),
-                children: [
-                  if (!offline.recovered) ...[
-                    OfflineBanner(
-                      savedAt: levels?.savedAt,
-                      online: offline.online,
-                    ),
-                    const SizedBox(height: Spacing.lg),
-                  ],
-                  Text('CACHED AVAILABILITY', style: AppTypography.overline),
-                  const SizedBox(height: Spacing.sm),
-                  if (levels == null)
-                    Text('Nothing saved yet', style: AppTypography.caption),
-                  for (final level in levels?.data.levels ?? const []) ...[
-                    _CachedLevelCard(level: level, savedAt: levels!.savedAt),
-                    const SizedBox(height: Spacing.sm),
-                  ],
-                  const SizedBox(height: Spacing.md),
-                  Text('YOUR SAVED RESERVATION', style: AppTypography.overline),
-                  const SizedBox(height: Spacing.sm),
-                  if (reservation == null)
-                    Text('No open reservation', style: AppTypography.caption)
-                  else
-                    _SavedReservationCard(reservation: reservation),
-                  if (map != null && map.data.isNotEmpty) ...[
-                    const SizedBox(height: Spacing.md),
-                    _CachedMapCard(level: offline.mapLevel, spots: map.data),
-                  ],
-                  const SizedBox(height: Spacing.md),
-                  if (offline.recovered)
-                    FilledButton.icon(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Back to the app'),
-                    )
-                  else
-                    FilledButton.icon(
-                      onPressed: offline.isLoading ? null : offline.load,
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Retry connection'),
-                    ),
-                ],
+            if (!offline.recovered) ...[
+              OfflineBanner(
+                savedAt: levels?.savedAt,
+                online: offline.online,
               ),
-            ),
+              const SizedBox(height: Spacing.lg),
+            ],
+            Text('CACHED AVAILABILITY', style: AppTypography.overline),
+            const SizedBox(height: Spacing.sm),
+            if (levels == null)
+              Text('Nothing saved yet', style: AppTypography.caption),
+            for (final level in levels?.data.levels ?? const []) ...[
+              _CachedLevelCard(level: level, savedAt: levels!.savedAt),
+              const SizedBox(height: Spacing.sm),
+            ],
+            const SizedBox(height: Spacing.md),
+            Text('YOUR SAVED RESERVATION', style: AppTypography.overline),
+            const SizedBox(height: Spacing.sm),
+            if (reservation == null)
+              Text('No open reservation', style: AppTypography.caption)
+            else
+              _SavedReservationCard(reservation: reservation),
+            if (map != null && map.data.isNotEmpty) ...[
+              const SizedBox(height: Spacing.md),
+              _CachedMapCard(level: offline.mapLevel, spots: map.data),
+            ],
+            const SizedBox(height: Spacing.md),
+            if (offline.recovered)
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.check, size: 18),
+                label: const Text('Back to the app'),
+              )
+            else
+              FilledButton.icon(
+                onPressed: offline.isLoading ? null : offline.load,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retry connection'),
+              ),
           ],
         ),
       ),

@@ -5,6 +5,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
@@ -41,48 +42,42 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: _Header(finder: finder),
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.lg,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            _Header(finder: finder),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.lg,
-                  Spacing.md,
-                  Spacing.lg,
-                ),
-                children: [
-                  if (finder.showOffline) ...[
-                    OfflineBanner(
-                      savedAt: finder.savedAt,
-                      online: finder.online,
-                    ),
-                    const SizedBox(height: Spacing.md),
-                  ],
-                  if (finder.errorMessage != null) ...[
-                    NoticeBanner(
-                      message: finder.errorMessage!,
-                      tone: NoticeTone.danger,
-                      icon: Icons.error_outline,
-                    ),
-                    const SizedBox(height: Spacing.md),
-                  ],
-                  if (finder.isLoading && results.isEmpty)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    Text(
-                      '${results.length} spots found',
-                      style: AppTypography.caption,
-                    ),
-                  const SizedBox(height: Spacing.md),
-                  for (final spot in results) ...[
-                    _SpotResultCard(spot: spot),
-                    const SizedBox(height: Spacing.md),
-                  ],
-                ],
+            if (finder.showOffline) ...[
+              OfflineBanner(
+                savedAt: finder.savedAt,
+                online: finder.online,
               ),
-            ),
+              const SizedBox(height: Spacing.md),
+            ],
+            if (finder.errorMessage != null) ...[
+              NoticeBanner(
+                message: finder.errorMessage!,
+                tone: NoticeTone.danger,
+                icon: Icons.error_outline,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
+            if (finder.isLoading && results.isEmpty)
+              const Center(child: CircularProgressIndicator())
+            else
+              Text(
+                '${results.length} spots found',
+                style: AppTypography.caption,
+              ),
+            const SizedBox(height: Spacing.md),
+            for (final spot in results) ...[
+              _SpotResultCard(spot: spot),
+              const SizedBox(height: Spacing.md),
+            ],
           ],
         ),
       ),
