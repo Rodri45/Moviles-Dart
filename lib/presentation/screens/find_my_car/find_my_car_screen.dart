@@ -6,6 +6,7 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../shell/main_shell.dart';
@@ -52,30 +53,22 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: _Header(car: car),
+          onRefresh: car.load,
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            _Header(car: car),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: car.load,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Spacing.md,
-                    Spacing.md,
-                    Spacing.md,
-                    Spacing.lg,
-                  ),
-                  children: [
-                    if (car.isLoading && !car.hasCar)
-                      const Center(child: CircularProgressIndicator())
-                    else if (!car.hasCar)
-                      const _NoCarCard()
-                    else
-                      ..._carDetails(car),
-                  ],
-                ),
-              ),
-            ),
+            if (car.isLoading && !car.hasCar)
+              const Center(child: CircularProgressIndicator())
+            else if (!car.hasCar)
+              const _NoCarCard()
+            else
+              ..._carDetails(car),
           ],
         ),
       ),

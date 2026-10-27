@@ -28,10 +28,10 @@ class RegisterScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            Spacing.md,
+          padding: EdgeInsets.fromLTRB(
+            authFormSidePadding(context),
             0,
-            Spacing.md,
+            authFormSidePadding(context),
             Spacing.lg,
           ),
           children: [

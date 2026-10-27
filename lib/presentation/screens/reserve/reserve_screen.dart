@@ -7,6 +7,7 @@ import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/button_spinner.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/reservation_history_card.dart';
 import '../../shared/location_rationale.dart';
@@ -26,46 +27,38 @@ class ReserveScreen extends StatelessWidget {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: _Header(reserve: reserve),
+          onRefresh: reserve.load,
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.lg,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            _Header(reserve: reserve),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: reserve.load,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Spacing.md,
-                    Spacing.lg,
-                    Spacing.md,
-                    Spacing.lg,
-                  ),
-                  children: [
-                    if (reserve.errorMessage != null) ...[
-                      NoticeBanner(
-                        message: reserve.errorMessage!,
-                        tone: NoticeTone.danger,
-                        icon: Icons.error_outline,
-                      ),
-                      const SizedBox(height: Spacing.md),
-                    ],
-                    _SpotCard(reserve: reserve),
-                    const SizedBox(height: Spacing.md),
-                    NoticeBanner(
-                      title: 'Best time to reserve',
-                      message:
-                          reserve.advice?.message ??
-                          'Reserve when you are about ${reserve.holdMinutes} '
-                              'minutes away so you arrive before the hold '
-                              'expires.',
-                    ),
-                    const SizedBox(height: Spacing.lg),
-                    Text('Compliance history', style: AppTypography.heading1),
-                    const SizedBox(height: Spacing.sm),
-                    ReservationHistoryCard(reservations: reserve.history),
-                  ],
-                ),
+            if (reserve.errorMessage != null) ...[
+              NoticeBanner(
+                message: reserve.errorMessage!,
+                tone: NoticeTone.danger,
+                icon: Icons.error_outline,
               ),
+              const SizedBox(height: Spacing.md),
+            ],
+            _SpotCard(reserve: reserve),
+            const SizedBox(height: Spacing.md),
+            NoticeBanner(
+              title: 'Best time to reserve',
+              message:
+                  reserve.advice?.message ??
+                  'Reserve when you are about ${reserve.holdMinutes} '
+                      'minutes away so you arrive before the hold '
+                      'expires.',
             ),
+            const SizedBox(height: Spacing.lg),
+            Text('Compliance history', style: AppTypography.heading1),
+            const SizedBox(height: Spacing.sm),
+            ReservationHistoryCard(reservations: reserve.history),
           ],
         ),
       ),

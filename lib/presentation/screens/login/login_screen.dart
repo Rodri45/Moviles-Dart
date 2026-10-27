@@ -40,17 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
+    final side = authFormSidePadding(context);
 
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            Spacing.md,
-            Spacing.xl,
-            Spacing.md,
-            Spacing.lg,
-          ),
+          padding: EdgeInsets.fromLTRB(side, Spacing.xl, side, Spacing.lg),
           children: [
             const AuthBrand(),
             const SizedBox(height: Spacing.xl),
@@ -114,6 +110,16 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+/// Login and register keep their form at most [authFormMaxWidth] wide, so
+/// in landscape the fields do not stretch across the whole screen.
+const authFormMaxWidth = 480.0;
+
+double authFormSidePadding(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  if (width <= authFormMaxWidth + 2 * Spacing.md) return Spacing.md;
+  return (width - authFormMaxWidth) / 2;
 }
 
 class AuthBrand extends StatelessWidget {

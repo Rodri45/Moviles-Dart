@@ -5,6 +5,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../domain/entities/nearby_lot.dart';
 import '../../shell/main_shell.dart';
@@ -46,43 +47,37 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: const _Header(),
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            const _Header(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.lg,
-                ),
-                children: [
-                  const _FullBanner(),
-                  const SizedBox(height: Spacing.lg),
-                  Text('Nearby parking', style: AppTypography.heading1),
-                  const SizedBox(height: Spacing.sm),
-                  if (noSpots.errorMessage != null)
-                    NoticeBanner(
-                      message: noSpots.errorMessage!,
-                      tone: NoticeTone.danger,
-                      icon: Icons.error_outline,
-                    ),
-                  if (noSpots.isLoading && noSpots.lots.isEmpty)
-                    const Center(child: CircularProgressIndicator()),
-                  for (final lot in noSpots.lots) ...[
-                    _NearbyCard(
-                      lot: lot,
-                      closest: lot.id == noSpots.closestId,
-                      onNavigate: () => _navigate(lot),
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                  ],
-                  const SizedBox(height: Spacing.sm),
-                  _NotifyCard(noSpots: noSpots),
-                ],
+            const _FullBanner(),
+            const SizedBox(height: Spacing.lg),
+            Text('Nearby parking', style: AppTypography.heading1),
+            const SizedBox(height: Spacing.sm),
+            if (noSpots.errorMessage != null)
+              NoticeBanner(
+                message: noSpots.errorMessage!,
+                tone: NoticeTone.danger,
+                icon: Icons.error_outline,
               ),
-            ),
+            if (noSpots.isLoading && noSpots.lots.isEmpty)
+              const Center(child: CircularProgressIndicator()),
+            for (final lot in noSpots.lots) ...[
+              _NearbyCard(
+                lot: lot,
+                closest: lot.id == noSpots.closestId,
+                onNavigate: () => _navigate(lot),
+              ),
+              const SizedBox(height: Spacing.sm),
+            ],
+            const SizedBox(height: Spacing.sm),
+            _NotifyCard(noSpots: noSpots),
           ],
         ),
       ),

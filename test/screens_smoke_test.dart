@@ -45,6 +45,8 @@ void main() {
   const sizes = <String, Size>{
     'phone': Size(390, 844),
     'narrow': Size(320, 568),
+    'landscape': Size(844, 390),
+    'small landscape': Size(640, 360),
   };
 
   for (final screen in screens.entries) {
