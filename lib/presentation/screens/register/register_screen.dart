@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
@@ -55,7 +56,7 @@ class RegisterScreen extends StatelessWidget {
               onChanged: auth.setName,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              maxLength: 80,
+              maxLength: AuthViewModel.nameMaxLength,
               decoration: const InputDecoration(
                 labelText: 'Name',
                 counterText: '',
@@ -67,7 +68,14 @@ class RegisterScreen extends StatelessWidget {
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Email'),
+              maxLength: AuthViewModel.emailMaxLength,
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'\s')),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                counterText: '',
+              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -75,19 +83,23 @@ class RegisterScreen extends StatelessWidget {
               obscureText: true,
               autofillHints: const [AutofillHints.newPassword],
               textInputAction: TextInputAction.next,
+              maxLength: AuthViewModel.passwordMaxLength,
               decoration: InputDecoration(
                 labelText: 'Password',
-                helperText: 'At least 6 characters',
+                helperText: 'Between 6 and 64 characters',
                 errorText: showShort ? 'At least 6 characters' : null,
+                counterText: '',
               ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
               onChanged: auth.setConfirmPassword,
               obscureText: true,
+              maxLength: AuthViewModel.passwordMaxLength,
               decoration: InputDecoration(
                 labelText: 'Confirm password',
                 errorText: showMismatch ? 'Passwords don\'t match' : null,
+                counterText: '',
               ),
             ),
             const SizedBox(height: Spacing.lg),

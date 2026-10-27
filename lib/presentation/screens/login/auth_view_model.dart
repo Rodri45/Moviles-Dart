@@ -32,21 +32,35 @@ class AuthViewModel extends ChangeNotifier {
   String password = '';
   String confirmPassword = '';
 
+  /// Longest values the forms accept. The fields stop at these lengths, and
+  /// the checks below repeat them in case a value arrives some other way.
+  static const nameMaxLength = 50;
+  static const emailMaxLength = 100;
+  static const passwordMinLength = 6;
+  static const passwordMaxLength = 64;
+
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-  bool get isEmailValid => _emailPattern.hasMatch(email.trim());
-  bool get isPasswordLongEnough => password.length >= 6;
+  bool get isEmailValid =>
+      email.trim().length <= emailMaxLength &&
+      _emailPattern.hasMatch(email.trim());
+  bool get isPasswordLongEnough => password.length >= passwordMinLength;
+  bool get isPasswordShortEnough => password.length <= passwordMaxLength;
   bool get passwordsMatch => password == confirmPassword;
 
-  bool get canLogin => !isLoading && isEmailValid && password.isNotEmpty;
+  bool get canLogin =>
+      !isLoading &&
+      isEmailValid &&
+      password.isNotEmpty &&
+      isPasswordShortEnough;
 
   bool get canRegister =>
       !isLoading &&
       name.trim().isNotEmpty &&
-      name.trim().length <= 80 &&
+      name.trim().length <= nameMaxLength &&
       isEmailValid &&
       isPasswordLongEnough &&
-      password.length <= 128 &&
+      isPasswordShortEnough &&
       passwordsMatch;
 
   void setName(String value) => _edit(() => name = value);
