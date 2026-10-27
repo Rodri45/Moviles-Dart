@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -34,6 +38,8 @@ import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
 import '../infrastructure/storage/hive_preferences_store.dart';
 import '../infrastructure/storage/local_cache.dart';
+import '../infrastructure/storage/car_location_file_store.dart';
+import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
@@ -65,6 +71,11 @@ class AppDependencies {
     final cacheBox = await Hive.openBox<String>('cache');
     final prefsBox = await Hive.openBox<String>('prefs');
     final telemetryBox = await Hive.openBox<String>('telemetry');
+    final historyStore = await ReservationHistoryStore.open();
+    final supportDirectory = await getApplicationSupportDirectory();
+    final carLocationStore = CarLocationFileStore(
+      File(path.join(supportDirectory.path, 'parked_vehicle.json')),
+    );
 
     final session = SessionStore();
     await session.load();
@@ -78,10 +89,21 @@ class AppDependencies {
       ..flush();
 
     return AppDependencies(
-      auth: HttpAuthRepository(client, session, cache),
+      auth: HttpAuthRepository(
+        client,
+        session,
+        cache,
+        historyStore,
+        carLocationStore,
+      ),
       parking: HttpParkingRepository(client, cache),
-      reservations: HttpReservationRepository(client, cache),
-      vehicles: HttpVehicleLocator(client, cache),
+      reservations: HttpReservationRepository(
+        client,
+        cache,
+        historyStore,
+        () => session.user?.id,
+      ),
+      vehicles: HttpVehicleLocator(client, carLocationStore),
       connectivity: connectivity,
       preferences: HivePreferencesStore(prefsBox),
       location: GeolocatorLocationProvider(),
@@ -120,7 +142,7 @@ class AppDependencies {
     ChangeNotifierProvider(create: (_) => ShellViewModel()),
     ChangeNotifierProvider(
       create: (_) =>
-          HomeViewModel(parking, preferences, location, connectivity),
+          HomeViewModel(parking, preferences, location, telemetry, connectivity),
     ),
     ChangeNotifierProvider(
       create: (_) => LevelMapViewModel(

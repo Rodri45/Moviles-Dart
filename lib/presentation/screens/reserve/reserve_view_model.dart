@@ -167,7 +167,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
 
   Future<void> _loadHistory() async {
     try {
-      history = await _reservations.history();
+      history = (await _reservations.history()).data;
     } catch (e) {
       debugPrint('history failed: $e');
     }

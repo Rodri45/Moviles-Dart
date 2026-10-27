@@ -37,6 +37,8 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   Timer? _timer;
 
   DateTime? _mapLoadStartedAt;
+  bool _visible = false;
+  bool _availabilityReportedForVisit = false;
 
   String levelCode = levelCodes.first;
   List<ParkingSpot> spots = const [];
@@ -68,7 +70,12 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   void setVisible(bool visible) {
     _timer?.cancel();
     _timer = null;
-    if (!visible) return;
+    _visible = visible;
+    if (!visible) {
+      _availabilityReportedForVisit = false;
+      return;
+    }
+    _mapLoadStartedAt ??= _clock();
     load(silent: true);
     _timer = Timer.periodic(refreshEvery, (_) => load(silent: true));
   }
@@ -136,9 +143,14 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
       fromCache = result.fromCache;
       errorMessage = null;
       _refreshSelection();
+      _reportAvailabilityViewed();
       final started = _mapLoadStartedAt;
       if (spots.isEmpty && started != null) {
-        _reportMapLoad(started, success: true);
+        _reportMapLoad(
+          started,
+          success: !fromCache,
+          errorType: fromCache ? 'offline_cache' : null,
+        );
       }
     } catch (e) {
       if (code != levelCode) return;
@@ -165,6 +177,15 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
       'success': success,
       'errorType': ?errorType,
       ..._device.toProperties(),
+    });
+  }
+
+  void _reportAvailabilityViewed() {
+    if (!_visible || _availabilityReportedForVisit || fromCache) return;
+    _availabilityReportedForVisit = true;
+    _telemetry.track('availability_viewed', {
+      'source': 'level_map',
+      'levelCode': levelCode,
     });
   }
 

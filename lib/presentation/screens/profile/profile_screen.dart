@@ -39,6 +39,12 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: Spacing.lg),
             Text('RESERVATION HISTORY', style: AppTypography.overline),
             const SizedBox(height: Spacing.sm),
+            if (profile.historyFromCache) ...[
+              const NoticeBanner(
+                message: 'Showing saved history while offline. It may be out of date.',
+              ),
+              const SizedBox(height: Spacing.sm),
+            ],
             if (profile.errorMessage != null) ...[
               NoticeBanner(message: profile.errorMessage!),
               const SizedBox(height: Spacing.sm),

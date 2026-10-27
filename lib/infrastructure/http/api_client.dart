@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show VoidCallback, compute;
 import 'package:http/http.dart' as http;
 
 import '../../core/config/api_config.dart';
@@ -10,6 +10,8 @@ import '../../domain/errors.dart';
 import 'circuit_breaker.dart';
 
 class ApiClient {
+  static const _isolateJsonThreshold = 64 * 1024;
+
   ApiClient({
     required http.Client httpClient,
     required this._readToken,
@@ -61,12 +63,20 @@ class ApiClient {
       if (status == 401 && token != null) onUnauthorized?.call();
       if (status >= 400) throw ApiException(status, _errorOf(response));
       if (response.body.isEmpty) return null;
-      try {
-        return jsonDecode(response.body);
-      } on FormatException {
-        throw const NetworkException('bad_response');
-      }
+      final parsed = response.body.length >= _isolateJsonThreshold
+          ? await compute(_decodeJson, response.body, debugLabel: 'api-json')
+          : _decodeJson(response.body);
+      if (!parsed.valid) throw const NetworkException('bad_response');
+      return parsed.value;
     });
+  }
+
+  static ({bool valid, Object? value}) _decodeJson(String body) {
+    try {
+      return (valid: true, value: jsonDecode(body));
+    } on FormatException {
+      return (valid: false, value: null);
+    }
   }
 
   Future<http.Response> _execute(http.Request request) async {
