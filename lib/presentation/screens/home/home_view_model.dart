@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../domain/entities/building.dart';
@@ -19,6 +21,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     this._location,
     ConnectivityPort connectivity, {
     DateTime Function()? clock,
+    this.refreshEvery = const Duration(seconds: 15),
   }) : _clock = clock ?? DateTime.now {
     arrivalAt = _clock().add(defaultLead);
     watchConnectivity(connectivity, load);
@@ -30,6 +33,12 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   final PreferencesStore _preferences;
   final LocationProvider _location;
   final DateTime Function() _clock;
+
+  /// How often the free spots of each level are asked again while Home is
+  /// on screen, so a spot taken from any phone shows up here.
+  final Duration refreshEvery;
+  Timer? _timer;
+  bool _hidden = false;
 
   Cached<LevelsOverview>? levels;
   List<Building> buildings = const [];
@@ -64,6 +73,28 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
       _loadRecommendation(),
     ]);
     isLoading = false;
+    notifyListeners();
+  }
+
+  /// Called by the screen when Home appears or disappears: when the driver
+  /// changes tab, opens another screen on top or leaves the app.
+  void setVisible(bool visible) {
+    _timer?.cancel();
+    _timer = null;
+    if (!visible) {
+      _hidden = true;
+      return;
+    }
+    if (_hidden && online) refreshLevels();
+    _hidden = false;
+    _timer = Timer.periodic(refreshEvery, (_) {
+      if (online) refreshLevels();
+    });
+  }
+
+  /// Asks only for the level counts, without the loading spinner.
+  Future<void> refreshLevels() async {
+    await _loadLevels();
     notifyListeners();
   }
 
@@ -126,5 +157,11 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
       recommendation = null;
       debugPrint('recommendation failed: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }
