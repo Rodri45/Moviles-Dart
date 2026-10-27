@@ -11,12 +11,14 @@ class SpotCell extends StatelessWidget {
     required this.spot,
     this.selected = false,
     this.recommended = false,
+    this.highlightColor,
     this.onTap,
   });
 
   final ParkingSpot spot;
   final bool selected;
   final bool recommended;
+  final Color? highlightColor;
   final VoidCallback? onTap;
 
   Color get _fill {
@@ -24,50 +26,61 @@ class SpotCell extends StatelessWidget {
     return switch (spot.status) {
       SpotStatus.free => Palette.successSoft,
       SpotStatus.reserved => Palette.warningSoft,
-      SpotStatus.occupied || SpotStatus.disabled => Palette.surface,
+      SpotStatus.occupied => Palette.surface,
+      SpotStatus.disabled => Palette.inputFill,
     };
   }
 
   Color get _border {
     if (selected || spot.mine) return Palette.primary;
+    if (highlightColor != null) return highlightColor!;
     if (recommended) return Palette.success;
     return switch (spot.status) {
       SpotStatus.free => Palette.success.withValues(alpha: 0.4),
       SpotStatus.reserved => Palette.warning.withValues(alpha: 0.6),
-      SpotStatus.occupied || SpotStatus.disabled => Palette.border,
+      SpotStatus.occupied => Palette.border,
+      SpotStatus.disabled => Palette.textSecondary,
     };
   }
 
-  bool get _showDot => onTap != null && (spot.isFree || spot.mine || selected);
-
-  Color get _dot => selected || spot.mine ? Palette.primary : Palette.success;
-
   @override
   Widget build(BuildContext context) {
-    final emphasized = selected || recommended || spot.mine;
+    final emphasized =
+        selected || recommended || spot.mine || highlightColor != null;
 
     return Material(
-      color: _fill,
+      color: highlightColor == null
+          ? _fill
+          : Color.alphaBlend(highlightColor!.withValues(alpha: 0.12), _fill),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.badge),
-        side: BorderSide(color: _border, width: emphasized ? 1.5 : 1),
+        side: BorderSide(
+          color: _border,
+          width: highlightColor != null && !selected && !spot.mine
+              ? 2.5
+              : emphasized
+              ? 1.5
+              : 1,
+        ),
       ),
       child: InkWell(
         onTap: spot.isFree ? onTap : null,
         borderRadius: BorderRadius.circular(Radii.badge),
         child: SizedBox(
           height: 30,
-          child: Center(
-            child: _showDot
-                ? Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: _dot,
-                      shape: BoxShape.circle,
-                    ),
-                  )
-                : null,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              spot.code,
+              maxLines: 1,
+              style: AppTypography.monoData.copyWith(
+                color: spot.status == SpotStatus.disabled
+                    ? Palette.textSecondary
+                    : Palette.textPrimary,
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
       ),
@@ -98,6 +111,11 @@ class SpotLegend extends StatelessWidget {
           label: 'Reserved',
           fill: Palette.warningSoft,
           border: Palette.warning,
+        ),
+        _LegendItem(
+          label: 'Unavailable',
+          fill: Palette.inputFill,
+          border: Palette.textSecondary,
         ),
         _LegendItem(
           label: 'You',

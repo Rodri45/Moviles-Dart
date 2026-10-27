@@ -9,18 +9,25 @@ class Pill extends StatelessWidget {
     super.key,
     required this.label,
     this.selected = false,
+    this.selectedColor,
     this.onTap,
   });
 
   final String label;
   final bool selected;
+  final Color? selectedColor;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = selected ? Palette.primary : Palette.border;
-    final textColor = selected ? Palette.primary : Palette.textPrimary;
-    final background = selected ? Palette.primarySoft : Palette.surface;
+    final selectedColor = this.selectedColor ?? Palette.primary;
+    final borderColor = selected ? selectedColor : Palette.border;
+    final textColor = selected ? selectedColor : Palette.textPrimary;
+    final background = !selected
+        ? Palette.surface
+        : this.selectedColor == null
+        ? Palette.primarySoft
+        : selectedColor.withValues(alpha: 0.14);
 
     return Material(
       color: background,

@@ -194,6 +194,13 @@ class _Header extends StatelessWidget {
     SpotFilter.accessible: 'Accessible',
   };
 
+  static const _filterColors = {
+    SpotFilter.available: Palette.success,
+    SpotFilter.vip: Palette.secondary,
+    SpotFilter.electric: Palette.primaryHover,
+    SpotFilter.accessible: Palette.warningText,
+  };
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -252,6 +259,7 @@ class _Header extends StatelessWidget {
                   Pill(
                     label: entry.value,
                     selected: map.filters.contains(entry.key),
+                    selectedColor: _filterColors[entry.key],
                     onTap: () => map.toggleFilter(entry.key),
                   ),
                   const SizedBox(width: Spacing.sm),
@@ -318,6 +326,13 @@ class _ZoneSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Color? highlightColorFor(ParkingSpot spot) {
+      for (final filter in map.filters) {
+        if (filter.matches(spot)) return _Header._filterColors[filter];
+      }
+      return null;
+    }
+
     final rows = [
       for (var i = 0; i < spots.length; i += _perRow)
         spots.sublist(i, (i + _perRow).clamp(0, spots.length)),
@@ -355,6 +370,7 @@ class _ZoneSection extends StatelessWidget {
                           spot: rows[r][c],
                           selected: rows[r][c].id == map.selected?.id,
                           recommended: rows[r][c].id == recommendedId,
+                          highlightColor: highlightColorFor(rows[r][c]),
                           onTap: () => map.selectSpot(rows[r][c]),
                         )
                       : const SizedBox.shrink(),
