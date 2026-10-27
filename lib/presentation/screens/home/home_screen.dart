@@ -13,6 +13,7 @@ import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../shell/main_shell.dart';
+import '../../shell/shell_view_model.dart';
 import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
 import '../level_map/level_map_view_model.dart';
@@ -28,14 +29,30 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final HomeViewModel _home;
+  bool _resumed = true;
+  bool? _visible;
 
   @override
   void initState() {
     super.initState();
     _home = context.read<HomeViewModel>()..addListener(_openNoSpotsIfFull);
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _home.load());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() => _resumed = state == AppLifecycleState.resumed);
+  }
+
+  void _syncVisibility(bool visible) {
+    if (visible == _visible) return;
+    _visible = visible;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _home.setVisible(visible);
+    });
   }
 
   void _openNoSpotsIfFull() {
@@ -46,6 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _home.setVisible(false);
     _home.removeListener(_openNoSpotsIfFull);
     super.dispose();
   }
@@ -54,6 +73,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final home = context.watch<HomeViewModel>();
     final user = context.watch<AuthViewModel>().user;
+    final tab = context.watch<ShellViewModel>().tab;
+    final isTop = ModalRoute.isCurrentOf(context) ?? true;
+    _syncVisibility(tab == AppTab.home && isTop && _resumed);
     final levels = home.levels;
 
     return Scaffold(
