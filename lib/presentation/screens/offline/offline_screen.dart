@@ -181,13 +181,16 @@ class _CachedLevelCard extends StatelessWidget {
                     TextSpan(
                       children: [
                         TextSpan(
-                          text: level.free == 0
-                              ? 'No spots'
-                              : '${level.free} free',
+                          text: '${level.free} free',
                           style: AppTypography.caption.copyWith(
                             color: color,
                             fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        TextSpan(
+                          text:
+                              ' · ${level.reserved} reserved · ${level.occupied} occupied · ${level.disabled} unavailable',
+                          style: AppTypography.caption,
                         ),
                         TextSpan(
                           text: '   cached ${formatTime(savedAt)}',
@@ -195,7 +198,7 @@ class _CachedLevelCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],

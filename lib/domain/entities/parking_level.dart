@@ -9,6 +9,7 @@ class ParkingLevel {
     required this.free,
     required this.reserved,
     required this.occupied,
+    this.disabled = 0,
   });
 
   factory ParkingLevel.fromJson(Map<String, dynamic> json) => ParkingLevel(
@@ -19,6 +20,7 @@ class ParkingLevel {
     free: (json['free'] as num).toInt(),
     reserved: (json['reserved'] as num).toInt(),
     occupied: (json['occupied'] as num).toInt(),
+    disabled: (json['disabled'] as num?)?.toInt() ?? 0,
   );
 
   final String code;
@@ -28,7 +30,9 @@ class ParkingLevel {
   final int free;
   final int reserved;
   final int occupied;
+  final int disabled;
 
+  int get physicalTotal => total + disabled;
   double get occupancy => total == 0 ? 0 : (reserved + occupied) / total;
 
   OccupancyStatus get status {
