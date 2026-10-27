@@ -11,6 +11,7 @@ import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
@@ -19,6 +20,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     this._parking,
     this._preferences,
     this._location,
+    this._telemetry,
     ConnectivityPort connectivity, {
     DateTime Function()? clock,
     this.refreshEvery = const Duration(seconds: 15),
@@ -32,6 +34,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
   final LocationProvider _location;
+  final Telemetry _telemetry;
   final DateTime Function() _clock;
 
   /// How often the free spots of each level are asked again while Home is
@@ -39,6 +42,8 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   final Duration refreshEvery;
   Timer? _timer;
   bool _hidden = false;
+  bool _visible = false;
+  bool _forecastReportedForVisit = false;
 
   Cached<LevelsOverview>? levels;
   List<Building> buildings = const [];
@@ -58,8 +63,10 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
 
   List<HourlyOccupancy> get forecast {
     if (_forecasts.isEmpty) return const [];
+    final hourly = hourlyOccupancy(_forecasts);
+    if (hourly.every((hour) => hour.occupancy == null)) return const [];
     final start = (currentHour - 1).clamp(0, 16);
-    return hourlyOccupancy(_forecasts).sublist(start, start + 8);
+    return hourly.sublist(start, start + 8);
   }
 
   Future<void> load() async {
@@ -83,8 +90,12 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     _timer = null;
     if (!visible) {
       _hidden = true;
+      _visible = false;
+      _forecastReportedForVisit = false;
       return;
     }
+    _visible = true;
+    _reportForecastViewed();
     if (_hidden && online) refreshLevels();
     _hidden = false;
     _timer = Timer.periodic(refreshEvery, (_) {
@@ -108,6 +119,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     var arrival = DateTime(now.year, now.month, now.day, hour, minute);
     if (arrival.isBefore(now)) arrival = arrival.add(const Duration(days: 1));
     arrivalAt = arrival;
+    _telemetry.track('forecast_viewed', {'source': 'arrival_time_changed'});
     notifyListeners();
     await _loadRecommendation();
     notifyListeners();
@@ -145,9 +157,16 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   Future<void> _loadForecast() async {
     try {
       _forecasts = await _parking.getPredictions();
+      _reportForecastViewed();
     } catch (e) {
       debugPrint('predictions failed: $e');
     }
+  }
+
+  void _reportForecastViewed() {
+    if (!_visible || _forecastReportedForVisit || forecast.isEmpty) return;
+    _forecastReportedForVisit = true;
+    _telemetry.track('forecast_viewed', {'source': 'home_forecast'});
   }
 
   Future<void> _loadRecommendation() async {

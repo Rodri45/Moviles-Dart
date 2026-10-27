@@ -78,6 +78,9 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
       _spots = [for (final level in perLevel) ...level.data]
         ..sort((a, b) => a.walkMinutes.compareTo(b.walkMinutes));
       fromCache = perLevel.any((level) => level.fromCache);
+      if (!fromCache) {
+        _telemetry.track('availability_viewed', {'source': 'find_spot'});
+      }
       savedAt = perLevel
           .map((level) => level.savedAt)
           .reduce((a, b) => a.isBefore(b) ? a : b);

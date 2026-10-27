@@ -1,5 +1,6 @@
 import '../../domain/entities/lead_time_advice.dart';
 import '../../domain/entities/reservation.dart';
+import '../../domain/entities/cached.dart';
 import '../../domain/errors.dart';
 import '../../domain/ports/reservation_repository.dart';
 import 'parking_mock_data.dart';
@@ -46,7 +47,8 @@ class MockReservationRepository implements ReservationRepository {
   Future<Reservation?> active() async => current;
 
   @override
-  Future<List<Reservation>> history() async => [?current, ...past];
+  Future<Cached<List<Reservation>>> history() async =>
+      Cached([?current, ...past], savedAt: _now);
 
   @override
   Future<LeadTimeAdvice> leadTime() async => const LeadTimeAdvice(

@@ -5,6 +5,7 @@ import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_location_provider.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 import 'package:parkwise/infrastructure/mock/mock_preferences_store.dart';
+import 'package:parkwise/infrastructure/mock/mock_telemetry.dart';
 import 'package:parkwise/presentation/screens/home/home_view_model.dart';
 
 class _CountingParking extends MockParkingRepository {
@@ -20,15 +21,18 @@ class _CountingParking extends MockParkingRepository {
 void main() {
   late _CountingParking parking;
   late MockConnectivity connectivity;
+  late MockTelemetry telemetry;
   late HomeViewModel home;
 
   setUp(() {
     parking = _CountingParking();
     connectivity = MockConnectivity();
+    telemetry = MockTelemetry();
     home = HomeViewModel(
       parking,
       MockPreferencesStore(),
       MockLocationProvider(),
+      telemetry,
       connectivity,
       refreshEvery: const Duration(milliseconds: 20),
     );
@@ -71,5 +75,25 @@ void main() {
     final offline = parking.levelCalls;
     await Future<void>.delayed(const Duration(milliseconds: 70));
     expect(parking.levelCalls, offline);
+  });
+
+  test('tracks the forecast when visible and when arrival time changes', () async {
+    await home.load();
+    expect(telemetry.named('forecast_viewed'), isEmpty);
+
+    home.setVisible(true);
+    expect(
+      telemetry.named('forecast_viewed').single['source'],
+      'home_forecast',
+    );
+
+    await home.load();
+    expect(telemetry.named('forecast_viewed'), hasLength(1));
+
+    await home.setArrivalTime(10, 30);
+    expect(
+      telemetry.named('forecast_viewed').last['source'],
+      'arrival_time_changed',
+    );
   });
 }

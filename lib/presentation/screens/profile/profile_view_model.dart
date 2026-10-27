@@ -11,10 +11,12 @@ class ProfileViewModel extends ChangeNotifier {
 
   List<Reservation> history = const [];
   bool isLoading = false;
+  bool historyFromCache = false;
   String? errorMessage;
 
   void reset() {
     history = const [];
+    historyFromCache = false;
     errorMessage = null;
     notifyListeners();
   }
@@ -24,7 +26,9 @@ class ProfileViewModel extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     try {
-      history = await _reservations.history();
+      final result = await _reservations.history();
+      history = result.data;
+      historyFromCache = result.fromCache;
     } catch (e) {
       errorMessage = errorMessageFor(e);
     } finally {

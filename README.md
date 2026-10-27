@@ -6,6 +6,13 @@ versión Android en Flutter; la app iOS (SwiftUI) usa el mismo backend
 
 El contrato de la API está en `../Moviles-Backend/docs/API.md`.
 
+La BQ8 de Andrés está conectada al mismo flujo de datos de producción: Flutter
+envía `forecast_viewed` y `availability_viewed` por `TelemetryClient`; la cola
+Hive conserva los eventos sin conexión con su hora UTC original; el backend los
+relaciona por usuario/día de Bogotá con check-ins reales de `reservations`; y
+la tarjeta BQ8 del dashboard consulta el resumen SQL desde PostgreSQL. No hay
+datos semilla en la app ni archivos exportados para completar esa tarjeta.
+
 ## Correr la app
 
 Requisitos: Flutter 3.47+ (`flutter doctor` sin errores en "Android toolchain").
@@ -75,6 +82,10 @@ Las pruebas no llaman al backend: usan los mocks de
 |---|---|
 | `test/circuit_breaker_test.dart` | Estados cerrado, abierto y semiabierto; los 4xx no cuentan |
 | `test/http_parking_repository_test.dart` | Devuelve la copia de Hive (`fromCache`) cuando falla la red |
+| `test/reservation_history_offline_test.dart` | Historial SQLite por cuenta con fallback solo ante fallo de red |
+| `test/local_persistence_test.dart` | Persistencia relacional SQLite y archivo JSON del carro |
+| `test/local_cache_lru_test.dart` | LRU de 32 respuestas decodificadas y recuperación desde Hive tras eviction |
+| `test/api_client_test.dart` | JSON grande procesado en isolate y respuesta inválida reportada |
 | `test/reserve_view_model_test.dart` | Reserva 201, los dos 409, cuenta regresiva con `expiresAt`, check-in, aviso de vencimiento |
 | `test/auth_view_model_test.dart` | Login, errores, registro y restauración de la sesión |
 | `test/recommend_spot_test.dart` | El puesto recomendado es el libre con menos minutos; zona BQ4 |
@@ -123,9 +134,42 @@ implementaciones concretas.
 | Dónde | Qué |
 |---|---|
 | `flutter_secure_storage` | Token y usuario (el token nunca va a Hive ni a logs) |
-| Hive `cache` | Última respuesta de niveles, puestos por nivel, edificios, reserva abierta y posición del carro |
+| Hive `cache` | Última respuesta de niveles, puestos por nivel, edificios y reserva abierta |
 | Hive `prefs` | Edificio destino elegido |
 | Hive `telemetry` | Cola de eventos pendientes (máx. 200) |
+| SQLite (`parkwise_local.db`) | Historial de reservas por usuario; respaldo transaccional para abrir Profile offline |
+| `parked_vehicle.json` en Application Support | Última ubicación del carro, escrita al guardar/check-in y disponible offline |
+
+El historial SQLite está particionado por `user_id`, tiene clave primaria
+compuesta y un índice por usuario/fecha. Solo se usa como respaldo si falla la
+red; un usuario nunca recibe el historial cacheado de otra cuenta. Se borra al
+cerrar sesión. La ubicación del carro se guarda como JSON en el directorio
+privado de la app, no como archivo descargado ni como fuente de analítica.
+
+`LocalCache` mantiene además un LRU de hasta 32 respuestas decodificadas en
+memoria; Hive sigue siendo la copia persistente para uso offline. El límite
+evita crecimiento sin cota y la política descarta primero lo menos usado. Las
+respuestas HTTP JSON de 64 KiB o más se decodifican con `compute` en un isolate;
+las respuestas pequeñas evitan el coste de crear un isolate.
+
+### Justificación para la sustentación
+
+Las estrategias descritas aquí se agregaron para cubrir la implementación
+asignada a Andrés Cáceres; no representan una implementación común ni un
+requisito uniforme para todo el equipo. Cada desarrollador debe revisar su
+alcance y agregar las estrategias que correspondan a sus propias necesidades.
+
+| Grupo | Decisión que se puede explicar |
+|---|---|
+| Asincronía y concurrencia | Los repositorios y el arranque usan `Future` con `async`/`await`, `try/catch` y estados de carga. JSON de 64 KiB o más se decodifica con `compute` en un isolate; los cuerpos pequeños no pagan el coste de crear uno. |
+| Conectividad eventual | `connectivity_plus` expone un `Stream`; al recuperar conexión se vuelven a cargar las vistas visibles y la telemetría pendiente de Hive se reintenta en orden, limitada a 200 eventos. Una respuesta offline nunca se etiqueta como dato vivo. |
+| Almacenamiento local | Hive cubre KV, preferencias y cola; `flutter_secure_storage` protege la sesión; SQLite respalda historial relacional indexado por usuario/fecha; un archivo JSON en Application Support conserva la ubicación del carro. |
+| Caché y privacidad | Hive conserva respuestas con hora de captura; `fromCache` permite distinguir datos offline de vivos. Un LRU en memoria está limitado a 32 entradas; el historial está particionado por usuario y ambos tipos de datos personales se eliminan al cerrar sesión. |
+
+La app no carga imágenes remotas, por lo que no agrega una librería de caché
+de imágenes. La analítica BQ8 se obtiene del backend y la base PostgreSQL
+compartida; no se importa desde archivos ni se guarda una segunda base para el
+dashboard.
 
 ## Design system
 
@@ -148,4 +192,3 @@ Colores con significado fijo (nunca decorativos):
 
 Grid de 8px, touch target 48px, radio de card 8px, badge 3px, padding de
 página 16px. Sin sombras: profundidad por cards blancas sobre fondo gris.
-

@@ -1,13 +1,23 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../../domain/entities/app_user.dart';
 import '../../domain/ports/auth_repository.dart';
+import '../storage/car_location_file_store.dart';
 import '../storage/local_cache.dart';
+import '../storage/reservation_history_store.dart';
 import '../storage/session_store.dart';
 import 'api_client.dart';
 
 class HttpAuthRepository implements AuthRepository {
-  HttpAuthRepository(this._client, this._session, this._cache) {
+  HttpAuthRepository(
+    this._client,
+    this._session,
+    this._cache,
+    this._historyStore,
+    this._carLocationStore,
+  ) {
     _client.onUnauthorized = _expire;
   }
 
@@ -15,6 +25,8 @@ class HttpAuthRepository implements AuthRepository {
   final SessionStore _session;
 
   final LocalCache _cache;
+  final ReservationHistoryStore _historyStore;
+  final CarLocationFileStore _carLocationStore;
   final _expired = StreamController<void>.broadcast();
 
   @override
@@ -48,6 +60,16 @@ class HttpAuthRepository implements AuthRepository {
   Future<void> logout() async {
     await _session.clear();
     await _cache.clear();
+    try {
+      await _historyStore.clear();
+    } catch (e) {
+      debugPrint('reservation history cache clear failed: $e');
+    }
+    try {
+      await _carLocationStore.clear();
+    } catch (e) {
+      debugPrint('saved car location clear failed: $e');
+    }
   }
 
   @override

@@ -1,5 +1,6 @@
 import '../entities/lead_time_advice.dart';
 import '../entities/reservation.dart';
+import '../entities/cached.dart';
 
 abstract interface class ReservationRepository {
   Future<Reservation> create(String spotId);
@@ -10,7 +11,7 @@ abstract interface class ReservationRepository {
 
   Future<Reservation?> active();
 
-  Future<List<Reservation>> history();
+  Future<Cached<List<Reservation>>> history();
 
   Future<LeadTimeAdvice> leadTime();
 }
