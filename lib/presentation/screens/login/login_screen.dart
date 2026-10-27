@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
@@ -74,7 +75,14 @@ class _LoginScreenState extends State<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Email'),
+              maxLength: AuthViewModel.emailMaxLength,
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'\s')),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                counterText: '',
+              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -82,8 +90,12 @@ class _LoginScreenState extends State<LoginScreen> {
               onChanged: auth.setPassword,
               obscureText: true,
               autofillHints: const [AutofillHints.password],
+              maxLength: AuthViewModel.passwordMaxLength,
               onSubmitted: (_) => auth.canLogin ? auth.login() : null,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                counterText: '',
+              ),
             ),
             const SizedBox(height: Spacing.lg),
             FilledButton(

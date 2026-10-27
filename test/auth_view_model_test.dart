@@ -50,6 +50,26 @@ void main() {
         ..setPassword('secret123');
       expect(auth.canLogin, isFalse);
     });
+
+    test('too long email or password keeps login disabled', () {
+      final longEmail =
+          '${'a' * (AuthViewModel.emailMaxLength - 13)}@uniandes.co';
+      auth
+        ..setEmail(longEmail)
+        ..setPassword('secret123');
+      expect(longEmail.length, AuthViewModel.emailMaxLength - 1);
+      expect(auth.canLogin, isTrue);
+
+      auth.setEmail('a$longEmail');
+      expect(auth.canLogin, isTrue);
+      auth.setEmail('aa$longEmail');
+      expect(auth.canLogin, isFalse);
+
+      auth
+        ..setEmail('laura@uniandes.edu.co')
+        ..setPassword('x' * (AuthViewModel.passwordMaxLength + 1));
+      expect(auth.canLogin, isFalse);
+    });
   });
 
   group('register', () {
