@@ -248,7 +248,7 @@ class AppDependencies {
       create: (_) => LotArrivalViewModel(lotRedirects, telemetry),
     ),
     ChangeNotifierProvider(
-      create: (_) => FindMyCarViewModel(vehicles, location),
+      create: (_) => FindMyCarViewModel(vehicles, location, outbox),
     ),
     ChangeNotifierProvider(
       create: (_) => ReserveViewModel(
