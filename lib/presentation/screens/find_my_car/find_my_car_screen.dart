@@ -94,7 +94,15 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
     }
 
     return [
-      if (car.offline) ...[
+      if (car.pendingActions > 0) ...[
+        const NoticeBanner(
+          message:
+              'Saved on this phone. Your check-in will be sent when '
+              'you\'re back online.',
+          icon: Icons.schedule,
+        ),
+        const SizedBox(height: Spacing.md),
+      ] else if (car.offline) ...[
         const NoticeBanner(
           message: 'No connection. Showing where you saved your car.',
           icon: Icons.wifi_off,

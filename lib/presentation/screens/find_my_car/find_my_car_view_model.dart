@@ -6,14 +6,19 @@ import '../../../domain/entities/car_location.dart';
 import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/parked_vehicle.dart';
 import '../../../domain/ports/location_provider.dart';
+import '../../../domain/ports/reservation_outbox.dart';
 import '../../../domain/ports/vehicle_locator.dart';
 
 class FindMyCarViewModel extends ChangeNotifier {
-  FindMyCarViewModel(this._vehicles, this._location);
+  FindMyCarViewModel(this._vehicles, this._location, this._outbox) {
+    _outboxSub = _outbox.status.listen(_onOutbox);
+  }
 
   final VehicleLocator _vehicles;
   final LocationProvider _location;
+  final ReservationOutbox _outbox;
   StreamSubscription<GeoPoint>? _positionSub;
+  StreamSubscription<OutboxStatus>? _outboxSub;
 
   ParkedVehicle? vehicle;
   CarLocation? saved;
@@ -24,6 +29,8 @@ class FindMyCarViewModel extends ChangeNotifier {
   bool offline = false;
 
   bool usingLastKnown = false;
+
+  int pendingActions = 0;
 
   String? get spotCode => vehicle?.spotCode ?? saved?.spotCode;
   String? get levelCode => vehicle?.levelCode ?? saved?.levelCode;
@@ -58,10 +65,12 @@ class FindMyCarViewModel extends ChangeNotifier {
   Future<void> load() async {
     isLoading = true;
     notifyListeners();
+    pendingActions = await _outbox.pendingCount();
+    final queued = pendingActions > 0;
     try {
-      vehicle = await _vehicles.getParkedVehicle();
+      vehicle = queued ? null : await _vehicles.getParkedVehicle();
       offline = false;
-      if (vehicle == null) await _vehicles.clearLocation();
+      if (vehicle == null && !queued) await _vehicles.clearLocation();
     } catch (e) {
       offline = true;
       debugPrint('vehicle failed: $e');
@@ -93,6 +102,13 @@ class FindMyCarViewModel extends ChangeNotifier {
 
   Future<void> openSettings() => _location.openSettings();
 
+  void _onOutbox(OutboxStatus status) {
+    final sent = pendingActions > 0 && status.pending == 0;
+    pendingActions = status.pending;
+    notifyListeners();
+    if (sent) unawaited(load());
+  }
+
   Future<void> _track() async {
     final current = await _location.currentPosition();
     if (current != null) {
@@ -120,6 +136,7 @@ class FindMyCarViewModel extends ChangeNotifier {
   @override
   void dispose() {
     stop();
+    _outboxSub?.cancel();
     super.dispose();
   }
 }
