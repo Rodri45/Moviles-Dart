@@ -1,5 +1,6 @@
-import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
+
+import 'local_database.dart';
 
 class ReservationHistoryStore {
   ReservationHistoryStore(this._database);
@@ -8,43 +9,10 @@ class ReservationHistoryStore {
 
   final Database _database;
 
-  static Future<ReservationHistoryStore> open({String? databasePath}) async {
-    final location =
-        databasePath ??
-        path.join(await getDatabasesPath(), 'parkwise_local.db');
-    final database = await openDatabase(
-      location,
-      version: 1,
-      onCreate: (db, _) async {
-        await db.execute('''
-          CREATE TABLE $_table (
-            user_id TEXT NOT NULL,
-            reservation_id TEXT NOT NULL,
-            spot_id TEXT NOT NULL,
-            spot_code TEXT NOT NULL,
-            level_code TEXT NOT NULL,
-            status TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            checked_in_at TEXT,
-            released_at TEXT,
-            PRIMARY KEY (user_id, reservation_id)
-          )
-        ''');
-        await db.execute(
-          'CREATE INDEX reservation_history_user_created '
-          'ON $_table (user_id, created_at DESC)',
-        );
-        await db.execute('''
-          CREATE TABLE reservation_history_sync (
-            user_id TEXT PRIMARY KEY,
-            synced_at TEXT NOT NULL
-          )
-        ''');
-      },
-    );
-    return ReservationHistoryStore(database);
-  }
+  static Future<ReservationHistoryStore> open({String? databasePath}) async =>
+      ReservationHistoryStore(
+        await LocalDatabase.open(databasePath: databasePath),
+      );
 
   Future<
     ({List<Map<String, Object?>> reservations, DateTime savedAt})?

@@ -11,12 +11,17 @@ import '../../shared/error_messages.dart';
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthViewModel extends ChangeNotifier {
-  AuthViewModel(this._repository, this._telemetry) {
+  AuthViewModel(
+    this._repository,
+    this._telemetry, {
+    this._onSignedOut,
+  }) {
     _expiredSub = _repository.sessionExpired.listen((_) => _signOut());
   }
 
   final AuthRepository _repository;
   final Telemetry _telemetry;
+  final Future<void> Function()? _onSignedOut;
   bool _openReported = false;
   late final StreamSubscription<void> _expiredSub;
 
@@ -32,8 +37,6 @@ class AuthViewModel extends ChangeNotifier {
   String password = '';
   String confirmPassword = '';
 
-  /// Longest values the forms accept. The fields stop at these lengths, and
-  /// the checks below repeat them in case a value arrives some other way.
   static const nameMaxLength = 50;
   static const emailMaxLength = 100;
   static const passwordMinLength = 6;
@@ -153,6 +156,8 @@ class AuthViewModel extends ChangeNotifier {
     user = null;
     offlineSession = false;
     _openReported = false;
+    final cleanup = _onSignedOut;
+    if (cleanup != null) unawaited(cleanup());
     _setStatus(AuthStatus.unauthenticated);
   }
 

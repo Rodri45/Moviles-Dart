@@ -112,8 +112,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Login and register keep their form at most [authFormMaxWidth] wide, so
-/// in landscape the fields do not stretch across the whole screen.
 const authFormMaxWidth = 480.0;
 
 double authFormSidePadding(BuildContext context) {

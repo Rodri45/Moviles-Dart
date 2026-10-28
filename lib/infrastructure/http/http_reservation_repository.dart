@@ -42,7 +42,7 @@ class HttpReservationRepository implements ReservationRepository {
       final reservation = json == null
           ? null
           : Reservation.fromJson(json as Map<String, dynamic>);
-      await _remember(reservation);
+      await _rememberActive(reservation);
       return reservation;
     } catch (e) {
       final outage = ApiClient.isNetworkFailure(e);
@@ -104,16 +104,19 @@ class HttpReservationRepository implements ReservationRepository {
   Future<Reservation> _save(Future<dynamic> request) async {
     final json = await request as Map<String, dynamic>;
     final reservation = Reservation.fromJson(json);
-    await _remember(reservation);
-    final userId = _currentUserId();
-    if (userId != null) {
-      try {
-        await _historyStore.upsert(userId, _toRow(reservation));
-      } catch (e) {
-        debugPrint('reservation history cache update failed: $e');
-      }
-    }
+    await remember(reservation);
     return reservation;
+  }
+
+  Future<void> remember(Reservation reservation) async {
+    await _rememberActive(reservation);
+    final userId = _currentUserId();
+    if (userId == null) return;
+    try {
+      await _historyStore.upsert(userId, _toRow(reservation));
+    } catch (e) {
+      debugPrint('reservation history cache update failed: $e');
+    }
   }
 
   static Map<String, Object?> _toRow(Reservation reservation) => {
@@ -128,7 +131,7 @@ class HttpReservationRepository implements ReservationRepository {
     'released_at': reservation.releasedAt?.toUtc().toIso8601String(),
   };
 
-  Future<void> _remember(Reservation? reservation) {
+  Future<void> _rememberActive(Reservation? reservation) {
     if (reservation == null || !reservation.isOpen) {
       return _cache.delete(_activeKey);
     }

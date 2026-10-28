@@ -37,6 +37,28 @@ class ReserveScreen extends StatelessWidget {
             Spacing.lg,
           ),
           children: [
+            if (reserve.pendingActions > 0) ...[
+              NoticeBanner(
+                title: 'Saved on this phone',
+                message: reserve.pendingActions == 1
+                    ? '1 action will be sent when you\'re back online.'
+                    : '${reserve.pendingActions} actions will be sent '
+                          'when you\'re back online.',
+                icon: Icons.cloud_upload_outlined,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
+            if (!reserve.online && reserve.reservation != null) ...[
+              const NoticeBanner(
+                title: 'No signal',
+                message:
+                    'The countdown keeps running with the time the '
+                    'server gave. "I parked" and "I left" are saved on '
+                    'this phone and sent when the signal returns.',
+                icon: Icons.signal_cellular_off,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
             if (reserve.errorMessage != null) ...[
               NoticeBanner(
                 message: reserve.errorMessage!,
@@ -192,10 +214,17 @@ class _SpotCard extends StatelessWidget {
         color: Palette.primary,
       );
       actions = [
+        if (!reserve.online)
+          const NoticeBanner(
+            message: ReserveViewModel.offlineConfirmMessage,
+            icon: Icons.cloud_off_outlined,
+          ),
         _ActionButton(
-          label: 'Confirm reservation',
+          label: reserve.online
+              ? 'Confirm reservation'
+              : 'Waiting for connection',
           busy: reserve.isBusy,
-          onPressed: reserve.confirm,
+          onPressed: reserve.canConfirm ? reserve.confirm : null,
         ),
       ];
     }
@@ -291,7 +320,7 @@ class _ActionButton extends StatelessWidget {
 
   final String label;
   final bool busy;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

@@ -121,8 +121,6 @@ class _LevelMapScreenState extends State<LevelMapScreen>
     );
   }
 
-  /// In landscape the spot card goes to the right of the grid. At the
-  /// bottom it would cover almost all the height that is left.
   static bool _useSidePanel(BuildContext context) =>
       HeaderScrollView.isShort(context) &&
       MediaQuery.sizeOf(context).width >= 600;
@@ -430,7 +428,6 @@ class _SelectedSpotSheet extends StatelessWidget {
   final bool isRecommendation;
   final VoidCallback onClose;
 
-  /// True when the card is a panel on the right instead of a bottom sheet.
   final bool side;
 
   void _reserve(BuildContext context) {

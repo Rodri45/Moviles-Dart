@@ -9,10 +9,8 @@ class LocalCache {
   static const maxMemoryEntries = 32;
 
   final Box<String> _box;
-  final _memory = LinkedHashMap<
-    String,
-    ({Object? data, DateTime savedAt})
-  >();
+  final LinkedHashMap<String, ({Object? data, DateTime savedAt})> _memory =
+      LinkedHashMap();
 
   Future<void> write(String key, Object? data, {DateTime? savedAt}) {
     final timestamp = savedAt ?? DateTime.now();
