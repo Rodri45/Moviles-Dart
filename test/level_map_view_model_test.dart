@@ -133,26 +133,33 @@ void main() {
     expect(preferences.lastOpenedLevel, 'P3');
   });
 
-  test('periodic map refresh pauses while offline', () async {
-    final connectivity = MockConnectivity();
-    final parking = _CountingSpots();
-    final map = LevelMapViewModel(
-      parking,
-      MockPreferencesStore(),
-      MockTelemetry(),
-      const DeviceDescription(model: 'Test device', osVersion: '1'),
-      connectivity,
-      refreshEvery: const Duration(milliseconds: 2),
-    );
-    addTearDown(map.dispose);
+  test(
+    'periodic map refresh resumes after duplicate offline signals',
+    () async {
+      final connectivity = MockConnectivity(online: false);
+      final parking = _CountingSpots();
+      final map = LevelMapViewModel(
+        parking,
+        MockPreferencesStore(),
+        MockTelemetry(),
+        const DeviceDescription(model: 'Test device', osVersion: '1'),
+        connectivity,
+        refreshEvery: const Duration(milliseconds: 2),
+      );
+      addTearDown(map.dispose);
 
-    map.setVisible(true);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-    connectivity.setOnline(false);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    final offlineCalls = parking.calls;
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      map.setVisible(true);
+      connectivity.setOnline(false);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final offlineCalls = parking.calls;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(parking.calls, offlineCalls);
 
-    expect(parking.calls, offlineCalls);
-  });
+      connectivity.setOnline(true);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(parking.calls, greaterThan(offlineCalls));
+      map.setVisible(false);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    },
+  );
 }

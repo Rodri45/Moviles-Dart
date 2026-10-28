@@ -159,24 +159,20 @@ respuestas HTTP JSON de 4 KiB o más se decodifican con `compute` en un isolate;
 las respuestas pequeñas evitan el coste de crear un isolate. El umbral permite
 que respuestas reales de puestos y predicciones usen el isolate.
 
-### Justificación para la sustentación
+Estas funciones corresponden a la implementación asignada a Andrés Cáceres;
+no son un requisito común para los demás integrantes, quienes deben decidir
+qué estrategias implementar según su propio alcance.
 
-Las estrategias descritas aquí se agregaron para cubrir la implementación
-asignada a Andrés Cáceres; no representan una implementación común ni un
-requisito uniforme para todo el equipo. Cada desarrollador debe revisar su
-alcance y agregar las estrategias que correspondan a sus propias necesidades.
-
-| Grupo | Decisión que se puede explicar |
-|---|---|
-| Asincronía y concurrencia | El Home precarga los puestos de P1, P2 y P3 con `Future.wait`; cada nivel maneja sus errores por separado. El JSON de 4 KiB o más se decodifica con `compute` en un isolate. |
-| Conectividad eventual | `connectivity_plus` expone cambios por `Stream`; el refresco periódico del mapa se pausa sin conexión y reanuda al volver. También se reintenta la telemetría encolada en Hive, limitada a 200 eventos. |
-| Almacenamiento local | Hive conserva caché y destino; `shared_preferences` guarda hora de llegada y último nivel; SQLite respalda el historial por usuario; archivos privados guardan ubicación del carro y pronóstico. La sesión queda protegida con `flutter_secure_storage`. |
-| Caché y privacidad | Hive conserva respuestas con hora de captura; `fromCache` permite distinguir datos offline de vivos. Un LRU en memoria está limitado a 32 entradas; el historial está particionado por usuario y ambos tipos de datos personales se eliminan al cerrar sesión. |
+### Pronóstico y búsqueda de puestos
 
 El Home permite abrir el detalle del pronóstico y vistas específicas de puestos
 accesibles y para vehículos eléctricos. Los accesos usan las mismas consultas
 reales de disponibilidad y se identifican como datos locales cuando la red no
 está disponible. En el mapa, el chip del último nivel abierto se marca con `*`.
+
+El Home precarga los puestos de P1, P2 y P3 en paralelo. El refresco periódico
+del mapa se pausa al perder conexión y se reanuda al recuperarla. La decodificación
+del JSON de respuestas de al menos 4 KiB se ejecuta en un isolate.
 
 La analítica BQ8 se obtiene del backend y la base PostgreSQL compartida; no se
 importa desde archivos ni se guarda una segunda base para el dashboard.

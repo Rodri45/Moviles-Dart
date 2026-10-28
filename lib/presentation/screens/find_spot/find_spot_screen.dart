@@ -36,11 +36,10 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
       (_) {
         final finder = context.read<FindSpotViewModel>();
         final filter = widget.initialFilter;
-        if (filter == null) {
-          finder.load();
-        } else {
-          finder.setFilters({SpotFilter.available, filter});
-        }
+        finder.setFilters({
+          SpotFilter.available,
+          if (filter != null) filter,
+        });
       },
     );
   }

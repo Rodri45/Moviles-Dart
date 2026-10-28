@@ -29,7 +29,7 @@ void main() {
       expect(auth.status, AuthStatus.authenticated);
       expect(auth.user!.email, 'laura@uniandes.edu.co');
       expect(auth.errorMessage, isNull);
-      expect(telemetry.named('app_opened').single, {'platform': 'android'});
+      expect(telemetry.named('app_opened').single, isEmpty);
     });
 
     test('wrong password shows an error and stays logged out', () async {

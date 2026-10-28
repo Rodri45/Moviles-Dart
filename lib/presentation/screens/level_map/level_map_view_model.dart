@@ -88,21 +88,19 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
     _refreshSubscription = Stream<void>.periodic(refreshEvery).listen((_) {
       unawaited(load(silent: true));
     });
-    _refreshConnectivitySubscription = _connectivity.changes.listen((online) {
-      if (online) {
-        _refreshSubscription?.resume();
-      } else {
-        _refreshSubscription?.pause();
-      }
-    });
+    _refreshConnectivitySubscription = _connectivity.changes.listen(
+      _setRefreshRunning,
+    );
     _connectivity.isOnline().then((online) {
-      if (!_visible) return;
-      if (online) {
-        _refreshSubscription?.resume();
-      } else {
-        _refreshSubscription?.pause();
-      }
+      if (_visible) _setRefreshRunning(online);
     });
+  }
+
+  void _setRefreshRunning(bool online) {
+    final refresh = _refreshSubscription;
+    if (refresh == null) return;
+    if (online && refresh.isPaused) refresh.resume();
+    if (!online && !refresh.isPaused) refresh.pause();
   }
 
   Future<void> selectLevel(String code) async {

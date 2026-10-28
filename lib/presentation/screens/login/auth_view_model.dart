@@ -165,7 +165,7 @@ class AuthViewModel extends ChangeNotifier {
   void _reportOpen() {
     if (_openReported) return;
     _openReported = true;
-    _telemetry.track('app_opened', {'platform': 'android'});
+    _telemetry.track('app_opened');
   }
 
   void _edit(VoidCallback change) {
