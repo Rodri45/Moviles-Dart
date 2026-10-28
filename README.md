@@ -83,9 +83,13 @@ Las pruebas no llaman al backend: usan los mocks de
 | `test/circuit_breaker_test.dart` | Estados cerrado, abierto y semiabierto; los 4xx no cuentan |
 | `test/http_parking_repository_test.dart` | Devuelve la copia de Hive (`fromCache`) cuando falla la red |
 | `test/reservation_history_offline_test.dart` | Historial SQLite por cuenta con fallback solo ante fallo de red |
-| `test/local_persistence_test.dart` | Persistencia relacional SQLite y archivo JSON del carro |
+| `test/local_persistence_test.dart` | Persistencia relacional SQLite, ubicación del carro y pronóstico JSON por fecha |
+| `test/device_preferences_store_test.dart` | Hora de llegada y último nivel en `shared_preferences` |
+| `test/telemetry_client_test.dart` | Plataforma Android y hora del evento conservadas en la cola offline |
 | `test/local_cache_lru_test.dart` | LRU de 32 respuestas decodificadas y recuperación desde Hive tras eviction |
 | `test/api_client_test.dart` | JSON grande procesado en isolate y respuesta inválida reportada |
+| `test/home_view_model_test.dart` | Prefetch independiente por nivel y recomendación calculada desde pronóstico guardado |
+| `test/level_map_view_model_test.dart` | Sin doble conteo BQ1 al volver al mapa y pausa de refresco offline |
 | `test/reserve_view_model_test.dart` | Reserva 201, los dos 409, cuenta regresiva con `expiresAt`, check-in, aviso de vencimiento |
 | `test/auth_view_model_test.dart` | Login, errores, registro y restauración de la sesión |
 | `test/recommend_spot_test.dart` | El puesto recomendado es el libre con menos minutos; zona BQ4 |
@@ -116,7 +120,7 @@ lib/
 ├── infrastructure/              implementaciones de los puertos
 │   ├── http/                    ApiClient, CircuitBreaker, repositorios, TelemetryClient
 │   ├── device/                  geolocator, connectivity_plus, device_info_plus, url_launcher
-│   ├── storage/                 SessionStore (secure storage), Hive
+│   ├── storage/                 SessionStore, Hive, SQLite, preferences and private files
 │   └── mock/                    versiones de mentira para las pruebas
 └── presentation/
     ├── shell/                   AuthGate (login o app) y MainShell (tabs)
@@ -136,9 +140,11 @@ implementaciones concretas.
 | `flutter_secure_storage` | Token y usuario (el token nunca va a Hive ni a logs) |
 | Hive `cache` | Última respuesta de niveles, puestos por nivel, edificios y reserva abierta |
 | Hive `prefs` | Edificio destino elegido |
+| `shared_preferences` | Hora de llegada y último nivel abierto |
 | Hive `telemetry` | Cola de eventos pendientes (máx. 200) |
 | SQLite (`parkwise_local.db`) | Historial de reservas por usuario; respaldo transaccional para abrir Profile offline |
 | `parked_vehicle.json` en Application Support | Última ubicación del carro, escrita al guardar/check-in y disponible offline |
+| `forecast.json` en Application Support | Pronóstico real de la API para la fecha de llegada; se usa como respaldo offline y para calcular el nivel recomendado |
 
 El historial SQLite está particionado por `user_id`, tiene clave primaria
 compuesta y un índice por usuario/fecha. Solo se usa como respaldo si falla la
@@ -149,27 +155,27 @@ privado de la app, no como archivo descargado ni como fuente de analítica.
 `LocalCache` mantiene además un LRU de hasta 32 respuestas decodificadas en
 memoria; Hive sigue siendo la copia persistente para uso offline. El límite
 evita crecimiento sin cota y la política descarta primero lo menos usado. Las
-respuestas HTTP JSON de 64 KiB o más se decodifican con `compute` en un isolate;
-las respuestas pequeñas evitan el coste de crear un isolate.
+respuestas HTTP JSON de 4 KiB o más se decodifican con `compute` en un isolate;
+las respuestas pequeñas evitan el coste de crear un isolate. El umbral permite
+que respuestas reales de puestos y predicciones usen el isolate.
 
-### Justificación para la sustentación
+Estas funciones corresponden a la implementación asignada a Andrés Cáceres;
+no son un requisito común para los demás integrantes, quienes deben decidir
+qué estrategias implementar según su propio alcance.
 
-Las estrategias descritas aquí se agregaron para cubrir la implementación
-asignada a Andrés Cáceres; no representan una implementación común ni un
-requisito uniforme para todo el equipo. Cada desarrollador debe revisar su
-alcance y agregar las estrategias que correspondan a sus propias necesidades.
+### Pronóstico y búsqueda de puestos
 
-| Grupo | Decisión que se puede explicar |
-|---|---|
-| Asincronía y concurrencia | Los repositorios y el arranque usan `Future` con `async`/`await`, `try/catch` y estados de carga. JSON de 64 KiB o más se decodifica con `compute` en un isolate; los cuerpos pequeños no pagan el coste de crear uno. |
-| Conectividad eventual | `connectivity_plus` expone un `Stream`; al recuperar conexión se vuelven a cargar las vistas visibles y la telemetría pendiente de Hive se reintenta en orden, limitada a 200 eventos. Una respuesta offline nunca se etiqueta como dato vivo. |
-| Almacenamiento local | Hive cubre KV, preferencias y cola; `flutter_secure_storage` protege la sesión; SQLite respalda historial relacional indexado por usuario/fecha; un archivo JSON en Application Support conserva la ubicación del carro. |
-| Caché y privacidad | Hive conserva respuestas con hora de captura; `fromCache` permite distinguir datos offline de vivos. Un LRU en memoria está limitado a 32 entradas; el historial está particionado por usuario y ambos tipos de datos personales se eliminan al cerrar sesión. |
+El Home permite abrir el detalle del pronóstico y vistas específicas de puestos
+accesibles y para vehículos eléctricos. Los accesos usan las mismas consultas
+reales de disponibilidad y se identifican como datos locales cuando la red no
+está disponible. En el mapa, el chip del último nivel abierto se marca con `*`.
 
-La app no carga imágenes remotas, por lo que no agrega una librería de caché
-de imágenes. La analítica BQ8 se obtiene del backend y la base PostgreSQL
-compartida; no se importa desde archivos ni se guarda una segunda base para el
-dashboard.
+El Home precarga los puestos de P1, P2 y P3 en paralelo. El refresco periódico
+del mapa se pausa al perder conexión y se reanuda al recuperarla. La decodificación
+del JSON de respuestas de al menos 4 KiB se ejecuta en un isolate.
+
+La analítica BQ8 se obtiene del backend y la base PostgreSQL compartida; no se
+importa desde archivos ni se guarda una segunda base para el dashboard.
 
 ## Design system
 

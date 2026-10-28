@@ -23,6 +23,11 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
     this.refreshEvery = const Duration(seconds: 5),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
+    _connectivity = connectivity;
+    final lastOpenedLevel = _preferences.lastOpenedLevel;
+    if (levelCodes.contains(lastOpenedLevel)) {
+      levelCode = lastOpenedLevel!;
+    }
     watchConnectivity(connectivity, load);
   }
 
@@ -33,8 +38,10 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   final Telemetry _telemetry;
   final DeviceDescription _device;
   final DateTime Function() _clock;
+  late final ConnectivityPort _connectivity;
   final Duration refreshEvery;
-  Timer? _timer;
+  StreamSubscription<void>? _refreshSubscription;
+  StreamSubscription<bool>? _refreshConnectivitySubscription;
 
   DateTime? _mapLoadStartedAt;
   bool _visible = false;
@@ -55,6 +62,8 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
 
   bool get awaitingPaint => _mapLoadStartedAt != null && spots.isNotEmpty;
 
+  String? get lastOpenedLevel => _preferences.lastOpenedLevel;
+
   ParkingSpot? get recommended => recommendSpot(spots, filters);
 
   ParkingSpot? get highlighted => selected ?? recommended;
@@ -68,21 +77,43 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   void setVisible(bool visible) {
-    _timer?.cancel();
-    _timer = null;
+    _stopRefresh();
     _visible = visible;
     if (!visible) {
       _availabilityReportedForVisit = false;
       return;
     }
-    _mapLoadStartedAt ??= _clock();
+    if (spots.isEmpty) _mapLoadStartedAt ??= _clock();
     load(silent: true);
-    _timer = Timer.periodic(refreshEvery, (_) => load(silent: true));
+    _refreshSubscription = Stream<void>.periodic(refreshEvery).listen((_) {
+      unawaited(load(silent: true));
+    });
+    _refreshConnectivitySubscription = _connectivity.changes.listen(
+      _setRefreshRunning,
+    );
+    _connectivity.isOnline().then((online) {
+      if (_visible) _setRefreshRunning(online);
+    });
+  }
+
+  void _setRefreshRunning(bool online) {
+    final refresh = _refreshSubscription;
+    if (refresh == null) return;
+    if (online && refresh.isPaused) refresh.resume();
+    if (!online && !refresh.isPaused) refresh.pause();
   }
 
   Future<void> selectLevel(String code) async {
+    if (!levelCodes.contains(code)) {
+      throw ArgumentError.value(code, 'code', 'Unknown parking level');
+    }
     if (code == levelCode && spots.isNotEmpty) return;
     levelCode = code;
+    try {
+      await _preferences.saveLastOpenedLevel(code);
+    } catch (e) {
+      errorMessage = errorMessageFor(e);
+    }
     spots = const [];
     selected = null;
     _mapLoadStartedAt = _clock();
@@ -205,7 +236,14 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _stopRefresh();
     super.dispose();
+  }
+
+  void _stopRefresh() {
+    unawaited(_refreshSubscription?.cancel());
+    unawaited(_refreshConnectivitySubscription?.cancel());
+    _refreshSubscription = null;
+    _refreshConnectivitySubscription = null;
   }
 }

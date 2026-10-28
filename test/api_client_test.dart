@@ -15,7 +15,7 @@ void main() {
   });
 
   test('decodes large API responses in a worker isolate', () async {
-    final payload = List.filled(70000, 'x').join();
+    final payload = List.filled(10 * 1024, 'x').join();
     final client = ApiClient(
       httpClient: MockClient(
         (_) async => http.Response('{"payload":"$payload"}', 200),

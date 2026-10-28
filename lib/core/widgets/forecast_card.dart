@@ -11,26 +11,31 @@ class ForecastCard extends StatelessWidget {
     required this.hours,
     this.currentHour,
     this.live = true,
+    this.onTap,
   });
 
   final List<HourlyOccupancy> hours;
   final int? currentHour;
 
   final bool live;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.card),
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    'Occupancy forecast · today',
+                    'Occupancy forecast',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.heading1,
@@ -77,7 +82,8 @@ class ForecastCard extends StatelessWidget {
                 _LegendItem(color: Palette.danger, label: 'High > 80%'),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

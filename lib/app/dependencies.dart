@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/entities/device_description.dart';
 import '../domain/ports/auth_repository.dart';
@@ -36,9 +37,10 @@ import '../infrastructure/mock/mock_preferences_store.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
 import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
-import '../infrastructure/storage/hive_preferences_store.dart';
 import '../infrastructure/storage/local_cache.dart';
 import '../infrastructure/storage/car_location_file_store.dart';
+import '../infrastructure/storage/device_preferences_store.dart';
+import '../infrastructure/storage/forecast_file_store.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
@@ -64,6 +66,7 @@ class AppDependencies {
     required this.directions,
     required this.telemetry,
     required this.device,
+    this.forecastStore,
   });
 
   static Future<AppDependencies> create() async {
@@ -73,9 +76,11 @@ class AppDependencies {
     final telemetryBox = await Hive.openBox<String>('telemetry');
     final historyStore = await ReservationHistoryStore.open();
     final supportDirectory = await getApplicationSupportDirectory();
+    final sharedPreferences = await SharedPreferences.getInstance();
     final carLocationStore = CarLocationFileStore(
       File(path.join(supportDirectory.path, 'parked_vehicle.json')),
     );
+    final forecastStore = ForecastFileStore(supportDirectory);
 
     final session = SessionStore();
     await session.load();
@@ -105,11 +110,12 @@ class AppDependencies {
       ),
       vehicles: HttpVehicleLocator(client, carLocationStore),
       connectivity: connectivity,
-      preferences: HivePreferencesStore(prefsBox),
+      preferences: DevicePreferencesStore(prefsBox, sharedPreferences),
       location: GeolocatorLocationProvider(),
       directions: UrlLauncherDirections(),
       telemetry: telemetry,
       device: await readDeviceDescription(),
+      forecastStore: forecastStore,
     );
   }
 
@@ -136,13 +142,20 @@ class AppDependencies {
   final DirectionsLauncher directions;
   final Telemetry telemetry;
   final DeviceDescription device;
+  final ForecastFileStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
     ChangeNotifierProvider(create: (_) => AuthViewModel(auth, telemetry)),
     ChangeNotifierProvider(create: (_) => ShellViewModel()),
     ChangeNotifierProvider(
-      create: (_) =>
-          HomeViewModel(parking, preferences, location, telemetry, connectivity),
+      create: (_) => HomeViewModel(
+        parking,
+        preferences,
+        location,
+        telemetry,
+        connectivity,
+        forecastStore: forecastStore,
+      ),
     ),
     ChangeNotifierProvider(
       create: (_) => LevelMapViewModel(

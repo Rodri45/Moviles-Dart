@@ -10,7 +10,7 @@ import '../../domain/errors.dart';
 import 'circuit_breaker.dart';
 
 class ApiClient {
-  static const _isolateJsonThreshold = 64 * 1024;
+  static const _isolateJsonThreshold = 4 * 1024;
 
   ApiClient({
     required http.Client httpClient,
