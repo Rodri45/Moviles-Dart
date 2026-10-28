@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:parkwise/domain/entities/level_forecast.dart';
 import 'package:parkwise/infrastructure/storage/car_location_file_store.dart';
+import 'package:parkwise/infrastructure/storage/forecast_file_store.dart';
 import 'package:parkwise/infrastructure/storage/reservation_history_store.dart';
 
 void main() {
@@ -69,4 +71,27 @@ void main() {
       expect(await store.read(), isNull);
     },
   );
+
+  test('forecast JSON file is scoped to its date and restores real points', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'parkwise-forecast-file',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final store = ForecastFileStore(directory);
+    final date = DateTime(2026, 10, 12, 8);
+    final forecast = [
+      LevelForecast(
+        code: 'P2',
+        points: const [ForecastPoint(slot: '08:15', occupancy: 0.42)],
+      ),
+    ];
+
+    await store.write(date, forecast);
+
+    final cached = await store.read(date);
+    expect(cached?.fromCache, isTrue);
+    expect(cached?.data.single.code, 'P2');
+    expect(cached?.data.single.points.single.occupancy, 0.42);
+    expect(await store.read(date.add(const Duration(days: 1))), isNull);
+  });
 }

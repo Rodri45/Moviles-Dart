@@ -16,6 +16,7 @@ import '../../shell/main_shell.dart';
 import '../../shell/shell_view_model.dart';
 import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
+import '../forecast/forecast_screen.dart';
 import '../level_map/level_map_view_model.dart';
 import '../login/auth_view_model.dart';
 import '../no_spots/no_spots_screen.dart';
@@ -117,8 +118,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: Spacing.md),
               ForecastCard(
                 hours: home.forecast,
-                currentHour: home.currentHour,
-                live: !home.showOffline,
+                currentHour: home.forecastHour,
+                live: !home.forecastFromCache,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(ForecastScreen.routeName),
               ),
               const SizedBox(height: Spacing.lg),
               Text('PARKING LEVELS', style: AppTypography.overline),
@@ -303,28 +306,59 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.search,
-            label: 'Find a spot',
-            color: Palette.primary,
-            background: Palette.primarySoft,
-            onTap: () =>
-                Navigator.of(context).pushNamed(FindSpotScreen.routeName),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.search,
+                label: 'Find a spot',
+                color: Palette.primary,
+                background: Palette.primarySoft,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(FindSpotScreen.routeName),
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.directions_car_outlined,
+                label: 'Find my car',
+                color: Palette.secondary,
+                background: Palette.secondarySoft,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(FindMyCarScreen.routeName),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: Spacing.sm),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.directions_car_outlined,
-            label: 'Find my car',
-            color: Palette.secondary,
-            background: Palette.secondarySoft,
-            onTap: () =>
-                Navigator.of(context).pushNamed(FindMyCarScreen.routeName),
-          ),
+        const SizedBox(height: Spacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.accessible,
+                label: 'Accessible',
+                color: Palette.primary,
+                background: Palette.primarySoft,
+                onTap: () =>
+                    Navigator.of(context)
+                        .pushNamed(FindSpotScreen.accessibleRouteName),
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.bolt,
+                label: 'EV spots',
+                color: Palette.warningText,
+                background: Palette.warningSoft,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(FindSpotScreen.evRouteName),
+              ),
+            ),
+          ],
         ),
       ],
     );

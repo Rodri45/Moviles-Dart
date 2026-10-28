@@ -238,7 +238,9 @@ class _Header extends StatelessWidget {
                     if (code != LevelMapViewModel.levelCodes.first)
                       const SizedBox(width: Spacing.xs),
                     Pill(
-                      label: code,
+                      label: map.lastOpenedLevel == code
+                          ? '$code*'
+                          : code,
                       selected: code == map.levelCode,
                       onTap: () => map.selectLevel(code),
                     ),
@@ -247,6 +249,8 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: Spacing.xs),
+          Text('* last opened level', style: AppTypography.caption),
           const SizedBox(height: Spacing.md),
           const SpotLegend(),
           const SizedBox(height: Spacing.md),

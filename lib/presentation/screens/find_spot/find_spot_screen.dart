@@ -16,9 +16,13 @@ import '../reserve/reserve_view_model.dart';
 import 'find_spot_view_model.dart';
 
 class FindSpotScreen extends StatefulWidget {
-  const FindSpotScreen({super.key});
+  const FindSpotScreen({super.key, this.initialFilter});
 
   static const String routeName = '/find-spot';
+  static const String accessibleRouteName = '/accessible-spots';
+  static const String evRouteName = '/ev-spots';
+
+  final SpotFilter? initialFilter;
 
   @override
   State<FindSpotScreen> createState() => _FindSpotScreenState();
@@ -29,7 +33,15 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<FindSpotViewModel>().load(),
+      (_) {
+        final finder = context.read<FindSpotViewModel>();
+        final filter = widget.initialFilter;
+        if (filter == null) {
+          finder.load();
+        } else {
+          finder.setFilters({SpotFilter.available, filter});
+        }
+      },
     );
   }
 
@@ -43,7 +55,14 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
       body: SafeArea(
         bottom: false,
         child: HeaderScrollView(
-          header: _Header(finder: finder),
+          header: _Header(
+            finder: finder,
+            title: switch (widget.initialFilter) {
+              SpotFilter.accessible => 'Accessible spots',
+              SpotFilter.electric => 'EV spots',
+              _ => 'Find a spot',
+            },
+          ),
           padding: const EdgeInsets.fromLTRB(
             Spacing.md,
             Spacing.lg,
@@ -90,9 +109,10 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.finder});
+  const _Header({required this.finder, required this.title});
 
   final FindSpotViewModel finder;
+  final String title;
 
   static const _filterLabels = {
     SpotFilter.available: 'Available',
@@ -114,7 +134,7 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Find a spot', style: AppTypography.display),
+          Text(title, style: AppTypography.display),
           const SizedBox(height: Spacing.md),
           Row(
             children: [

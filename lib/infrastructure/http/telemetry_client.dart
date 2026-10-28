@@ -28,6 +28,7 @@ class TelemetryClient implements Telemetry {
         'name': name,
         'properties': {
           ...properties,
+          'platform': 'android',
           'occurredAt': DateTime.now().toUtc().toIso8601String(),
         },
       }),

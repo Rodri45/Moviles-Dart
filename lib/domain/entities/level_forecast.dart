@@ -10,6 +10,8 @@ class ForecastPoint {
   final double? occupancy;
 
   int get hour => int.parse(slot.substring(0, 2));
+
+  Map<String, Object?> toJson() => {'slot': slot, 'occupancy': occupancy};
 }
 
 class LevelForecast {
@@ -25,6 +27,11 @@ class LevelForecast {
 
   final String code;
   final List<ForecastPoint> points;
+
+  Map<String, Object?> toJson() => {
+    'code': code,
+    'points': [for (final point in points) point.toJson()],
+  };
 }
 
 class HourlyOccupancy {

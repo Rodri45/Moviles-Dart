@@ -55,6 +55,11 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
     await load();
   }
 
+  Future<void> setFilters(Set<SpotFilter> value) async {
+    filters = {...value};
+    await load();
+  }
+
   void setQuery(String value) {
     query = value;
     notifyListeners();

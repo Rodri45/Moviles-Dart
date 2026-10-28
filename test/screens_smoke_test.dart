@@ -11,6 +11,8 @@ import 'package:parkwise/infrastructure/mock/mock_vehicle_locator.dart';
 import 'package:parkwise/infrastructure/mock/parking_mock_data.dart';
 import 'package:parkwise/presentation/screens/find_my_car/find_my_car_screen.dart';
 import 'package:parkwise/presentation/screens/find_spot/find_spot_screen.dart';
+import 'package:parkwise/domain/entities/spot_filter.dart';
+import 'package:parkwise/presentation/screens/forecast/forecast_screen.dart';
 import 'package:parkwise/presentation/screens/home/home_screen.dart';
 import 'package:parkwise/presentation/screens/level_map/level_map_screen.dart';
 import 'package:parkwise/presentation/screens/login/login_screen.dart';
@@ -35,6 +37,9 @@ void main() {
     'Home': HomeScreen(),
     'Level map': LevelMapScreen(),
     'Find a spot': FindSpotScreen(),
+    'Accessible spots': FindSpotScreen(initialFilter: SpotFilter.accessible),
+    'EV spots': FindSpotScreen(initialFilter: SpotFilter.electric),
+    'Forecast': ForecastScreen(),
     'Reserve': ReserveScreen(),
     'Profile': ProfileScreen(),
     'No campus spots': NoSpotsScreen(),
