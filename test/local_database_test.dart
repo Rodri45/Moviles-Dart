@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:parkwise/domain/entities/nearby_lot.dart';
 import 'package:parkwise/domain/entities/pending_action.dart';
 import 'package:parkwise/infrastructure/storage/local_database.dart';
 import 'package:parkwise/infrastructure/storage/reservation_history_store.dart';
+import 'package:parkwise/infrastructure/storage/sqlite_nearby_lot_store.dart';
 import 'package:parkwise/infrastructure/storage/sqlite_pending_action_store.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -70,6 +72,15 @@ void main() {
       final history = await ReservationHistoryStore(db).read('user-a');
       expect(history!.reservations.single['reservation_id'], 'reservation-1');
       expect(await SqlitePendingActionStore(db).pendingCount(), 0);
+      final tables = await db.query(
+        'sqlite_master',
+        columns: ['name'],
+        where: "type = 'table'",
+      );
+      expect(
+        tables.map((row) => row['name']),
+        containsAll(['nearby_lots', 'lot_redirects']),
+      );
     } finally {
       await db.close();
       await directory.delete(recursive: true);
@@ -118,6 +129,42 @@ void main() {
         }),
         throwsA(isA<DatabaseException>()),
       );
+    } finally {
+      await db.close();
+    }
+  });
+
+  test('nearby lots are read sorted by walking minutes', () async {
+    final db = await LocalDatabase.open(databasePath: inMemoryDatabasePath);
+    final store = SqliteNearbyLotStore(db);
+    final savedAt = DateTime.utc(2026, 10, 28, 9);
+    try {
+      expect(await store.read(), isNull);
+
+      await store.save(const [
+        NearbyLot(
+          id: 'nearby-2',
+          name: 'City Parking',
+          address: 'Carrera 1 19-20',
+          ratePerHour: 7500,
+          currency: 'COP',
+          walkMinutes: 9,
+        ),
+        NearbyLot(
+          id: 'nearby-1',
+          name: 'Park Central',
+          address: 'Calle ejercito 18',
+          ratePerHour: 6000,
+          currency: 'COP',
+          walkMinutes: 6,
+          imageUrl: 'https://example.com/images/nearby-1.jpg',
+        ),
+      ], savedAt);
+
+      final saved = (await store.read())!;
+      expect(saved.data.map((lot) => lot.id), ['nearby-1', 'nearby-2']);
+      expect(saved.data.first.imageUrl, contains('nearby-1.jpg'));
+      expect(saved.savedAt, savedAt);
     } finally {
       await db.close();
     }

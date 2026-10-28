@@ -100,7 +100,11 @@ class HttpParkingRepository implements ParkingRepository {
   Future<List<NearbyLot>> getNearbyLots() async {
     final json = await _client.get('/nearby-lots') as List;
     return [
-      for (final l in json) NearbyLot.fromJson(l as Map<String, dynamic>),
+      for (final l in json)
+        NearbyLot.fromJson(
+          l as Map<String, dynamic>,
+          imageBase: _client.baseUrl,
+        ),
     ];
   }
 

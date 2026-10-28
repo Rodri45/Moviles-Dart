@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parkwise/domain/entities/levels_overview.dart';
+import 'package:parkwise/infrastructure/http/cached_nearby_lot_repository.dart';
+import 'package:parkwise/infrastructure/mock/memory_nearby_lot_store.dart';
+import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_directions_launcher.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 import 'package:parkwise/infrastructure/mock/parking_mock_data.dart';
@@ -14,14 +17,18 @@ LevelsOverview campus({required bool full}) => LevelsOverview(
 void main() {
   late MockParkingRepository parking;
   late MockDirectionsLauncher directions;
+  late MockConnectivity connectivity;
   late NoSpotsViewModel noSpots;
 
   setUp(() {
     parking = MockParkingRepository(levels: campus(full: true));
     directions = MockDirectionsLauncher();
+    connectivity = MockConnectivity();
     noSpots = NoSpotsViewModel(
       parking,
+      CachedNearbyLotRepository(parking, MemoryNearbyLotStore()),
       directions,
+      connectivity,
       checkEvery: const Duration(milliseconds: 10),
     );
   });
@@ -64,6 +71,22 @@ void main() {
       ..toggleNotify()
       ..toggleNotify();
 
+    expect(noSpots.watching, isFalse);
+  });
+
+  test('notify me pauses without signal and resumes after', () async {
+    noSpots.toggleNotify();
+    connectivity.setOnline(false);
+    parking.levels = campus(full: false);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+
+    expect(noSpots.notifyPaused, isTrue);
+    expect(noSpots.campusOpened, isFalse);
+
+    connectivity.setOnline(true);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(noSpots.campusOpened, isTrue);
     expect(noSpots.watching, isFalse);
   });
 }

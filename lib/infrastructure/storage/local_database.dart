@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 class LocalDatabase {
   static const fileName = 'parkwise_local.db';
-  static const version = 2;
+  static const version = 3;
 
   static Future<Database> open({String? databasePath}) async {
     final location =
@@ -19,6 +19,7 @@ class LocalDatabase {
   static Future<void> _migrate(Database db, {required int from}) async {
     if (from < 1) await _createReservationHistory(db);
     if (from < 2) await _createPendingActions(db);
+    if (from < 3) await _createNearbyLotTables(db);
   }
 
   static Future<void> _createReservationHistory(Database db) async {
@@ -47,6 +48,35 @@ class LocalDatabase {
         synced_at TEXT NOT NULL
       )
     ''');
+  }
+
+  static Future<void> _createNearbyLotTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE nearby_lots (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        address TEXT NOT NULL,
+        rate_per_hour INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        walk_minutes INTEGER NOT NULL,
+        image_url TEXT,
+        saved_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE lot_redirects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lot_id TEXT NOT NULL,
+        lot_name TEXT NOT NULL,
+        redirected_at TEXT NOT NULL,
+        answered_at TEXT,
+        parked INTEGER CHECK (parked IN (0, 1))
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX lot_redirects_lot_date '
+      'ON lot_redirects (lot_id, redirected_at)',
+    );
   }
 
   static Future<void> _createPendingActions(Database db) => db.execute('''

@@ -14,6 +14,7 @@ import '../domain/ports/connectivity_port.dart';
 import '../domain/ports/directions_launcher.dart';
 import '../domain/ports/form_draft_store.dart';
 import '../domain/ports/location_provider.dart';
+import '../domain/ports/nearby_lot_repository.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
 import '../domain/ports/reservation_outbox.dart';
@@ -26,12 +27,14 @@ import '../infrastructure/device/device_info_reader.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
 import '../infrastructure/device/url_launcher_directions.dart';
 import '../infrastructure/http/api_client.dart';
+import '../infrastructure/http/cached_nearby_lot_repository.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
 import '../infrastructure/http/outbox_reservation_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
+import '../infrastructure/mock/memory_nearby_lot_store.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_directions_launcher.dart';
@@ -51,6 +54,7 @@ import '../infrastructure/storage/device_preferences_store.dart';
 import '../infrastructure/storage/forecast_file_store.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
+import '../infrastructure/storage/sqlite_nearby_lot_store.dart';
 import '../infrastructure/storage/sqlite_pending_action_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
@@ -78,6 +82,7 @@ class AppDependencies {
     required this.outbox,
     required this.drafts,
     required this.spotRanker,
+    required this.nearbyLots,
     this.forecastStore,
   });
 
@@ -118,6 +123,7 @@ class AppDependencies {
       connectivity,
       remember: httpReservations.remember,
     )..flush();
+    final parking = HttpParkingRepository(client, cache);
 
     return AppDependencies(
       auth: HttpAuthRepository(
@@ -127,7 +133,11 @@ class AppDependencies {
         historyStore,
         carLocationStore,
       ),
-      parking: HttpParkingRepository(client, cache),
+      parking: parking,
+      nearbyLots: CachedNearbyLotRepository(
+        parking,
+        SqliteNearbyLotStore(database),
+      ),
       reservations: reservations,
       outbox: reservations,
       drafts: HiveFormDraftStore(draftsBox),
@@ -143,21 +153,25 @@ class AppDependencies {
     );
   }
 
-  factory AppDependencies.mock() => AppDependencies(
-    auth: MockAuthRepository(saved: MockAuthRepository.user),
-    parking: MockParkingRepository(),
-    reservations: MockReservationRepository(),
-    vehicles: MockVehicleLocator(),
-    connectivity: MockConnectivity(),
-    preferences: MockPreferencesStore(),
-    location: MockLocationProvider(),
-    directions: MockDirectionsLauncher(),
-    telemetry: MockTelemetry(),
-    device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
-    outbox: MockReservationOutbox(),
-    drafts: MockFormDraftStore(),
-    spotRanker: rankSpotsInline,
-  );
+  factory AppDependencies.mock() {
+    final parking = MockParkingRepository();
+    return AppDependencies(
+      auth: MockAuthRepository(saved: MockAuthRepository.user),
+      parking: parking,
+      nearbyLots: CachedNearbyLotRepository(parking, MemoryNearbyLotStore()),
+      reservations: MockReservationRepository(),
+      vehicles: MockVehicleLocator(),
+      connectivity: MockConnectivity(),
+      preferences: MockPreferencesStore(),
+      location: MockLocationProvider(),
+      directions: MockDirectionsLauncher(),
+      telemetry: MockTelemetry(),
+      device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
+      outbox: MockReservationOutbox(),
+      drafts: MockFormDraftStore(),
+      spotRanker: rankSpotsInline,
+    );
+  }
 
   final AuthRepository auth;
   final ParkingRepository parking;
@@ -172,6 +186,7 @@ class AppDependencies {
   final ReservationOutbox outbox;
   final FormDraftStore drafts;
   final SpotRanker spotRanker;
+  final NearbyLotRepository nearbyLots;
   final ForecastFileStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
@@ -218,7 +233,8 @@ class AppDependencies {
           OfflineViewModel(parking, reservations, preferences, connectivity),
     ),
     ChangeNotifierProvider(
-      create: (_) => NoSpotsViewModel(parking, directions),
+      create: (_) =>
+          NoSpotsViewModel(parking, nearbyLots, directions, connectivity),
     ),
     ChangeNotifierProvider(
       create: (_) => FindMyCarViewModel(vehicles, location),
