@@ -62,6 +62,7 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
               _ => 'Find a spot',
             },
           ),
+          onRefresh: finder.refresh,
           padding: const EdgeInsets.fromLTRB(
             Spacing.md,
             Spacing.lg,
@@ -73,6 +74,13 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
               OfflineBanner(
                 savedAt: finder.savedAt,
                 online: finder.online,
+              ),
+              const SizedBox(height: Spacing.sm),
+              Text(
+                'Filters and search work with this copy. You can pick '
+                'a spot now; the reservation is confirmed when the '
+                'phone is back online.',
+                style: AppTypography.caption,
               ),
               const SizedBox(height: Spacing.md),
             ],
@@ -86,11 +94,16 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
             ],
             if (finder.isLoading && results.isEmpty)
               const Center(child: CircularProgressIndicator())
-            else
+            else ...[
+              if (finder.recommended != null) ...[
+                _RecommendedCard(spot: finder.recommended!),
+                const SizedBox(height: Spacing.md),
+              ],
               Text(
                 '${results.length} spots found',
                 style: AppTypography.caption,
               ),
+            ],
             const SizedBox(height: Spacing.md),
             for (final spot in results) ...[
               _SpotResultCard(spot: spot),
@@ -230,6 +243,57 @@ class _SpotResultCard extends StatelessWidget {
                   ),
                   const SizedBox(height: Spacing.xs),
                   _MetaRow(spot: spot),
+                ],
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            _ReserveButton(spot: spot),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendedCard extends StatelessWidget {
+  const _RecommendedCard({required this.spot});
+
+  final ParkingSpot spot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Palette.primarySoft,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(color: Palette.primary.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Spacing.md),
+        child: Row(
+          children: [
+            _CodeBadge(code: spot.code),
+            const SizedBox(width: Spacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('RECOMMENDED', style: AppTypography.overline),
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    'Level ${spot.levelCode} · ${spot.walkMinutes} min walk',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2,
+                  ),
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    'Free, closest to your destination and matching your '
+                    'filters.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption,
+                  ),
                 ],
               ),
             ),

@@ -19,6 +19,7 @@ import '../domain/ports/reservation_outbox.dart';
 import '../domain/ports/reservation_repository.dart';
 import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
+import '../domain/services/spot_ranking.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
 import '../infrastructure/device/device_info_reader.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
@@ -72,6 +73,7 @@ class AppDependencies {
     required this.telemetry,
     required this.device,
     required this.outbox,
+    required this.spotRanker,
     this.forecastStore,
   });
 
@@ -123,6 +125,7 @@ class AppDependencies {
       parking: HttpParkingRepository(client, cache),
       reservations: reservations,
       outbox: reservations,
+      spotRanker: rankSpotsInBackground,
       vehicles: HttpVehicleLocator(client, carLocationStore),
       connectivity: connectivity,
       preferences: DevicePreferencesStore(prefsBox, sharedPreferences),
@@ -146,6 +149,7 @@ class AppDependencies {
     telemetry: MockTelemetry(),
     device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
     outbox: MockReservationOutbox(),
+    spotRanker: rankSpotsInline,
   );
 
   final AuthRepository auth;
@@ -159,6 +163,7 @@ class AppDependencies {
   final Telemetry telemetry;
   final DeviceDescription device;
   final ReservationOutbox outbox;
+  final SpotRanker spotRanker;
   final ForecastFileStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
@@ -187,8 +192,13 @@ class AppDependencies {
       ),
     ),
     ChangeNotifierProvider(
-      create: (_) =>
-          FindSpotViewModel(parking, preferences, telemetry, connectivity),
+      create: (_) => FindSpotViewModel(
+        parking,
+        preferences,
+        telemetry,
+        connectivity,
+        rank: spotRanker,
+      ),
     ),
     ChangeNotifierProvider(
       create: (_) =>
