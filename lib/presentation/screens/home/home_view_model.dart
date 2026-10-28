@@ -24,11 +24,10 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     this._location,
     this._telemetry,
     ConnectivityPort connectivity, {
-    ForecastFileStore? forecastStore,
+    this._forecastStore,
     DateTime Function()? clock,
     this.refreshEvery = const Duration(seconds: 15),
-  }) : _clock = clock ?? DateTime.now,
-       _forecastStore = forecastStore {
+  }) : _clock = clock ?? DateTime.now {
     arrivalAt = _restoreArrivalTime(_preferences.arrivalTime, _clock());
     watchConnectivity(connectivity, load);
   }
@@ -42,8 +41,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   final DateTime Function() _clock;
   final ForecastFileStore? _forecastStore;
 
-  /// How often the free spots of each level are asked again while Home is
-  /// on screen, so a spot taken from any phone shows up here.
   final Duration refreshEvery;
   Timer? _timer;
   bool _hidden = false;
@@ -95,8 +92,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
-  /// Called by the screen when Home appears or disappears: when the driver
-  /// changes tab, opens another screen on top or leaves the app.
   void setVisible(bool visible) {
     _timer?.cancel();
     _timer = null;
@@ -118,7 +113,6 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     });
   }
 
-  /// Asks only for the level counts, without the loading spinner.
   Future<void> refreshLevels() async {
     await _loadLevels();
     notifyListeners();

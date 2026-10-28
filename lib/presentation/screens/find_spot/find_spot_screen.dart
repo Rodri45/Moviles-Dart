@@ -38,7 +38,7 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
         final filter = widget.initialFilter;
         finder.setFilters({
           SpotFilter.available,
-          if (filter != null) filter,
+          ?filter,
         });
       },
     );

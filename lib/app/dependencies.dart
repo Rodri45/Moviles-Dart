@@ -15,6 +15,7 @@ import '../domain/ports/directions_launcher.dart';
 import '../domain/ports/location_provider.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
+import '../domain/ports/reservation_outbox.dart';
 import '../domain/ports/reservation_repository.dart';
 import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
@@ -27,6 +28,7 @@ import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
+import '../infrastructure/http/outbox_reservation_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
@@ -34,15 +36,18 @@ import '../infrastructure/mock/mock_directions_launcher.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
+import '../infrastructure/mock/mock_reservation_outbox.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
 import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
 import '../infrastructure/storage/local_cache.dart';
+import '../infrastructure/storage/local_database.dart';
 import '../infrastructure/storage/car_location_file_store.dart';
 import '../infrastructure/storage/device_preferences_store.dart';
 import '../infrastructure/storage/forecast_file_store.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
+import '../infrastructure/storage/sqlite_pending_action_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
 import '../presentation/screens/home/home_view_model.dart';
@@ -66,6 +71,7 @@ class AppDependencies {
     required this.directions,
     required this.telemetry,
     required this.device,
+    required this.outbox,
     this.forecastStore,
   });
 
@@ -74,7 +80,8 @@ class AppDependencies {
     final cacheBox = await Hive.openBox<String>('cache');
     final prefsBox = await Hive.openBox<String>('prefs');
     final telemetryBox = await Hive.openBox<String>('telemetry');
-    final historyStore = await ReservationHistoryStore.open();
+    final database = await LocalDatabase.open();
+    final historyStore = ReservationHistoryStore(database);
     final supportDirectory = await getApplicationSupportDirectory();
     final sharedPreferences = await SharedPreferences.getInstance();
     final carLocationStore = CarLocationFileStore(
@@ -92,6 +99,18 @@ class AppDependencies {
     final connectivity = ConnectivityPlusAdapter();
     final telemetry = TelemetryClient(client, telemetryBox, connectivity)
       ..flush();
+    final httpReservations = HttpReservationRepository(
+      client,
+      cache,
+      historyStore,
+      () => session.user?.id,
+    );
+    final reservations = OutboxReservationRepository(
+      httpReservations,
+      SqlitePendingActionStore(database),
+      connectivity,
+      remember: httpReservations.remember,
+    )..flush();
 
     return AppDependencies(
       auth: HttpAuthRepository(
@@ -102,12 +121,8 @@ class AppDependencies {
         carLocationStore,
       ),
       parking: HttpParkingRepository(client, cache),
-      reservations: HttpReservationRepository(
-        client,
-        cache,
-        historyStore,
-        () => session.user?.id,
-      ),
+      reservations: reservations,
+      outbox: reservations,
       vehicles: HttpVehicleLocator(client, carLocationStore),
       connectivity: connectivity,
       preferences: DevicePreferencesStore(prefsBox, sharedPreferences),
@@ -130,6 +145,7 @@ class AppDependencies {
     directions: MockDirectionsLauncher(),
     telemetry: MockTelemetry(),
     device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
+    outbox: MockReservationOutbox(),
   );
 
   final AuthRepository auth;
@@ -142,10 +158,14 @@ class AppDependencies {
   final DirectionsLauncher directions;
   final Telemetry telemetry;
   final DeviceDescription device;
+  final ReservationOutbox outbox;
   final ForecastFileStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
-    ChangeNotifierProvider(create: (_) => AuthViewModel(auth, telemetry)),
+    ChangeNotifierProvider(
+      create: (_) =>
+          AuthViewModel(auth, telemetry, onSignedOut: outbox.clear),
+    ),
     ChangeNotifierProvider(create: (_) => ShellViewModel()),
     ChangeNotifierProvider(
       create: (_) => HomeViewModel(
@@ -181,8 +201,13 @@ class AppDependencies {
       create: (_) => FindMyCarViewModel(vehicles, location),
     ),
     ChangeNotifierProvider(
-      create: (_) =>
-          ReserveViewModel(reservations, vehicles, location, connectivity),
+      create: (_) => ReserveViewModel(
+        reservations,
+        vehicles,
+        location,
+        connectivity,
+        outbox: outbox,
+      ),
     ),
     ChangeNotifierProvider(create: (_) => ProfileViewModel(reservations)),
   ];
