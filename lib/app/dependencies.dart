@@ -14,6 +14,7 @@ import '../domain/ports/connectivity_port.dart';
 import '../domain/ports/directions_launcher.dart';
 import '../domain/ports/form_draft_store.dart';
 import '../domain/ports/location_provider.dart';
+import '../domain/ports/lot_redirect_store.dart';
 import '../domain/ports/nearby_lot_repository.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
@@ -34,6 +35,7 @@ import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
 import '../infrastructure/http/outbox_reservation_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
+import '../infrastructure/mock/memory_lot_redirect_store.dart';
 import '../infrastructure/mock/memory_nearby_lot_store.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
@@ -54,6 +56,7 @@ import '../infrastructure/storage/device_preferences_store.dart';
 import '../infrastructure/storage/forecast_file_store.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
+import '../infrastructure/storage/sqlite_lot_redirect_store.dart';
 import '../infrastructure/storage/sqlite_nearby_lot_store.dart';
 import '../infrastructure/storage/sqlite_pending_action_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
@@ -61,6 +64,7 @@ import '../presentation/screens/find_spot/find_spot_view_model.dart';
 import '../presentation/screens/home/home_view_model.dart';
 import '../presentation/screens/level_map/level_map_view_model.dart';
 import '../presentation/screens/login/auth_view_model.dart';
+import '../presentation/screens/no_spots/lot_arrival_view_model.dart';
 import '../presentation/screens/no_spots/no_spots_view_model.dart';
 import '../presentation/screens/offline/offline_view_model.dart';
 import '../presentation/screens/profile/profile_view_model.dart';
@@ -83,6 +87,7 @@ class AppDependencies {
     required this.drafts,
     required this.spotRanker,
     required this.nearbyLots,
+    required this.lotRedirects,
     this.forecastStore,
   });
 
@@ -138,6 +143,7 @@ class AppDependencies {
         parking,
         SqliteNearbyLotStore(database),
       ),
+      lotRedirects: SqliteLotRedirectStore(database),
       reservations: reservations,
       outbox: reservations,
       drafts: HiveFormDraftStore(draftsBox),
@@ -159,6 +165,7 @@ class AppDependencies {
       auth: MockAuthRepository(saved: MockAuthRepository.user),
       parking: parking,
       nearbyLots: CachedNearbyLotRepository(parking, MemoryNearbyLotStore()),
+      lotRedirects: MemoryLotRedirectStore(),
       reservations: MockReservationRepository(),
       vehicles: MockVehicleLocator(),
       connectivity: MockConnectivity(),
@@ -187,6 +194,7 @@ class AppDependencies {
   final FormDraftStore drafts;
   final SpotRanker spotRanker;
   final NearbyLotRepository nearbyLots;
+  final LotRedirectStore lotRedirects;
   final ForecastFileStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
@@ -235,6 +243,9 @@ class AppDependencies {
     ChangeNotifierProvider(
       create: (_) =>
           NoSpotsViewModel(parking, nearbyLots, directions, connectivity),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => LotArrivalViewModel(lotRedirects, telemetry),
     ),
     ChangeNotifierProvider(
       create: (_) => FindMyCarViewModel(vehicles, location),

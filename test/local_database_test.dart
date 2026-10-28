@@ -6,6 +6,7 @@ import 'package:parkwise/domain/entities/nearby_lot.dart';
 import 'package:parkwise/domain/entities/pending_action.dart';
 import 'package:parkwise/infrastructure/storage/local_database.dart';
 import 'package:parkwise/infrastructure/storage/reservation_history_store.dart';
+import 'package:parkwise/infrastructure/storage/sqlite_lot_redirect_store.dart';
 import 'package:parkwise/infrastructure/storage/sqlite_nearby_lot_store.dart';
 import 'package:parkwise/infrastructure/storage/sqlite_pending_action_store.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -165,6 +166,33 @@ void main() {
       expect(saved.data.map((lot) => lot.id), ['nearby-1', 'nearby-2']);
       expect(saved.data.first.imageUrl, contains('nearby-1.jpg'));
       expect(saved.savedAt, savedAt);
+    } finally {
+      await db.close();
+    }
+  });
+
+  test('a redirect is found by lot and date until it is answered', () async {
+    final db = await LocalDatabase.open(databasePath: inMemoryDatabasePath);
+    final store = SqliteLotRedirectStore(db);
+    final at = DateTime.utc(2026, 10, 28, 13);
+    final since = at.subtract(const Duration(hours: 6));
+    try {
+      final redirect = await store.add('nearby-1', 'Park Central', at);
+
+      expect((await store.openFor('nearby-1', since: since))?.id, redirect.id);
+      expect(await store.openFor('nearby-2', since: since), isNull);
+
+      await store.answer(
+        redirect.id,
+        parked: true,
+        at: at.add(const Duration(minutes: 20)),
+      );
+
+      expect(await store.openFor('nearby-1', since: since), isNull);
+      final latest = (await store.latest(since: since))!;
+      expect(latest.answered, isTrue);
+      expect(latest.parked, isTrue);
+      expect(latest.redirectedAt, at);
     } finally {
       await db.close();
     }

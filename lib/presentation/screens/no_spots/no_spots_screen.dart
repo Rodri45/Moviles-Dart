@@ -10,7 +10,9 @@ import '../../../core/widgets/lot_photo.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/offline_banner.dart';
 import '../../../domain/entities/nearby_lot.dart';
+import '../../shared/arrival_question_card.dart';
 import '../../shell/main_shell.dart';
+import 'lot_arrival_view_model.dart';
 import 'no_spots_view_model.dart';
 
 class NoSpotsScreen extends StatefulWidget {
@@ -33,12 +35,12 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
 
   Future<void> _navigate(NearbyLot lot) async {
     final messenger = ScaffoldMessenger.of(context);
+    final arrival = context.read<LotArrivalViewModel>();
     final opened = await context.read<NoSpotsViewModel>().navigate(lot);
-    if (!opened) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the maps app.')),
-      );
-    }
+    if (opened) return arrival.redirected(lot);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not open the maps app.')),
+    );
   }
 
   @override
@@ -59,6 +61,7 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
             Spacing.lg,
           ),
           children: [
+            const ArrivalQuestionCard(),
             const _FullBanner(),
             const SizedBox(height: Spacing.lg),
             Text('Nearby parking', style: AppTypography.heading1),
