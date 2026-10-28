@@ -216,6 +216,7 @@ class AppDependencies {
         vehicles,
         location,
         connectivity,
+        telemetry: telemetry,
         outbox: outbox,
       ),
     ),

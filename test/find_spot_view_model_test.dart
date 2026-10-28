@@ -142,4 +142,13 @@ void main() {
       'find_spot',
     );
   });
+
+  test('a list served from memory is not counted twice', () async {
+    await finder.load();
+    await finder.toggleFilter(SpotFilter.electric);
+    await finder.toggleFilter(SpotFilter.electric);
+
+    expect(finder.fromMemory, isTrue);
+    expect(telemetry.named('availability_viewed'), hasLength(2));
+  });
 }
