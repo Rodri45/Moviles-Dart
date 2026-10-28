@@ -13,6 +13,7 @@ import '../../../core/widgets/status_badge.dart';
 import '../../../domain/entities/parking_level.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/reservation.dart';
+import '../../shared/pending_actions_banner.dart';
 import '../../shell/main_shell.dart';
 import 'offline_view_model.dart';
 
@@ -26,12 +27,35 @@ class OfflineScreen extends StatefulWidget {
 }
 
 class _OfflineScreenState extends State<OfflineScreen> {
+  late final OfflineViewModel _offline;
+  bool _sawOffline = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<OfflineViewModel>().load(),
+    _offline = context.read<OfflineViewModel>()..addListener(_closeWhenBack);
+    _sawOffline = !_offline.online;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _offline.load());
+  }
+
+  void _closeWhenBack() {
+    if (!_offline.online) {
+      _sawOffline = true;
+      return;
+    }
+    if (!_sawOffline || !_offline.recovered || !mounted) return;
+    _sawOffline = false;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).maybePop();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Back online. Data updated.')),
     );
+  }
+
+  @override
+  void dispose() {
+    _offline.removeListener(_closeWhenBack);
+    super.dispose();
   }
 
   @override
@@ -60,6 +84,12 @@ class _OfflineScreenState extends State<OfflineScreen> {
                 online: offline.online,
               ),
               const SizedBox(height: Spacing.lg),
+              FilledButton.icon(
+                onPressed: offline.isLoading ? null : offline.load,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Retry connection'),
+              ),
+              const SizedBox(height: Spacing.lg),
             ],
             Text('CACHED AVAILABILITY', style: AppTypography.overline),
             const SizedBox(height: Spacing.sm),
@@ -76,23 +106,22 @@ class _OfflineScreenState extends State<OfflineScreen> {
               Text('No open reservation', style: AppTypography.caption)
             else
               _SavedReservationCard(reservation: reservation),
+            if (offline.pendingActions > 0) ...[
+              const SizedBox(height: Spacing.sm),
+              PendingActionsBanner(count: offline.pendingActions),
+            ],
             if (map != null && map.data.isNotEmpty) ...[
               const SizedBox(height: Spacing.md),
               _CachedMapCard(level: offline.mapLevel, spots: map.data),
             ],
             const SizedBox(height: Spacing.md),
-            if (offline.recovered)
+            if (offline.recovered) ...[
               FilledButton.icon(
                 onPressed: () => Navigator.of(context).maybePop(),
                 icon: const Icon(Icons.check, size: 18),
                 label: const Text('Back to the app'),
-              )
-            else
-              FilledButton.icon(
-                onPressed: offline.isLoading ? null : offline.load,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Retry connection'),
               ),
+            ],
           ],
         ),
       ),
