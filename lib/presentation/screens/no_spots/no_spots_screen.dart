@@ -6,6 +6,7 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/header_scroll_view.dart';
+import '../../../core/widgets/lot_photo.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/offline_banner.dart';
 import '../../../domain/entities/nearby_lot.dart';
@@ -206,6 +207,46 @@ class _NearbyCard extends StatelessWidget {
   final bool closest;
   final VoidCallback onNavigate;
 
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(
+          color: closest ? Palette.primary : Palette.border,
+          width: closest ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LotPhoto(name: lot.name, url: lot.imageUrl),
+          Padding(
+            padding: const EdgeInsets.all(Spacing.md),
+            child: _NearbyDetails(
+              lot: lot,
+              closest: closest,
+              onNavigate: onNavigate,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NearbyDetails extends StatelessWidget {
+  const _NearbyDetails({
+    required this.lot,
+    required this.closest,
+    required this.onNavigate,
+  });
+
+  final NearbyLot lot;
+  final bool closest;
+  final VoidCallback onNavigate;
+
   String get _price {
     final digits = lot.ratePerHour.toString();
     final buffer = StringBuffer();
@@ -218,71 +259,59 @@ class _NearbyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(
-          color: closest ? Palette.primary : Palette.border,
-          width: closest ? 1.5 : 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (closest) ...[
-                        const _ClosestBadge(),
-                        const SizedBox(height: Spacing.sm),
-                      ],
-                      Text(
-                        lot.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.heading2,
-                      ),
-                    ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (closest) ...[
+                    const _ClosestBadge(),
+                    const SizedBox(height: Spacing.sm),
+                  ],
+                  Text(
+                    lot.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2,
                   ),
-                ),
-                const SizedBox(width: Spacing.md),
-                Text(
-                  _price,
-                  style: AppTypography.monoId.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: Spacing.sm),
-            Row(
-              children: [
-                const Icon(
-                  Icons.directions_walk,
-                  size: 12,
-                  color: Palette.textSecondary,
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Text(
-                    '${lot.walkMinutes} min',
-                    style: AppTypography.caption,
-                  ),
-                ),
-                const SizedBox(width: Spacing.sm),
-                _NavigateButton(primary: closest, onPressed: onNavigate),
-              ],
+            const SizedBox(width: Spacing.md),
+            Text(
+              _price,
+              style: AppTypography.monoId.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: Spacing.sm),
+        Row(
+          children: [
+            const Icon(
+              Icons.directions_walk,
+              size: 12,
+              color: Palette.textSecondary,
+            ),
+            const SizedBox(width: 2),
+            Expanded(
+              child: Text(
+                '${lot.walkMinutes} min',
+                style: AppTypography.caption,
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            _NavigateButton(primary: closest, onPressed: onNavigate),
+          ],
+        ),
+      ],
     );
   }
 }
