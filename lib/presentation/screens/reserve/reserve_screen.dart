@@ -11,6 +11,7 @@ import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/reservation_history_card.dart';
 import '../../shared/location_rationale.dart';
+import '../../shared/pending_actions_banner.dart';
 import '../../shell/main_shell.dart';
 import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
@@ -38,14 +39,7 @@ class ReserveScreen extends StatelessWidget {
           ),
           children: [
             if (reserve.pendingActions > 0) ...[
-              NoticeBanner(
-                title: 'Saved on this phone',
-                message: reserve.pendingActions == 1
-                    ? '1 action will be sent when you\'re back online.'
-                    : '${reserve.pendingActions} actions will be sent '
-                          'when you\'re back online.',
-                icon: Icons.cloud_upload_outlined,
-              ),
+              PendingActionsBanner(count: reserve.pendingActions),
               const SizedBox(height: Spacing.md),
             ],
             if (!reserve.online && reserve.reservation != null) ...[

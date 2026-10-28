@@ -237,8 +237,13 @@ class AppDependencies {
       ),
     ),
     ChangeNotifierProvider(
-      create: (_) =>
-          OfflineViewModel(parking, reservations, preferences, connectivity),
+      create: (_) => OfflineViewModel(
+        parking,
+        reservations,
+        preferences,
+        outbox,
+        connectivity,
+      ),
     ),
     ChangeNotifierProvider(
       create: (_) =>
@@ -260,6 +265,8 @@ class AppDependencies {
         outbox: outbox,
       ),
     ),
-    ChangeNotifierProvider(create: (_) => ProfileViewModel(reservations)),
+    ChangeNotifierProvider(
+      create: (_) => ProfileViewModel(reservations, outbox),
+    ),
   ];
 }
