@@ -12,6 +12,7 @@ import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../../domain/ports/reservation_outbox.dart';
 import '../../../domain/ports/reservation_repository.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../../domain/ports/vehicle_locator.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
@@ -23,6 +24,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     this._location,
     ConnectivityPort connectivity, {
     DateTime Function()? clock,
+    this._telemetry,
     this._outbox,
   }) : _clock = clock ?? DateTime.now {
     watchConnectivity(connectivity, load);
@@ -41,6 +43,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   final VehicleLocator _vehicles;
   final LocationProvider _location;
   final DateTime Function() _clock;
+  final Telemetry? _telemetry;
   final ReservationOutbox? _outbox;
   StreamSubscription<OutboxStatus>? _outboxSub;
   Timer? _ticker;
@@ -77,14 +80,17 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     errorMessage = reservation == null
         ? null
         : 'You already have a reservation. Cancel it to pick another spot.';
+    _track('spot_selected', spot);
     notifyListeners();
   }
 
   Future<void> confirm() async {
     final spot = pendingSpot;
     if (spot == null) return;
+    _track('reserve_confirm_tapped', spot);
     if (!online) {
       errorMessage = offlineConfirmMessage;
+      _track('reserve_failed', spot, reason: 'offline');
       notifyListeners();
       return;
     }
@@ -95,9 +101,11 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
       _setReservation(await _reservations.create(spot.id));
       pendingSpot = null;
     } on ApiException catch (e) {
+      _track('reserve_failed', spot, reason: _failureReason(e));
       errorMessage = _conflictMessage(e) ?? errorMessageFor(e);
       if (e.statusCode == 409) await _loadActive();
     } catch (e) {
+      _track('reserve_failed', spot, reason: _failureReason(e));
       errorMessage = errorMessageFor(e);
     } finally {
       isBusy = false;
@@ -222,6 +230,26 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
       unawaited(_loadActive().then((_) => notifyListeners()));
     }
     notifyListeners();
+  }
+
+  void _track(String name, ParkingSpot spot, {String? reason}) {
+    _telemetry?.track(name, {
+      'levelCode': spot.levelCode,
+      'spotCode': spot.code,
+      'reason': ?reason,
+    });
+  }
+
+  static String _failureReason(Object error) {
+    if (error is NetworkException) return 'offline';
+    if (error is ApiException) {
+      if (error.statusCode >= 500) return 'server_error';
+      final message = error.message.toLowerCase();
+      if (message.contains('not available')) return 'spot_taken';
+      if (message.contains('active reservation')) return 'already_active';
+      if (message.contains('expired')) return 'expired';
+    }
+    return 'other';
   }
 
   void _setReservation(Reservation? value) {
