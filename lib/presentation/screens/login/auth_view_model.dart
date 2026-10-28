@@ -20,9 +20,10 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
     ConnectivityPort? connectivity,
     this._drafts,
     this._onSignedOut,
+    this.sessionRetryEvery = const Duration(seconds: 30),
   }) {
     _expiredSub = _repository.sessionExpired.listen((_) => _signOut());
-    if (connectivity != null) watchConnectivity(connectivity, () async {});
+    if (connectivity != null) watchConnectivity(connectivity, _confirmSession);
   }
 
   static const registerDraft = 'register';
@@ -34,6 +35,9 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
   bool _draftingRegister = false;
   bool _openReported = false;
   late final StreamSubscription<void> _expiredSub;
+  Timer? _sessionRetry;
+
+  final Duration sessionRetryEvery;
 
   AuthStatus status = AuthStatus.unknown;
   AppUser? user;
@@ -181,12 +185,33 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
   void _openOffline(AppUser cached) {
     user = cached;
     offlineSession = true;
+    _sessionRetry?.cancel();
+    _sessionRetry = Timer.periodic(sessionRetryEvery, (_) {
+      if (online) _confirmSession();
+    });
     _setStatus(AuthStatus.authenticated);
+  }
+
+  Future<void> _confirmSession() async {
+    if (!offlineSession) return;
+    try {
+      user = await _repository.me();
+      offlineSession = false;
+      _sessionRetry?.cancel();
+      notifyListeners();
+    } on ApiException catch (e) {
+      if (e.statusCode != 401) return;
+      await _repository.logout();
+      _signOut();
+    } catch (e) {
+      debugPrint('session check failed: $e');
+    }
   }
 
   void _signOut() {
     user = null;
     offlineSession = false;
+    _sessionRetry?.cancel();
     _openReported = false;
     final cleanup = _onSignedOut;
     if (cleanup != null) unawaited(cleanup());
@@ -219,6 +244,7 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
   @override
   void dispose() {
     _expiredSub.cancel();
+    _sessionRetry?.cancel();
     super.dispose();
   }
 }

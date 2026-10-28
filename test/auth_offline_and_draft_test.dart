@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:parkwise/domain/errors.dart';
 import 'package:parkwise/infrastructure/mock/mock_auth_repository.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_form_draft_store.dart';
@@ -88,5 +89,68 @@ void main() {
 
     expect(auth.status, AuthStatus.authenticated);
     expect(drafts.read(AuthViewModel.registerDraft), isEmpty);
+  });
+
+  test('an offline session is confirmed when the signal returns', () async {
+    final repository = MockAuthRepository(saved: MockAuthRepository.user)
+      ..meError = const NetworkException('offline');
+    final session = AuthViewModel(
+      repository,
+      MockTelemetry(),
+      connectivity: connectivity,
+    );
+    addTearDown(session.dispose);
+
+    await session.restoreSession();
+    expect(session.offlineSession, isTrue);
+
+    repository.meError = null;
+    connectivity.setOnline(false);
+    await Future<void>.delayed(Duration.zero);
+    connectivity.setOnline(true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(session.offlineSession, isFalse);
+    expect(session.user, MockAuthRepository.user);
+  });
+
+  test('the session is checked again until the server answers', () async {
+    final repository = MockAuthRepository(saved: MockAuthRepository.user)
+      ..meError = const NetworkException('server_unreachable');
+    final session = AuthViewModel(
+      repository,
+      MockTelemetry(),
+      connectivity: connectivity,
+      sessionRetryEvery: const Duration(milliseconds: 10),
+    );
+    addTearDown(session.dispose);
+
+    await session.restoreSession();
+    expect(session.offlineSession, isTrue);
+
+    repository.meError = null;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(session.offlineSession, isFalse);
+  });
+
+  test('a session the server rejects is closed on the next check', () async {
+    final repository = MockAuthRepository(saved: MockAuthRepository.user)
+      ..meError = const NetworkException('offline');
+    final session = AuthViewModel(
+      repository,
+      MockTelemetry(),
+      connectivity: connectivity,
+    );
+    addTearDown(session.dispose);
+
+    await session.restoreSession();
+    repository.meError = const ApiException(401, 'Unauthorized');
+    connectivity.setOnline(false);
+    await Future<void>.delayed(Duration.zero);
+    connectivity.setOnline(true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(session.status, AuthStatus.unauthenticated);
   });
 }
