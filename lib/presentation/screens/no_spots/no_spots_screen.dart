@@ -7,6 +7,7 @@ import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../domain/entities/nearby_lot.dart';
 import '../../shell/main_shell.dart';
 import 'no_spots_view_model.dart';
@@ -49,6 +50,7 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
         bottom: false,
         child: HeaderScrollView(
           header: const _Header(),
+          onRefresh: noSpots.refresh,
           padding: const EdgeInsets.fromLTRB(
             Spacing.md,
             Spacing.md,
@@ -60,6 +62,16 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
             const SizedBox(height: Spacing.lg),
             Text('Nearby parking', style: AppTypography.heading1),
             const SizedBox(height: Spacing.sm),
+            if (noSpots.fromCache) ...[
+              OfflineBanner(savedAt: noSpots.savedAt, online: noSpots.online),
+              const SizedBox(height: Spacing.sm),
+            ] else if (noSpots.savedAt != null) ...[
+              Text(
+                _savedLabel(noSpots.savedAt!),
+                style: AppTypography.caption,
+              ),
+              const SizedBox(height: Spacing.sm),
+            ],
             if (noSpots.errorMessage != null)
               NoticeBanner(
                 message: noSpots.errorMessage!,
@@ -87,6 +99,15 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
       ),
     );
   }
+}
+
+String _savedLabel(DateTime savedAt) {
+  final age = DateTime.now().difference(savedAt);
+  if (age.inMinutes < 1) return 'Saved on this phone · updated just now';
+  if (age.inHours < 1) {
+    return 'Saved on this phone · updated ${age.inMinutes} min ago';
+  }
+  return 'Saved on this phone · updated ${age.inHours} h ago';
 }
 
 class _Header extends StatelessWidget {
@@ -321,7 +342,10 @@ class _NotifyCard extends StatelessWidget {
                   ),
                   const SizedBox(height: Spacing.xs),
                   Text(
-                    noSpots.watching
+                    noSpots.notifyPaused
+                        ? 'Paused without signal. It starts again by itself '
+                              'when the signal returns.'
+                        : noSpots.watching
                         ? 'On. We check every 30 s while the app is open.'
                         : 'We\'ll ping you the moment a spot opens. Keep the '
                               'app open.',
