@@ -8,6 +8,7 @@ import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/reservation_history_card.dart';
 import '../../../domain/entities/app_user.dart';
+import '../../shared/arrival_question_card.dart';
 import '../login/auth_view_model.dart';
 import 'profile_view_model.dart';
 
@@ -37,6 +38,7 @@ class ProfileScreen extends StatelessWidget {
             if (user != null)
               _UserCard(user: user, offline: auth.offlineSession),
             const SizedBox(height: Spacing.lg),
+            const ArrivalQuestionCard(),
             Text('RESERVATION HISTORY', style: AppTypography.overline),
             const SizedBox(height: Spacing.sm),
             if (profile.historyFromCache) ...[
