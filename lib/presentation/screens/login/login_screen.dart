@@ -57,6 +57,17 @@ class _LoginScreenState extends State<LoginScreen> {
               style: AppTypography.caption,
             ),
             const SizedBox(height: Spacing.lg),
+            if (!auth.online) ...[
+              const NoticeBanner(
+                title: 'You\'re offline',
+                message:
+                    'Logging in needs a connection. What you type stays here '
+                    'and the button turns on as soon as the phone is back '
+                    'online.',
+                icon: Icons.cloud_off_outlined,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
             if (auth.errorMessage != null) ...[
               NoticeBanner(
                 message: auth.errorMessage!,
@@ -98,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: auth.canLogin ? auth.login : null,
               child: auth.isLoading
                   ? const ButtonSpinner()
-                  : const Text('Log in'),
+                  : Text(auth.online ? 'Log in' : 'Waiting for connection'),
             ),
             const SizedBox(height: Spacing.sm),
             OutlinedButton(

@@ -12,6 +12,7 @@ import '../domain/entities/device_description.dart';
 import '../domain/ports/auth_repository.dart';
 import '../domain/ports/connectivity_port.dart';
 import '../domain/ports/directions_launcher.dart';
+import '../domain/ports/form_draft_store.dart';
 import '../domain/ports/location_provider.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
@@ -34,6 +35,7 @@ import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_directions_launcher.dart';
+import '../infrastructure/mock/mock_form_draft_store.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
@@ -41,6 +43,7 @@ import '../infrastructure/mock/mock_reservation_outbox.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
 import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
+import '../infrastructure/storage/hive_form_draft_store.dart';
 import '../infrastructure/storage/local_cache.dart';
 import '../infrastructure/storage/local_database.dart';
 import '../infrastructure/storage/car_location_file_store.dart';
@@ -73,6 +76,7 @@ class AppDependencies {
     required this.telemetry,
     required this.device,
     required this.outbox,
+    required this.drafts,
     required this.spotRanker,
     this.forecastStore,
   });
@@ -82,6 +86,7 @@ class AppDependencies {
     final cacheBox = await Hive.openBox<String>('cache');
     final prefsBox = await Hive.openBox<String>('prefs');
     final telemetryBox = await Hive.openBox<String>('telemetry');
+    final draftsBox = await Hive.openBox<String>('drafts');
     final database = await LocalDatabase.open();
     final historyStore = ReservationHistoryStore(database);
     final supportDirectory = await getApplicationSupportDirectory();
@@ -125,6 +130,7 @@ class AppDependencies {
       parking: HttpParkingRepository(client, cache),
       reservations: reservations,
       outbox: reservations,
+      drafts: HiveFormDraftStore(draftsBox),
       spotRanker: rankSpotsInBackground,
       vehicles: HttpVehicleLocator(client, carLocationStore),
       connectivity: connectivity,
@@ -149,6 +155,7 @@ class AppDependencies {
     telemetry: MockTelemetry(),
     device: const DeviceDescription(model: 'Test phone', osVersion: '15'),
     outbox: MockReservationOutbox(),
+    drafts: MockFormDraftStore(),
     spotRanker: rankSpotsInline,
   );
 
@@ -163,13 +170,19 @@ class AppDependencies {
   final Telemetry telemetry;
   final DeviceDescription device;
   final ReservationOutbox outbox;
+  final FormDraftStore drafts;
   final SpotRanker spotRanker;
   final ForecastFileStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
     ChangeNotifierProvider(
-      create: (_) =>
-          AuthViewModel(auth, telemetry, onSignedOut: outbox.clear),
+      create: (_) => AuthViewModel(
+        auth,
+        telemetry,
+        connectivity: connectivity,
+        drafts: drafts,
+        onSignedOut: outbox.clear,
+      ),
     ),
     ChangeNotifierProvider(create: (_) => ShellViewModel()),
     ChangeNotifierProvider(

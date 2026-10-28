@@ -5,23 +5,33 @@ import 'package:flutter/foundation.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/auth_repository.dart';
+import '../../../domain/ports/connectivity_port.dart';
+import '../../../domain/ports/form_draft_store.dart';
 import '../../../domain/ports/telemetry.dart';
+import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
-class AuthViewModel extends ChangeNotifier {
+class AuthViewModel extends ChangeNotifier with ConnectivityAware {
   AuthViewModel(
     this._repository,
     this._telemetry, {
+    ConnectivityPort? connectivity,
+    this._drafts,
     this._onSignedOut,
   }) {
     _expiredSub = _repository.sessionExpired.listen((_) => _signOut());
+    if (connectivity != null) watchConnectivity(connectivity, () async {});
   }
+
+  static const registerDraft = 'register';
 
   final AuthRepository _repository;
   final Telemetry _telemetry;
+  final FormDraftStore? _drafts;
   final Future<void> Function()? _onSignedOut;
+  bool _draftingRegister = false;
   bool _openReported = false;
   late final StreamSubscription<void> _expiredSub;
 
@@ -53,12 +63,16 @@ class AuthViewModel extends ChangeNotifier {
 
   bool get canLogin =>
       !isLoading &&
+      online &&
       isEmailValid &&
       password.isNotEmpty &&
       isPasswordShortEnough;
 
+  bool hasRegisterDraft = false;
+
   bool get canRegister =>
       !isLoading &&
+      online &&
       name.trim().isNotEmpty &&
       name.trim().length <= nameMaxLength &&
       isEmailValid &&
@@ -74,6 +88,17 @@ class AuthViewModel extends ChangeNotifier {
   void resetForm() {
     name = email = password = confirmPassword = '';
     errorMessage = null;
+    _draftingRegister = false;
+    hasRegisterDraft = false;
+    notifyListeners();
+  }
+
+  void restoreRegisterDraft() {
+    _draftingRegister = true;
+    final draft = _drafts?.read(registerDraft) ?? const {};
+    name = draft['name'] ?? name;
+    email = draft['email'] ?? email;
+    hasRegisterDraft = draft.isNotEmpty;
     notifyListeners();
   }
 
@@ -99,13 +124,20 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> login() =>
       _submit(() => _repository.login(email: email.trim(), password: password));
 
-  Future<void> register() => _submit(
-    () => _repository.register(
-      name: name.trim(),
-      email: email.trim(),
-      password: password,
-    ),
-  );
+  Future<void> register() async {
+    await _submit(
+      () => _repository.register(
+        name: name.trim(),
+        email: email.trim(),
+        password: password,
+      ),
+    );
+    if (status == AuthStatus.authenticated) {
+      _draftingRegister = false;
+      hasRegisterDraft = false;
+      await _drafts?.clear(registerDraft);
+    }
+  }
 
   Future<void> logout() async {
     await _repository.logout();
@@ -176,6 +208,11 @@ class AuthViewModel extends ChangeNotifier {
   void _edit(VoidCallback change) {
     change();
     errorMessage = null;
+    if (_draftingRegister) {
+      unawaited(
+        _drafts?.save(registerDraft, {'name': name, 'email': email}),
+      );
+    }
     notifyListeners();
   }
 

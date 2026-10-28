@@ -10,10 +10,36 @@ import '../../../core/widgets/notice_banner.dart';
 import '../login/auth_view_model.dart';
 import '../login/login_screen.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   static const String routeName = '/register';
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthViewModel>()..restoreRegisterDraft();
+      _name.text = auth.name;
+      _email.text = auth.email;
+    });
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +70,25 @@ class RegisterScreen extends StatelessWidget {
               style: AppTypography.caption,
             ),
             const SizedBox(height: Spacing.lg),
+            if (!auth.online) ...[
+              const NoticeBanner(
+                title: 'You\'re offline',
+                message:
+                    'Creating an account needs a connection. Your name and '
+                    'email are saved on this phone, so you can finish when '
+                    'the connection is back.',
+                icon: Icons.cloud_off_outlined,
+              ),
+              const SizedBox(height: Spacing.md),
+            ] else if (auth.hasRegisterDraft) ...[
+              const NoticeBanner(
+                message:
+                    'We filled in the name and email you started before. '
+                    'Choose a password to finish.',
+                icon: Icons.restore,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
             if (auth.errorMessage != null) ...[
               NoticeBanner(
                 message: auth.errorMessage!,
@@ -53,6 +98,7 @@ class RegisterScreen extends StatelessWidget {
               const SizedBox(height: Spacing.md),
             ],
             TextField(
+              controller: _name,
               onChanged: auth.setName,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
@@ -64,6 +110,7 @@ class RegisterScreen extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.md),
             TextField(
+              controller: _email,
               onChanged: auth.setEmail,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
@@ -107,7 +154,9 @@ class RegisterScreen extends StatelessWidget {
               onPressed: auth.canRegister ? auth.register : null,
               child: auth.isLoading
                   ? const ButtonSpinner()
-                  : const Text('Create account'),
+                  : Text(
+                      auth.online ? 'Create account' : 'Waiting for connection',
+                    ),
             ),
           ],
         ),
