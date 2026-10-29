@@ -8,6 +8,7 @@ import '../../../domain/ports/auth_repository.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/form_draft_store.dart';
 import '../../../domain/ports/telemetry.dart';
+import '../../../domain/services/register_rules.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
@@ -51,17 +52,14 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
   String password = '';
   String confirmPassword = '';
 
-  static const nameMaxLength = 50;
-  static const emailMaxLength = 100;
-  static const passwordMinLength = 6;
-  static const passwordMaxLength = 64;
+  static const emailMaxLength = RegisterRules.emailMaxLength;
+  static const passwordMaxLength = RegisterRules.passwordMaxLength;
 
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   bool get isEmailValid =>
       email.trim().length <= emailMaxLength &&
       _emailPattern.hasMatch(email.trim());
-  bool get isPasswordLongEnough => password.length >= passwordMinLength;
   bool get isPasswordShortEnough => password.length <= passwordMaxLength;
   bool get passwordsMatch => password == confirmPassword;
 
@@ -74,14 +72,16 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
 
   bool hasRegisterDraft = false;
 
+  String? get nameProblem => RegisterRules.nameProblem(name);
+  String? get emailProblem => RegisterRules.emailProblem(email);
+  String? get passwordProblem => RegisterRules.passwordProblem(password);
+
   bool get canRegister =>
       !isLoading &&
       online &&
-      name.trim().isNotEmpty &&
-      name.trim().length <= nameMaxLength &&
-      isEmailValid &&
-      isPasswordLongEnough &&
-      isPasswordShortEnough &&
+      nameProblem == null &&
+      emailProblem == null &&
+      passwordProblem == null &&
       passwordsMatch;
 
   void setName(String value) => _edit(() => name = value);
@@ -176,7 +176,8 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
         case 429:
           return 'Too many attempts. Wait a minute and try again.';
         case 400:
-          return 'Check your data and try again.';
+          return error.fields.values.firstOrNull ??
+              'Check your data and try again.';
       }
     }
     return errorMessageFor(error);

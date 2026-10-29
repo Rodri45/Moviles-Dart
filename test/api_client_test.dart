@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -33,5 +35,36 @@ void main() {
     );
 
     await expectLater(client.get('/invalid'), throwsA(isA<NetworkException>()));
+  });
+
+  test('keeps the message of each field the server rejected', () async {
+    final client = ApiClient(
+      httpClient: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'error': 'Invalid request',
+            'details': {
+              'formErrors': [],
+              'fieldErrors': {
+                'password': ['Password needs a symbol'],
+              },
+            },
+          }),
+          400,
+        ),
+      ),
+      readToken: () => null,
+    );
+
+    await expectLater(
+      client.post('/auth/register', body: const {}),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.message, 'message', 'Invalid request')
+            .having((e) => e.fields, 'fields', {
+              'password': 'Password needs a symbol',
+            }),
+      ),
+    );
   });
 }

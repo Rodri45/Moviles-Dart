@@ -61,7 +61,7 @@ class ApiClient {
       final response = await _execute(request);
       final status = response.statusCode;
       if (status == 401 && token != null) onUnauthorized?.call();
-      if (status >= 400) throw ApiException(status, _errorOf(response));
+      if (status >= 400) throw _errorOf(response);
       if (response.body.isEmpty) return null;
       final parsed = response.body.length >= _isolateJsonThreshold
           ? await compute(_decodeJson, response.body, debugLabel: 'api-json')
@@ -92,14 +92,25 @@ class ApiClient {
     }
   }
 
-  static String _errorOf(http.Response response) {
+  static ApiException _errorOf(http.Response response) {
+    final status = response.statusCode;
     try {
       final json = jsonDecode(response.body);
-      final error = json is Map ? json['error'] : null;
-      if (error is String) return error;
+      if (json is! Map) return ApiException(status, 'HTTP $status');
+      final error = json['error'];
+      final details = json['details'];
+      final fields = details is Map ? details['fieldErrors'] : null;
+      return ApiException(
+        status,
+        error is String ? error : 'HTTP $status',
+        fields: {
+          if (fields is Map)
+            for (final MapEntry(:key, :value) in fields.entries)
+              if (value is List && value.isNotEmpty) '$key': '${value.first}',
+        },
+      );
     } on FormatException {
-      return 'HTTP ${response.statusCode}';
+      return ApiException(status, 'HTTP $status');
     }
-    return 'HTTP ${response.statusCode}';
   }
 }

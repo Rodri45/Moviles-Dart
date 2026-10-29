@@ -77,14 +77,37 @@ void main() {
       auth
         ..setName('Laura')
         ..setEmail('new@uniandes.edu.co')
-        ..setPassword('secret123')
-        ..setConfirmPassword('secret12');
+        ..setPassword('Secret12!')
+        ..setConfirmPassword('Secret12');
       expect(auth.canRegister, isFalse);
 
-      auth.setConfirmPassword('secret123');
+      auth.setConfirmPassword('Secret12!');
       expect(auth.canRegister, isTrue);
 
       auth.setPassword('123');
+      expect(auth.canRegister, isFalse);
+    });
+
+    test('follows the same rules as the backend', () {
+      auth
+        ..setName('Laura')
+        ..setEmail('new@uniandes.edu.co')
+        ..setPassword('secret123')
+        ..setConfirmPassword('secret123');
+      expect(auth.passwordProblem, 'Add an uppercase letter');
+      expect(auth.canRegister, isFalse);
+
+      auth
+        ..setPassword('Secret12!')
+        ..setConfirmPassword('Secret12!')
+        ..setEmail('new@parkwise.test');
+      expect(auth.emailProblem, isNotNull);
+      expect(auth.canRegister, isFalse);
+
+      auth
+        ..setEmail('new@gmail.com')
+        ..setName('L');
+      expect(auth.nameProblem, isNotNull);
       expect(auth.canRegister, isFalse);
     });
 
@@ -92,12 +115,29 @@ void main() {
       auth
         ..setName('Laura')
         ..setEmail(MockAuthRepository.user.email)
-        ..setPassword('secret123')
-        ..setConfirmPassword('secret123');
+        ..setPassword('Secret12!')
+        ..setConfirmPassword('Secret12!');
 
       await auth.register();
 
       expect(auth.errorMessage, 'This email is already registered.');
+    });
+
+    test('a form the server rejects shows the reason it gave', () async {
+      repository.registerError = const ApiException(
+        400,
+        'Invalid request',
+        fields: {'password': 'Password needs a symbol'},
+      );
+      auth
+        ..setName('Laura')
+        ..setEmail('new@gmail.com')
+        ..setPassword('Secret12!')
+        ..setConfirmPassword('Secret12!');
+
+      await auth.register();
+
+      expect(auth.errorMessage, 'Password needs a symbol');
     });
   });
 
