@@ -7,6 +7,7 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/button_spinner.dart';
 import '../../../core/widgets/notice_banner.dart';
+import '../../../domain/services/register_rules.dart';
 import '../login/auth_view_model.dart';
 import '../login/login_screen.dart';
 
@@ -46,7 +47,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.watch<AuthViewModel>();
     final showMismatch =
         auth.confirmPassword.isNotEmpty && !auth.passwordsMatch;
-    final showShort = auth.password.isNotEmpty && !auth.isPasswordLongEnough;
+    final nameError = auth.name.isEmpty ? null : auth.nameProblem;
+    final emailError = auth.isEmailValid ? auth.emailProblem : null;
+    final passwordError = auth.password.isEmpty ? null : auth.passwordProblem;
 
     return Scaffold(
       backgroundColor: Palette.background,
@@ -102,9 +105,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onChanged: auth.setName,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
-              maxLength: AuthViewModel.nameMaxLength,
-              decoration: const InputDecoration(
+              maxLength: RegisterRules.nameMaxLength,
+              decoration: InputDecoration(
                 labelText: 'Name',
+                errorText: nameError,
+                errorMaxLines: 2,
                 counterText: '',
               ),
             ),
@@ -119,8 +124,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               inputFormatters: [
                 FilteringTextInputFormatter.deny(RegExp(r'\s')),
               ],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Email',
+                helperText:
+                    'Gmail, Outlook, Hotmail, Live, Yahoo, iCloud, Proton or '
+                    'Uniandes',
+                helperMaxLines: 2,
+                errorText: emailError,
+                errorMaxLines: 2,
                 counterText: '',
               ),
             ),
@@ -133,8 +144,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               maxLength: AuthViewModel.passwordMaxLength,
               decoration: InputDecoration(
                 labelText: 'Password',
-                helperText: 'Between 6 and 64 characters',
-                errorText: showShort ? 'At least 6 characters' : null,
+                helperText:
+                    '8 to 64 characters with an uppercase letter, a '
+                    'lowercase letter, a number and a symbol',
+                helperMaxLines: 3,
+                errorText: passwordError,
                 counterText: '',
               ),
             ),

@@ -45,8 +45,8 @@ void main() {
       ..restoreRegisterDraft()
       ..setName('Laura')
       ..setEmail('laura@uniandes.edu.co')
-      ..setPassword('secret123')
-      ..setConfirmPassword('secret123');
+      ..setPassword('Secret12!')
+      ..setConfirmPassword('Secret12!');
 
     expect(drafts.read(AuthViewModel.registerDraft), {
       'name': 'Laura',
@@ -82,8 +82,8 @@ void main() {
       ..restoreRegisterDraft()
       ..setName('Laura')
       ..setEmail('new.user@uniandes.edu.co')
-      ..setPassword('secret123')
-      ..setConfirmPassword('secret123');
+      ..setPassword('Secret12!')
+      ..setConfirmPassword('Secret12!');
 
     await auth.register();
 
