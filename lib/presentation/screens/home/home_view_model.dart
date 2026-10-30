@@ -166,6 +166,10 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   Future<void> _loadBuildings() async {
     try {
       buildings = await _parking.getBuildings();
+      if (buildings.isNotEmpty &&
+          buildings.every((building) => building.id != destination)) {
+        await _preferences.saveDestination(buildings.first.id);
+      }
     } catch (e) {
       debugPrint('buildings failed: $e');
     }

@@ -9,7 +9,7 @@ class DevicePreferencesStore implements PreferencesStore {
   static const _destinationKey = 'destination';
   static const _arrivalTimeKey = 'arrival_time';
   static const _lastOpenedLevelKey = 'last_opened_level';
-  static const defaultDestination = 'ml';
+  static const defaultDestination = 'sd';
 
   final Box<String> _box;
   final SharedPreferences _preferences;

@@ -68,6 +68,24 @@ void main() {
 
   tearDown(() => home.dispose());
 
+  test('a destination no longer offered moves to the offered one', () async {
+    final preferences = MockPreferencesStore(destination: 'ml');
+    final moved = HomeViewModel(
+      parking,
+      preferences,
+      MockLocationProvider(),
+      telemetry,
+      connectivity,
+      refreshEvery: const Duration(milliseconds: 20),
+    );
+    addTearDown(moved.dispose);
+
+    await moved.load();
+
+    expect(moved.destination, 'sd');
+    expect(preferences.destination, 'sd');
+  });
+
   test('coming back to Home asks for the free spots again', () async {
     await home.load();
     home.setVisible(true);

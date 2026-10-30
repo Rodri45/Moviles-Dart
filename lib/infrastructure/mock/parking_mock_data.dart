@@ -26,9 +26,7 @@ abstract final class ParkingMockData {
   );
 
   static const List<Building> buildings = [
-    Building(id: 'ml', name: 'Edificio Mario Laserna'),
     Building(id: 'sd', name: 'Edificio Santo Domingo'),
-    Building(id: 'biblioteca', name: 'Biblioteca General'),
   ];
 
   static final List<LevelForecast> forecasts = [
