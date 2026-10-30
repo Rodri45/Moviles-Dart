@@ -2,7 +2,7 @@ import '../../domain/ports/preferences_store.dart';
 
 class MockPreferencesStore implements PreferencesStore {
   MockPreferencesStore({
-    this.destination = 'ml',
+    this.destination = 'sd',
     this.arrivalTime,
     this.lastOpenedLevel,
   });
