@@ -143,8 +143,6 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
         distance: meters == null ? null : '~${meters.round()}m',
       ),
       const SizedBox(height: Spacing.md),
-      const _RouteToggle(),
-      const SizedBox(height: Spacing.md),
       for (final step in _stepsFor(car)) ...[
         _StepCard(step: step),
         const SizedBox(height: Spacing.sm),
@@ -566,68 +564,6 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedLinePainter oldDelegate) => false;
-}
-
-class _RouteToggle extends StatelessWidget {
-  const _RouteToggle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: _RouteOption(label: 'Direct route', selected: true),
-        ),
-        const SizedBox(width: Spacing.sm),
-        Expanded(
-          child: _RouteOption(
-            label: 'Lit route',
-            selected: false,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Lit route is coming soon.')),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RouteOption extends StatelessWidget {
-  const _RouteOption({required this.label, required this.selected, this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? Palette.primarySoft : Palette.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.sm),
-        side: BorderSide(
-          color: selected ? Palette.primary : Palette.border,
-          width: selected ? 1.5 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.sm),
-        child: SizedBox(
-          height: 44,
-          child: Center(
-            child: Text(
-              label,
-              style: AppTypography.button.copyWith(
-                color: selected ? Palette.primary : Palette.textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _StepCard extends StatelessWidget {

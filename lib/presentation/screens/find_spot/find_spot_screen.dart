@@ -148,29 +148,21 @@ class _Header extends StatelessWidget {
         children: [
           Text(title, style: AppTypography.display),
           const SizedBox(height: Spacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  onChanged: finder.setQuery,
-                  style: AppTypography.body,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'Spot code, zone, level...',
-                    hintStyle: AppTypography.body.copyWith(
-                      color: Palette.textSecondary,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      size: 18,
-                      color: Palette.textSecondary,
-                    ),
-                  ),
-                ),
+          TextField(
+            onChanged: finder.setQuery,
+            style: AppTypography.body,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Spot code, zone, level...',
+              hintStyle: AppTypography.body.copyWith(
+                color: Palette.textSecondary,
               ),
-              const SizedBox(width: Spacing.sm),
-              const _VoiceButton(),
-            ],
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 18,
+                color: Palette.textSecondary,
+              ),
+            ),
           ),
           const SizedBox(height: Spacing.md),
           Wrap(
@@ -186,32 +178,6 @@ class _Header extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _VoiceButton extends StatelessWidget {
-  const _VoiceButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Palette.primarySoft,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(color: Palette.primary.withValues(alpha: 0.4)),
-      ),
-      child: InkWell(
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Voice search is coming soon.')),
-        ),
-        borderRadius: BorderRadius.circular(Radii.card),
-        child: const SizedBox(
-          width: Spacing.touchTarget,
-          height: Spacing.touchTarget,
-          child: Icon(Icons.mic_none, size: 20, color: Palette.primary),
-        ),
       ),
     );
   }
