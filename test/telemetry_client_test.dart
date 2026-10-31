@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive_ce.dart';
@@ -10,19 +10,13 @@ import 'package:parkwise/infrastructure/http/telemetry_client.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 
 void main() {
-  late Directory directory;
   late Box<String> queue;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('parkwise-telemetry');
-    Hive.init(directory.path);
-    queue = await Hive.openBox<String>('telemetry-test');
+    queue = await Hive.openBox<String>('telemetry-test', bytes: Uint8List(0));
   });
 
-  tearDown(() async {
-    await queue.close();
-    await directory.delete(recursive: true);
-  });
+  tearDown(() => queue.close());
 
   test('queued Android events preserve their platform and occurrence time', () async {
     final client = ApiClient(
