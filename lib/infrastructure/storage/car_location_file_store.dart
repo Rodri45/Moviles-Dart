@@ -19,7 +19,6 @@ class CarLocationFileStore {
     await _file.parent.create(recursive: true);
     final pending = File('${_file.path}.tmp');
     await pending.writeAsString(jsonEncode(location), flush: true);
-    if (await _file.exists()) await _file.delete();
     await pending.rename(_file.path);
   }
 

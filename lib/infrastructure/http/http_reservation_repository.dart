@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../domain/entities/cached.dart';
 import '../../domain/entities/lead_time_advice.dart';
 import '../../domain/entities/reservation.dart';
-import '../../domain/entities/cached.dart';
 import '../../domain/ports/reservation_repository.dart';
 import '../storage/local_cache.dart';
 import '../storage/reservation_history_store.dart';

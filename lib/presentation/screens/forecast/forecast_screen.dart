@@ -84,11 +84,14 @@ class _LevelForecast extends StatelessWidget {
     final start = (home.arrivalAt.hour - 1).clamp(0, 16);
     final visibleHours = hours.sublist(start, start + 8);
     final predicted = home.recommendation?.predictions[level.code];
+    final recommended = home.recommendation?.recommended == level.code;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'LEVEL ${level.code}${home.recommendation?.recommended == level.code ? ' · RECOMMENDED' : ''}',
+          recommended
+              ? 'LEVEL ${level.code} · RECOMMENDED'
+              : 'LEVEL ${level.code}',
           style: AppTypography.overline,
         ),
         const SizedBox(height: Spacing.xs),

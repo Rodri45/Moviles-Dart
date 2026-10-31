@@ -5,12 +5,14 @@ import 'package:path/path.dart' as path;
 
 import '../../domain/entities/cached.dart';
 import '../../domain/entities/level_forecast.dart';
+import '../../domain/ports/forecast_store.dart';
 
-class ForecastFileStore {
+class ForecastFileStore implements ForecastStore {
   ForecastFileStore(this._directory);
 
   final Directory _directory;
 
+  @override
   Future<Cached<List<LevelForecast>>?> read(DateTime date) async {
     final key = _dateKey(date);
     final file = File(path.join(_directory.path, 'forecast.json'));
@@ -43,6 +45,7 @@ class ForecastFileStore {
     );
   }
 
+  @override
   Future<void> write(DateTime date, List<LevelForecast> forecasts) async {
     await _directory.create(recursive: true);
     final key = _dateKey(date);
@@ -56,7 +59,6 @@ class ForecastFileStore {
       }),
       flush: true,
     );
-    if (await file.exists()) await file.delete();
     await pending.rename(file.path);
   }
 
