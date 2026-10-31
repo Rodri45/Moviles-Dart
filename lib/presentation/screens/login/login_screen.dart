@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/design/palette.dart';
@@ -39,17 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
+    final side = authFormSidePadding(context);
 
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            Spacing.md,
-            Spacing.xl,
-            Spacing.md,
-            Spacing.lg,
-          ),
+          padding: EdgeInsets.fromLTRB(side, Spacing.xl, side, Spacing.lg),
           children: [
             const AuthBrand(),
             const SizedBox(height: Spacing.xl),
@@ -60,6 +57,17 @@ class _LoginScreenState extends State<LoginScreen> {
               style: AppTypography.caption,
             ),
             const SizedBox(height: Spacing.lg),
+            if (!auth.online) ...[
+              const NoticeBanner(
+                title: 'You\'re offline',
+                message:
+                    'Logging in needs a connection. What you type stays here '
+                    'and the button turns on as soon as the phone is back '
+                    'online.',
+                icon: Icons.cloud_off_outlined,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
             if (auth.errorMessage != null) ...[
               NoticeBanner(
                 message: auth.errorMessage!,
@@ -74,7 +82,14 @@ class _LoginScreenState extends State<LoginScreen> {
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Email'),
+              maxLength: AuthViewModel.emailMaxLength,
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'\s')),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                counterText: '',
+              ),
             ),
             const SizedBox(height: Spacing.md),
             TextField(
@@ -82,15 +97,19 @@ class _LoginScreenState extends State<LoginScreen> {
               onChanged: auth.setPassword,
               obscureText: true,
               autofillHints: const [AutofillHints.password],
+              maxLength: AuthViewModel.passwordMaxLength,
               onSubmitted: (_) => auth.canLogin ? auth.login() : null,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                counterText: '',
+              ),
             ),
             const SizedBox(height: Spacing.lg),
             FilledButton(
               onPressed: auth.canLogin ? auth.login : null,
               child: auth.isLoading
                   ? const ButtonSpinner()
-                  : const Text('Log in'),
+                  : Text(auth.online ? 'Log in' : 'Waiting for connection'),
             ),
             const SizedBox(height: Spacing.sm),
             OutlinedButton(
@@ -102,6 +121,14 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+const authFormMaxWidth = 480.0;
+
+double authFormSidePadding(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  if (width <= authFormMaxWidth + 2 * Spacing.md) return Spacing.md;
+  return (width - authFormMaxWidth) / 2;
 }
 
 class AuthBrand extends StatelessWidget {

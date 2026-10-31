@@ -10,7 +10,9 @@ import '../../../domain/entities/reservation.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/location_provider.dart';
+import '../../../domain/ports/reservation_outbox.dart';
 import '../../../domain/ports/reservation_repository.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../../domain/ports/vehicle_locator.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
@@ -22,8 +24,16 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     this._location,
     ConnectivityPort connectivity, {
     DateTime Function()? clock,
+    this._telemetry,
+    this._outbox,
   }) : _clock = clock ?? DateTime.now {
     watchConnectivity(connectivity, load);
+    _outboxSub = _outbox?.status.listen(_onOutbox);
+    _outbox?.pendingCount().then((count) {
+      if (count == pendingActions) return;
+      pendingActions = count;
+      notifyListeners();
+    });
   }
 
   static const warnBefore = Duration(minutes: 3);
@@ -33,6 +43,9 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   final VehicleLocator _vehicles;
   final LocationProvider _location;
   final DateTime Function() _clock;
+  final Telemetry? _telemetry;
+  final ReservationOutbox? _outbox;
+  StreamSubscription<OutboxStatus>? _outboxSub;
   Timer? _ticker;
   final Set<String> _warned = {};
 
@@ -45,6 +58,11 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
 
   bool expiryAlert = false;
 
+  int pendingActions = 0;
+
+  bool get canConfirm =>
+      online && !isBusy && pendingSpot != null && reservation == null;
+
   bool get isActive => reservation?.status == ReservationStatus.active;
   bool get isParked => reservation?.status == ReservationStatus.fulfilled;
   int get holdMinutes => advice?.holdMinutes ?? 15;
@@ -52,6 +70,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   Duration get remaining => reservation?.remaining(_clock()) ?? Duration.zero;
 
   Future<void> load() async {
+    if (online) await _outbox?.flush();
     await Future.wait([_loadActive(), _loadHistory(), _loadAdvice()]);
     notifyListeners();
   }
@@ -61,17 +80,43 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     errorMessage = reservation == null
         ? null
         : 'You already have a reservation. Cancel it to pick another spot.';
+    _track('spot_selected', spot);
     notifyListeners();
   }
 
   Future<void> confirm() async {
     final spot = pendingSpot;
     if (spot == null) return;
-    await _run(() async {
+    _track('reserve_confirm_tapped', spot);
+    if (!online) {
+      errorMessage = offlineConfirmMessage;
+      _track('reserve_failed', spot, reason: 'offline');
+      notifyListeners();
+      return;
+    }
+    isBusy = true;
+    errorMessage = null;
+    notifyListeners();
+    try {
       _setReservation(await _reservations.create(spot.id));
       pendingSpot = null;
-    });
+    } on ApiException catch (e) {
+      _track('reserve_failed', spot, reason: _failureReason(e));
+      errorMessage = _conflictMessage(e) ?? errorMessageFor(e);
+      if (e.statusCode == 409) await _loadActive();
+    } catch (e) {
+      _track('reserve_failed', spot, reason: _failureReason(e));
+      errorMessage = errorMessageFor(e);
+    } finally {
+      isBusy = false;
+      notifyListeners();
+    }
   }
+
+  static const offlineConfirmMessage =
+      'You\'re offline. The server has to confirm the reservation so nobody '
+      'else takes the spot. Your spot stays selected until you\'re back '
+      'online.';
 
   Future<void> checkIn() async {
     final current = reservation;
@@ -167,18 +212,44 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
 
   Future<void> _loadHistory() async {
     try {
-      history = await _reservations.history();
+      history = (await _reservations.history()).data;
     } catch (e) {
       debugPrint('history failed: $e');
     }
   }
 
-  Future<void> _loadAdvice() async {
-    try {
-      advice = await _reservations.leadTime();
-    } catch (e) {
-      debugPrint('lead time failed: $e');
+  Future<void> _loadAdvice() => _reservations
+      .leadTime()
+      .then<void>((value) => advice = value)
+      .catchError((Object e) => debugPrint('lead time failed: $e'));
+
+  void _onOutbox(OutboxStatus status) {
+    pendingActions = status.pending;
+    if (status.rejected.isNotEmpty) {
+      errorMessage = status.rejected.join('\n');
+      unawaited(_loadActive().then((_) => notifyListeners()));
     }
+    notifyListeners();
+  }
+
+  void _track(String name, ParkingSpot spot, {String? reason}) {
+    _telemetry?.track(name, {
+      'levelCode': spot.levelCode,
+      'spotCode': spot.code,
+      'reason': ?reason,
+    });
+  }
+
+  static String _failureReason(Object error) {
+    if (error is NetworkException) return 'offline';
+    if (error is ApiException) {
+      if (error.statusCode >= 500) return 'server_error';
+      final message = error.message.toLowerCase();
+      if (message.contains('not available')) return 'spot_taken';
+      if (message.contains('active reservation')) return 'already_active';
+      if (message.contains('expired')) return 'expired';
+    }
+    return 'other';
   }
 
   void _setReservation(Reservation? value) {
@@ -216,6 +287,7 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
   @override
   void dispose() {
     _ticker?.cancel();
+    _outboxSub?.cancel();
     super.dispose();
   }
 }

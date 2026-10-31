@@ -6,6 +6,7 @@ import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../shell/main_shell.dart';
@@ -52,30 +53,22 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: _Header(car: car),
+          onRefresh: car.load,
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            _Header(car: car),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: car.load,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Spacing.md,
-                    Spacing.md,
-                    Spacing.md,
-                    Spacing.lg,
-                  ),
-                  children: [
-                    if (car.isLoading && !car.hasCar)
-                      const Center(child: CircularProgressIndicator())
-                    else if (!car.hasCar)
-                      const _NoCarCard()
-                    else
-                      ..._carDetails(car),
-                  ],
-                ),
-              ),
-            ),
+            if (car.isLoading && !car.hasCar)
+              const Center(child: CircularProgressIndicator())
+            else if (!car.hasCar)
+              const _NoCarCard()
+            else
+              ..._carDetails(car),
           ],
         ),
       ),
@@ -101,7 +94,15 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
     }
 
     return [
-      if (car.offline) ...[
+      if (car.pendingActions > 0) ...[
+        const NoticeBanner(
+          message:
+              'Saved on this phone. Your check-in will be sent when '
+              'you\'re back online.',
+          icon: Icons.schedule,
+        ),
+        const SizedBox(height: Spacing.md),
+      ] else if (car.offline) ...[
         const NoticeBanner(
           message: 'No connection. Showing where you saved your car.',
           icon: Icons.wifi_off,
@@ -141,8 +142,6 @@ class _FindMyCarScreenState extends State<FindMyCarScreen>
         spotCode: car.spotCode!,
         distance: meters == null ? null : '~${meters.round()}m',
       ),
-      const SizedBox(height: Spacing.md),
-      const _RouteToggle(),
       const SizedBox(height: Spacing.md),
       for (final step in _stepsFor(car)) ...[
         _StepCard(step: step),
@@ -565,68 +564,6 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedLinePainter oldDelegate) => false;
-}
-
-class _RouteToggle extends StatelessWidget {
-  const _RouteToggle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: _RouteOption(label: 'Direct route', selected: true),
-        ),
-        const SizedBox(width: Spacing.sm),
-        Expanded(
-          child: _RouteOption(
-            label: 'Lit route',
-            selected: false,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Lit route is coming soon.')),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RouteOption extends StatelessWidget {
-  const _RouteOption({required this.label, required this.selected, this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? Palette.primarySoft : Palette.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.sm),
-        side: BorderSide(
-          color: selected ? Palette.primary : Palette.border,
-          width: selected ? 1.5 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.sm),
-        child: SizedBox(
-          height: 44,
-          child: Center(
-            child: Text(
-              label,
-              style: AppTypography.button.copyWith(
-                color: selected ? Palette.primary : Palette.textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _StepCard extends StatelessWidget {

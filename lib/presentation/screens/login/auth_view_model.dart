@@ -5,20 +5,40 @@ import 'package:flutter/foundation.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/auth_repository.dart';
+import '../../../domain/ports/connectivity_port.dart';
+import '../../../domain/ports/form_draft_store.dart';
 import '../../../domain/ports/telemetry.dart';
+import '../../../domain/services/register_rules.dart';
+import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
-class AuthViewModel extends ChangeNotifier {
-  AuthViewModel(this._repository, this._telemetry) {
+class AuthViewModel extends ChangeNotifier with ConnectivityAware {
+  AuthViewModel(
+    this._repository,
+    this._telemetry, {
+    ConnectivityPort? connectivity,
+    this._drafts,
+    this._onSignedOut,
+    this.sessionRetryEvery = const Duration(seconds: 30),
+  }) {
     _expiredSub = _repository.sessionExpired.listen((_) => _signOut());
+    if (connectivity != null) watchConnectivity(connectivity, _confirmSession);
   }
+
+  static const registerDraft = 'register';
 
   final AuthRepository _repository;
   final Telemetry _telemetry;
+  final FormDraftStore? _drafts;
+  final Future<void> Function()? _onSignedOut;
+  bool _draftingRegister = false;
   bool _openReported = false;
   late final StreamSubscription<void> _expiredSub;
+  Timer? _sessionRetry;
+
+  final Duration sessionRetryEvery;
 
   AuthStatus status = AuthStatus.unknown;
   AppUser? user;
@@ -32,21 +52,36 @@ class AuthViewModel extends ChangeNotifier {
   String password = '';
   String confirmPassword = '';
 
+  static const emailMaxLength = RegisterRules.emailMaxLength;
+  static const passwordMaxLength = RegisterRules.passwordMaxLength;
+
   static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-  bool get isEmailValid => _emailPattern.hasMatch(email.trim());
-  bool get isPasswordLongEnough => password.length >= 6;
+  bool get isEmailValid =>
+      email.trim().length <= emailMaxLength &&
+      _emailPattern.hasMatch(email.trim());
+  bool get isPasswordShortEnough => password.length <= passwordMaxLength;
   bool get passwordsMatch => password == confirmPassword;
 
-  bool get canLogin => !isLoading && isEmailValid && password.isNotEmpty;
+  bool get canLogin =>
+      !isLoading &&
+      online &&
+      isEmailValid &&
+      password.isNotEmpty &&
+      isPasswordShortEnough;
+
+  bool hasRegisterDraft = false;
+
+  String? get nameProblem => RegisterRules.nameProblem(name);
+  String? get emailProblem => RegisterRules.emailProblem(email);
+  String? get passwordProblem => RegisterRules.passwordProblem(password);
 
   bool get canRegister =>
       !isLoading &&
-      name.trim().isNotEmpty &&
-      name.trim().length <= 80 &&
-      isEmailValid &&
-      isPasswordLongEnough &&
-      password.length <= 128 &&
+      online &&
+      nameProblem == null &&
+      emailProblem == null &&
+      passwordProblem == null &&
       passwordsMatch;
 
   void setName(String value) => _edit(() => name = value);
@@ -57,6 +92,17 @@ class AuthViewModel extends ChangeNotifier {
   void resetForm() {
     name = email = password = confirmPassword = '';
     errorMessage = null;
+    _draftingRegister = false;
+    hasRegisterDraft = false;
+    notifyListeners();
+  }
+
+  void restoreRegisterDraft() {
+    _draftingRegister = true;
+    final draft = _drafts?.read(registerDraft) ?? const {};
+    name = draft['name'] ?? name;
+    email = draft['email'] ?? email;
+    hasRegisterDraft = draft.isNotEmpty;
     notifyListeners();
   }
 
@@ -82,13 +128,20 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> login() =>
       _submit(() => _repository.login(email: email.trim(), password: password));
 
-  Future<void> register() => _submit(
-    () => _repository.register(
-      name: name.trim(),
-      email: email.trim(),
-      password: password,
-    ),
-  );
+  Future<void> register() async {
+    await _submit(
+      () => _repository.register(
+        name: name.trim(),
+        email: email.trim(),
+        password: password,
+      ),
+    );
+    if (status == AuthStatus.authenticated) {
+      _draftingRegister = false;
+      hasRegisterDraft = false;
+      await _drafts?.clear(registerDraft);
+    }
+  }
 
   Future<void> logout() async {
     await _repository.logout();
@@ -123,7 +176,8 @@ class AuthViewModel extends ChangeNotifier {
         case 429:
           return 'Too many attempts. Wait a minute and try again.';
         case 400:
-          return 'Check your data and try again.';
+          return error.fields.values.firstOrNull ??
+              'Check your data and try again.';
       }
     }
     return errorMessageFor(error);
@@ -132,13 +186,36 @@ class AuthViewModel extends ChangeNotifier {
   void _openOffline(AppUser cached) {
     user = cached;
     offlineSession = true;
+    _sessionRetry?.cancel();
+    _sessionRetry = Timer.periodic(sessionRetryEvery, (_) {
+      if (online) _confirmSession();
+    });
     _setStatus(AuthStatus.authenticated);
+  }
+
+  Future<void> _confirmSession() async {
+    if (!offlineSession) return;
+    try {
+      user = await _repository.me();
+      offlineSession = false;
+      _sessionRetry?.cancel();
+      notifyListeners();
+    } on ApiException catch (e) {
+      if (e.statusCode != 401) return;
+      await _repository.logout();
+      _signOut();
+    } catch (e) {
+      debugPrint('session check failed: $e');
+    }
   }
 
   void _signOut() {
     user = null;
     offlineSession = false;
+    _sessionRetry?.cancel();
     _openReported = false;
+    final cleanup = _onSignedOut;
+    if (cleanup != null) unawaited(cleanup());
     _setStatus(AuthStatus.unauthenticated);
   }
 
@@ -151,18 +228,24 @@ class AuthViewModel extends ChangeNotifier {
   void _reportOpen() {
     if (_openReported) return;
     _openReported = true;
-    _telemetry.track('app_opened', {'platform': 'android'});
+    _telemetry.track('app_opened');
   }
 
   void _edit(VoidCallback change) {
     change();
     errorMessage = null;
+    if (_draftingRegister) {
+      unawaited(
+        _drafts?.save(registerDraft, {'name': name, 'email': email}),
+      );
+    }
     notifyListeners();
   }
 
   @override
   void dispose() {
     _expiredSub.cancel();
+    _sessionRetry?.cancel();
     super.dispose();
   }
 }

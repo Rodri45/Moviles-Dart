@@ -6,6 +6,13 @@ versión Android en Flutter; la app iOS (SwiftUI) usa el mismo backend
 
 El contrato de la API está en `../Moviles-Backend/docs/API.md`.
 
+La BQ8 de Andrés está conectada al mismo flujo de datos de producción: Flutter
+envía `forecast_viewed` y `availability_viewed` por `TelemetryClient`; la cola
+Hive conserva los eventos sin conexión con su hora UTC original; el backend los
+relaciona por usuario/día de Bogotá con check-ins reales de `reservations`; y
+la tarjeta BQ8 del dashboard consulta el resumen SQL desde PostgreSQL. No hay
+datos semilla en la app ni archivos exportados para completar esa tarjeta.
+
 ## Correr la app
 
 Requisitos: Flutter 3.47+ (`flutter doctor` sin errores en "Android toolchain").
@@ -75,6 +82,14 @@ Las pruebas no llaman al backend: usan los mocks de
 |---|---|
 | `test/circuit_breaker_test.dart` | Estados cerrado, abierto y semiabierto; los 4xx no cuentan |
 | `test/http_parking_repository_test.dart` | Devuelve la copia de Hive (`fromCache`) cuando falla la red |
+| `test/reservation_history_offline_test.dart` | Historial SQLite por cuenta con fallback solo ante fallo de red |
+| `test/local_persistence_test.dart` | Persistencia relacional SQLite, ubicación del carro y pronóstico JSON por fecha |
+| `test/device_preferences_store_test.dart` | Hora de llegada y último nivel en `shared_preferences` |
+| `test/telemetry_client_test.dart` | Plataforma Android y hora del evento conservadas en la cola offline |
+| `test/local_cache_lru_test.dart` | LRU de 32 respuestas decodificadas y recuperación desde Hive tras eviction |
+| `test/api_client_test.dart` | JSON grande procesado en isolate y respuesta inválida reportada |
+| `test/home_view_model_test.dart` | Prefetch independiente por nivel y recomendación calculada desde pronóstico guardado |
+| `test/level_map_view_model_test.dart` | Sin doble conteo BQ1 al volver al mapa y pausa de refresco offline |
 | `test/reserve_view_model_test.dart` | Reserva 201, los dos 409, cuenta regresiva con `expiresAt`, check-in, aviso de vencimiento |
 | `test/auth_view_model_test.dart` | Login, errores, registro y restauración de la sesión |
 | `test/recommend_spot_test.dart` | El puesto recomendado es el libre con menos minutos; zona BQ4 |
@@ -105,7 +120,7 @@ lib/
 ├── infrastructure/              implementaciones de los puertos
 │   ├── http/                    ApiClient, CircuitBreaker, repositorios, TelemetryClient
 │   ├── device/                  geolocator, connectivity_plus, device_info_plus, url_launcher
-│   ├── storage/                 SessionStore (secure storage), Hive
+│   ├── storage/                 SessionStore, Hive, SQLite, preferences and private files
 │   └── mock/                    versiones de mentira para las pruebas
 └── presentation/
     ├── shell/                   AuthGate (login o app) y MainShell (tabs)
@@ -123,9 +138,44 @@ implementaciones concretas.
 | Dónde | Qué |
 |---|---|
 | `flutter_secure_storage` | Token y usuario (el token nunca va a Hive ni a logs) |
-| Hive `cache` | Última respuesta de niveles, puestos por nivel, edificios, reserva abierta y posición del carro |
+| Hive `cache` | Última respuesta de niveles, puestos por nivel, edificios y reserva abierta |
 | Hive `prefs` | Edificio destino elegido |
+| `shared_preferences` | Hora de llegada y último nivel abierto |
 | Hive `telemetry` | Cola de eventos pendientes (máx. 200) |
+| SQLite (`parkwise_local.db`) | Historial de reservas por usuario; respaldo transaccional para abrir Profile offline |
+| `parked_vehicle.json` en Application Support | Última ubicación del carro, escrita al guardar/check-in y disponible offline |
+| `forecast.json` en Application Support | Pronóstico real de la API para la fecha de llegada; se usa como respaldo offline y para calcular el nivel recomendado |
+
+El historial SQLite está particionado por `user_id`, tiene clave primaria
+compuesta y un índice por usuario/fecha. Solo se usa como respaldo si falla la
+red; un usuario nunca recibe el historial cacheado de otra cuenta. Se borra al
+cerrar sesión. La ubicación del carro se guarda como JSON en el directorio
+privado de la app, no como archivo descargado ni como fuente de analítica.
+
+`LocalCache` mantiene además un LRU de hasta 32 respuestas decodificadas en
+memoria; Hive sigue siendo la copia persistente para uso offline. El límite
+evita crecimiento sin cota y la política descarta primero lo menos usado. Las
+respuestas HTTP JSON de 4 KiB o más se decodifican con `compute` en un isolate;
+las respuestas pequeñas evitan el coste de crear un isolate. El umbral permite
+que respuestas reales de puestos y predicciones usen el isolate.
+
+Estas funciones corresponden a la implementación asignada a Andrés Cáceres;
+no son un requisito común para los demás integrantes, quienes deben decidir
+qué estrategias implementar según su propio alcance.
+
+### Pronóstico y búsqueda de puestos
+
+El Home permite abrir el detalle del pronóstico y vistas específicas de puestos
+accesibles y para vehículos eléctricos. Los accesos usan las mismas consultas
+reales de disponibilidad y se identifican como datos locales cuando la red no
+está disponible. En el mapa, el chip del último nivel abierto se marca con `*`.
+
+El Home precarga los puestos de P1, P2 y P3 en paralelo. El refresco periódico
+del mapa se pausa al perder conexión y se reanuda al recuperarla. La decodificación
+del JSON de respuestas de al menos 4 KiB se ejecuta en un isolate.
+
+La analítica BQ8 se obtiene del backend y la base PostgreSQL compartida; no se
+importa desde archivos ni se guarda una segunda base para el dashboard.
 
 ## Design system
 
@@ -148,4 +198,3 @@ Colores con significado fijo (nunca decorativos):
 
 Grid de 8px, touch target 48px, radio de card 8px, badge 3px, padding de
 página 16px. Sin sombras: profundidad por cards blancas sobre fondo gris.
-

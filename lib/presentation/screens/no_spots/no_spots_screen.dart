@@ -5,9 +5,14 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
+import '../../../core/widgets/lot_photo.dart';
 import '../../../core/widgets/notice_banner.dart';
+import '../../../core/widgets/offline_banner.dart';
 import '../../../domain/entities/nearby_lot.dart';
+import '../../shared/arrival_question_card.dart';
 import '../../shell/main_shell.dart';
+import 'lot_arrival_view_model.dart';
 import 'no_spots_view_model.dart';
 
 class NoSpotsScreen extends StatefulWidget {
@@ -30,12 +35,12 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
 
   Future<void> _navigate(NearbyLot lot) async {
     final messenger = ScaffoldMessenger.of(context);
+    final arrival = context.read<LotArrivalViewModel>();
     final opened = await context.read<NoSpotsViewModel>().navigate(lot);
-    if (!opened) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the maps app.')),
-      );
-    }
+    if (opened) return arrival.redirected(lot);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not open the maps app.')),
+    );
   }
 
   @override
@@ -46,43 +51,49 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: const _Header(),
+          onRefresh: noSpots.refresh,
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            const _Header(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.md,
-                  Spacing.lg,
-                ),
-                children: [
-                  const _FullBanner(),
-                  const SizedBox(height: Spacing.lg),
-                  Text('Nearby parking', style: AppTypography.heading1),
-                  const SizedBox(height: Spacing.sm),
-                  if (noSpots.errorMessage != null)
-                    NoticeBanner(
-                      message: noSpots.errorMessage!,
-                      tone: NoticeTone.danger,
-                      icon: Icons.error_outline,
-                    ),
-                  if (noSpots.isLoading && noSpots.lots.isEmpty)
-                    const Center(child: CircularProgressIndicator()),
-                  for (final lot in noSpots.lots) ...[
-                    _NearbyCard(
-                      lot: lot,
-                      closest: lot.id == noSpots.closestId,
-                      onNavigate: () => _navigate(lot),
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                  ],
-                  const SizedBox(height: Spacing.sm),
-                  _NotifyCard(noSpots: noSpots),
-                ],
+            const ArrivalQuestionCard(),
+            const _FullBanner(),
+            const SizedBox(height: Spacing.lg),
+            Text('Nearby parking', style: AppTypography.heading1),
+            const SizedBox(height: Spacing.sm),
+            if (noSpots.fromCache) ...[
+              OfflineBanner(savedAt: noSpots.savedAt, online: noSpots.online),
+              const SizedBox(height: Spacing.sm),
+            ] else if (noSpots.savedAt != null) ...[
+              Text(
+                _savedLabel(noSpots.savedAt!),
+                style: AppTypography.caption,
               ),
-            ),
+              const SizedBox(height: Spacing.sm),
+            ],
+            if (noSpots.errorMessage != null)
+              NoticeBanner(
+                message: noSpots.errorMessage!,
+                tone: NoticeTone.danger,
+                icon: Icons.error_outline,
+              ),
+            if (noSpots.isLoading && noSpots.lots.isEmpty)
+              const Center(child: CircularProgressIndicator()),
+            for (final lot in noSpots.lots) ...[
+              _NearbyCard(
+                lot: lot,
+                closest: lot.id == noSpots.closestId,
+                onNavigate: () => _navigate(lot),
+              ),
+              const SizedBox(height: Spacing.sm),
+            ],
+            const SizedBox(height: Spacing.sm),
+            _NotifyCard(noSpots: noSpots),
           ],
         ),
       ),
@@ -92,6 +103,15 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
       ),
     );
   }
+}
+
+String _savedLabel(DateTime savedAt) {
+  final age = DateTime.now().difference(savedAt);
+  if (age.inMinutes < 1) return 'Saved on this phone · updated just now';
+  if (age.inHours < 1) {
+    return 'Saved on this phone · updated ${age.inMinutes} min ago';
+  }
+  return 'Saved on this phone · updated ${age.inHours} h ago';
 }
 
 class _Header extends StatelessWidget {
@@ -190,6 +210,46 @@ class _NearbyCard extends StatelessWidget {
   final bool closest;
   final VoidCallback onNavigate;
 
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.card),
+        side: BorderSide(
+          color: closest ? Palette.primary : Palette.border,
+          width: closest ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LotPhoto(name: lot.name, url: lot.imageUrl),
+          Padding(
+            padding: const EdgeInsets.all(Spacing.md),
+            child: _NearbyDetails(
+              lot: lot,
+              closest: closest,
+              onNavigate: onNavigate,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NearbyDetails extends StatelessWidget {
+  const _NearbyDetails({
+    required this.lot,
+    required this.closest,
+    required this.onNavigate,
+  });
+
+  final NearbyLot lot;
+  final bool closest;
+  final VoidCallback onNavigate;
+
   String get _price {
     final digits = lot.ratePerHour.toString();
     final buffer = StringBuffer();
@@ -202,71 +262,59 @@ class _NearbyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.card),
-        side: BorderSide(
-          color: closest ? Palette.primary : Palette.border,
-          width: closest ? 1.5 : 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (closest) ...[
-                        const _ClosestBadge(),
-                        const SizedBox(height: Spacing.sm),
-                      ],
-                      Text(
-                        lot.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.heading2,
-                      ),
-                    ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (closest) ...[
+                    const _ClosestBadge(),
+                    const SizedBox(height: Spacing.sm),
+                  ],
+                  Text(
+                    lot.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.heading2,
                   ),
-                ),
-                const SizedBox(width: Spacing.md),
-                Text(
-                  _price,
-                  style: AppTypography.monoId.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: Spacing.sm),
-            Row(
-              children: [
-                const Icon(
-                  Icons.directions_walk,
-                  size: 12,
-                  color: Palette.textSecondary,
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Text(
-                    '${lot.walkMinutes} min',
-                    style: AppTypography.caption,
-                  ),
-                ),
-                const SizedBox(width: Spacing.sm),
-                _NavigateButton(primary: closest, onPressed: onNavigate),
-              ],
+            const SizedBox(width: Spacing.md),
+            Text(
+              _price,
+              style: AppTypography.monoId.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: Spacing.sm),
+        Row(
+          children: [
+            const Icon(
+              Icons.directions_walk,
+              size: 12,
+              color: Palette.textSecondary,
+            ),
+            const SizedBox(width: 2),
+            Expanded(
+              child: Text(
+                '${lot.walkMinutes} min',
+                style: AppTypography.caption,
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            _NavigateButton(primary: closest, onPressed: onNavigate),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -326,7 +374,10 @@ class _NotifyCard extends StatelessWidget {
                   ),
                   const SizedBox(height: Spacing.xs),
                   Text(
-                    noSpots.watching
+                    noSpots.notifyPaused
+                        ? 'Paused without signal. It starts again by itself '
+                              'when the signal returns.'
+                        : noSpots.watching
                         ? 'On. We check every 30 s while the app is open.'
                         : 'We\'ll ping you the moment a spot opens. Keep the '
                               'app open.',

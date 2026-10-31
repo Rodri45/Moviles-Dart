@@ -5,6 +5,7 @@ import '../../core/design/palette.dart';
 import '../../core/widgets/app_tab_bar.dart';
 import '../screens/login/auth_view_model.dart';
 import '../screens/login/login_screen.dart';
+import '../screens/no_spots/lot_arrival_view_model.dart';
 import '../screens/no_spots/no_spots_view_model.dart';
 import '../screens/profile/profile_view_model.dart';
 import '../screens/reserve/reserve_view_model.dart';
@@ -40,6 +41,7 @@ class _AuthGateState extends State<AuthGate> {
       context.read<ReserveViewModel>().reset();
       context.read<ProfileViewModel>().reset();
       context.read<NoSpotsViewModel>().stopWatching();
+      context.read<LotArrivalViewModel>().clear();
     }
   }
 

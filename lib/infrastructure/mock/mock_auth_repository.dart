@@ -15,6 +15,7 @@ class MockAuthRepository implements AuthRepository {
 
   AppUser? saved;
   Object? meError;
+  Object? registerError;
   final _expired = StreamController<void>.broadcast();
 
   @override
@@ -34,6 +35,8 @@ class MockAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    final error = registerError;
+    if (error != null) throw error;
     if (email == user.email) {
       throw const ApiException(409, 'Email already registered');
     }

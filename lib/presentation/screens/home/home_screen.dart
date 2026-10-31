@@ -13,8 +13,10 @@ import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../shell/main_shell.dart';
+import '../../shell/shell_view_model.dart';
 import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
+import '../forecast/forecast_screen.dart';
 import '../level_map/level_map_view_model.dart';
 import '../login/auth_view_model.dart';
 import '../no_spots/no_spots_screen.dart';
@@ -28,14 +30,30 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final HomeViewModel _home;
+  bool _resumed = true;
+  bool? _visible;
 
   @override
   void initState() {
     super.initState();
     _home = context.read<HomeViewModel>()..addListener(_openNoSpotsIfFull);
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _home.load());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() => _resumed = state == AppLifecycleState.resumed);
+  }
+
+  void _syncVisibility(bool visible) {
+    if (visible == _visible) return;
+    _visible = visible;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _home.setVisible(visible);
+    });
   }
 
   void _openNoSpotsIfFull() {
@@ -46,6 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _home.setVisible(false);
     _home.removeListener(_openNoSpotsIfFull);
     super.dispose();
   }
@@ -54,6 +74,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final home = context.watch<HomeViewModel>();
     final user = context.watch<AuthViewModel>().user;
+    final tab = context.watch<ShellViewModel>().tab;
+    final isTop = ModalRoute.isCurrentOf(context) ?? true;
+    _syncVisibility(tab == AppTab.home && isTop && _resumed);
     final levels = home.levels;
 
     return Scaffold(
@@ -95,8 +118,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: Spacing.md),
               ForecastCard(
                 hours: home.forecast,
-                currentHour: home.currentHour,
-                live: !home.showOffline,
+                currentHour: home.forecastHour,
+                live: !home.forecastFromCache,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(ForecastScreen.routeName),
               ),
               const SizedBox(height: Spacing.lg),
               Text('PARKING LEVELS', style: AppTypography.overline),
@@ -281,28 +306,59 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.search,
-            label: 'Find a spot',
-            color: Palette.primary,
-            background: Palette.primarySoft,
-            onTap: () =>
-                Navigator.of(context).pushNamed(FindSpotScreen.routeName),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.search,
+                label: 'Find a spot',
+                color: Palette.primary,
+                background: Palette.primarySoft,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(FindSpotScreen.routeName),
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.directions_car_outlined,
+                label: 'Find my car',
+                color: Palette.secondary,
+                background: Palette.secondarySoft,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(FindMyCarScreen.routeName),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: Spacing.sm),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.directions_car_outlined,
-            label: 'Find my car',
-            color: Palette.secondary,
-            background: Palette.secondarySoft,
-            onTap: () =>
-                Navigator.of(context).pushNamed(FindMyCarScreen.routeName),
-          ),
+        const SizedBox(height: Spacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.accessible,
+                label: 'Accessible',
+                color: Palette.primary,
+                background: Palette.primarySoft,
+                onTap: () =>
+                    Navigator.of(context)
+                        .pushNamed(FindSpotScreen.accessibleRouteName),
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Expanded(
+              child: _QuickActionCard(
+                icon: Icons.bolt,
+                label: 'EV spots',
+                color: Palette.warningText,
+                background: Palette.warningSoft,
+                onTap: () =>
+                    Navigator.of(context).pushNamed(FindSpotScreen.evRouteName),
+              ),
+            ),
+          ],
         ),
       ],
     );

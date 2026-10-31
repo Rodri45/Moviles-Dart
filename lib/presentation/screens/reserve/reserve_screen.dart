@@ -7,9 +7,11 @@ import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
 import '../../../core/widgets/app_tab_bar.dart';
 import '../../../core/widgets/button_spinner.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/reservation_history_card.dart';
 import '../../shared/location_rationale.dart';
+import '../../shared/pending_actions_banner.dart';
 import '../../shell/main_shell.dart';
 import '../find_my_car/find_my_car_screen.dart';
 import '../find_spot/find_spot_screen.dart';
@@ -26,46 +28,53 @@ class ReserveScreen extends StatelessWidget {
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: HeaderScrollView(
+          header: _Header(reserve: reserve),
+          onRefresh: reserve.load,
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.lg,
+            Spacing.md,
+            Spacing.lg,
+          ),
           children: [
-            _Header(reserve: reserve),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: reserve.load,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    Spacing.md,
-                    Spacing.lg,
-                    Spacing.md,
-                    Spacing.lg,
-                  ),
-                  children: [
-                    if (reserve.errorMessage != null) ...[
-                      NoticeBanner(
-                        message: reserve.errorMessage!,
-                        tone: NoticeTone.danger,
-                        icon: Icons.error_outline,
-                      ),
-                      const SizedBox(height: Spacing.md),
-                    ],
-                    _SpotCard(reserve: reserve),
-                    const SizedBox(height: Spacing.md),
-                    NoticeBanner(
-                      title: 'Best time to reserve',
-                      message:
-                          reserve.advice?.message ??
-                          'Reserve when you are about ${reserve.holdMinutes} '
-                              'minutes away so you arrive before the hold '
-                              'expires.',
-                    ),
-                    const SizedBox(height: Spacing.lg),
-                    Text('Compliance history', style: AppTypography.heading1),
-                    const SizedBox(height: Spacing.sm),
-                    ReservationHistoryCard(reservations: reserve.history),
-                  ],
-                ),
+            if (reserve.pendingActions > 0) ...[
+              PendingActionsBanner(count: reserve.pendingActions),
+              const SizedBox(height: Spacing.md),
+            ],
+            if (!reserve.online && reserve.reservation != null) ...[
+              const NoticeBanner(
+                title: 'No signal',
+                message:
+                    'The countdown keeps running with the time the '
+                    'server gave. "I parked" and "I left" are saved on '
+                    'this phone and sent when the signal returns.',
+                icon: Icons.signal_cellular_off,
               ),
+              const SizedBox(height: Spacing.md),
+            ],
+            if (reserve.errorMessage != null) ...[
+              NoticeBanner(
+                message: reserve.errorMessage!,
+                tone: NoticeTone.danger,
+                icon: Icons.error_outline,
+              ),
+              const SizedBox(height: Spacing.md),
+            ],
+            _SpotCard(reserve: reserve),
+            const SizedBox(height: Spacing.md),
+            NoticeBanner(
+              title: 'Best time to reserve',
+              message:
+                  reserve.advice?.message ??
+                  'Reserve when you are about ${reserve.holdMinutes} '
+                      'minutes away so you arrive before the hold '
+                      'expires.',
             ),
+            const SizedBox(height: Spacing.lg),
+            Text('Compliance history', style: AppTypography.heading1),
+            const SizedBox(height: Spacing.sm),
+            ReservationHistoryCard(reservations: reserve.history),
           ],
         ),
       ),
@@ -199,10 +208,17 @@ class _SpotCard extends StatelessWidget {
         color: Palette.primary,
       );
       actions = [
+        if (!reserve.online)
+          const NoticeBanner(
+            message: ReserveViewModel.offlineConfirmMessage,
+            icon: Icons.cloud_off_outlined,
+          ),
         _ActionButton(
-          label: 'Confirm reservation',
+          label: reserve.online
+              ? 'Confirm reservation'
+              : 'Waiting for connection',
           busy: reserve.isBusy,
-          onPressed: reserve.confirm,
+          onPressed: reserve.canConfirm ? reserve.confirm : null,
         ),
       ];
     }
@@ -298,7 +314,7 @@ class _ActionButton extends StatelessWidget {
 
   final String label;
   final bool busy;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

@@ -19,8 +19,7 @@ class ParkingSpot {
     code: json['code'] as String,
     zone: json['zone'] as String,
     levelCode: json['levelCode'] as String,
-    status:
-        SpotStatus.values.asNameMap()[json['status']] ?? SpotStatus.disabled,
+    status: _parseStatus(json['status']),
     walkMinutes: (json['walkMinutes'] as num).toInt(),
     isAccessible: json['isAccessible'] as bool? ?? false,
     isEv: json['isEv'] as bool? ?? false,
@@ -41,4 +40,12 @@ class ParkingSpot {
   final bool mine;
 
   bool get isFree => status == SpotStatus.free;
+}
+
+SpotStatus _parseStatus(Object? value) {
+  if (value is String) {
+    final status = SpotStatus.values.asNameMap()[value];
+    if (status != null) return status;
+  }
+  throw FormatException('Unknown parking spot status: $value');
 }

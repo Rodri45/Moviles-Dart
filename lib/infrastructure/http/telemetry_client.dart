@@ -23,7 +23,16 @@ class TelemetryClient implements Telemetry {
 
   @override
   void track(String name, [Map<String, Object> properties = const {}]) {
-    unawaited(_enqueue({'name': name, 'properties': properties}));
+    unawaited(
+      _enqueue({
+        'name': name,
+        'properties': {
+          ...properties,
+          'platform': 'android',
+          'occurredAt': DateTime.now().toUtc().toIso8601String(),
+        },
+      }),
+    );
   }
 
   Future<void> flush() async {

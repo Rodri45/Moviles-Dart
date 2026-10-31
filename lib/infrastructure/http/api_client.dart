@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show VoidCallback, compute;
 import 'package:http/http.dart' as http;
 
 import '../../core/config/api_config.dart';
@@ -10,6 +10,8 @@ import '../../domain/errors.dart';
 import 'circuit_breaker.dart';
 
 class ApiClient {
+  static const _isolateJsonThreshold = 4 * 1024;
+
   ApiClient({
     required http.Client httpClient,
     required this._readToken,
@@ -59,14 +61,22 @@ class ApiClient {
       final response = await _execute(request);
       final status = response.statusCode;
       if (status == 401 && token != null) onUnauthorized?.call();
-      if (status >= 400) throw ApiException(status, _errorOf(response));
+      if (status >= 400) throw _errorOf(response);
       if (response.body.isEmpty) return null;
-      try {
-        return jsonDecode(response.body);
-      } on FormatException {
-        throw const NetworkException('bad_response');
-      }
+      final parsed = response.body.length >= _isolateJsonThreshold
+          ? await compute(_decodeJson, response.body, debugLabel: 'api-json')
+          : _decodeJson(response.body);
+      if (!parsed.valid) throw const NetworkException('bad_response');
+      return parsed.value;
     });
+  }
+
+  static ({bool valid, Object? value}) _decodeJson(String body) {
+    try {
+      return (valid: true, value: jsonDecode(body));
+    } on FormatException {
+      return (valid: false, value: null);
+    }
   }
 
   Future<http.Response> _execute(http.Request request) async {
@@ -82,14 +92,25 @@ class ApiClient {
     }
   }
 
-  static String _errorOf(http.Response response) {
+  static ApiException _errorOf(http.Response response) {
+    final status = response.statusCode;
     try {
       final json = jsonDecode(response.body);
-      final error = json is Map ? json['error'] : null;
-      if (error is String) return error;
+      if (json is! Map) return ApiException(status, 'HTTP $status');
+      final error = json['error'];
+      final details = json['details'];
+      final fields = details is Map ? details['fieldErrors'] : null;
+      return ApiException(
+        status,
+        error is String ? error : 'HTTP $status',
+        fields: {
+          if (fields is Map)
+            for (final MapEntry(:key, :value) in fields.entries)
+              if (value is List && value.isNotEmpty) '$key': '${value.first}',
+        },
+      );
     } on FormatException {
-      return 'HTTP ${response.statusCode}';
+      return ApiException(status, 'HTTP $status');
     }
-    return 'HTTP ${response.statusCode}';
   }
 }

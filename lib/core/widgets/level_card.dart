@@ -94,12 +94,21 @@ class LevelCard extends StatelessWidget {
                             ),
                           ),
                           TextSpan(
+                            text: '  ${level.reserved} reserved',
+                          ),
+                          TextSpan(
+                            text: '  ${level.occupied} occupied',
+                          ),
+                          TextSpan(
+                            text: '  ${level.disabled} unavailable',
+                          ),
+                          TextSpan(
                             text:
-                                '  ${level.reserved} reserved · ${level.total} total',
+                                '  ${level.total} usable / ${level.physicalTotal} physical',
                           ),
                         ],
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

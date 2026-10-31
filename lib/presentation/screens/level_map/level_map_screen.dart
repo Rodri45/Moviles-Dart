@@ -5,6 +5,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/widgets/app_tab_bar.dart';
+import '../../../core/widgets/header_scroll_view.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/offline_banner.dart';
 import '../../../core/widgets/pill.dart';
@@ -71,74 +72,110 @@ class _LevelMapScreenState extends State<LevelMapScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) => map.gridPainted());
     }
 
+    final content = <Widget>[
+      if (map.showOffline) ...[
+        OfflineBanner(savedAt: map.savedAt, online: map.online),
+        const SizedBox(height: Spacing.md),
+      ],
+      if (map.notice != null) ...[
+        NoticeBanner(message: map.notice!),
+        const SizedBox(height: Spacing.md),
+      ],
+      if (map.errorMessage != null && map.spots.isEmpty) ...[
+        NoticeBanner(
+          message: map.errorMessage!,
+          tone: NoticeTone.danger,
+          icon: Icons.error_outline,
+        ),
+        const SizedBox(height: Spacing.md),
+      ],
+      const _EntranceCard(),
+      const SizedBox(height: Spacing.md),
+      if (map.isLoading && map.spots.isEmpty)
+        const Padding(
+          padding: EdgeInsets.all(Spacing.lg),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      for (final zone in map.zones.entries) ...[
+        _ZoneSection(name: zone.key, spots: zone.value, map: map),
+        const SizedBox(height: Spacing.md),
+      ],
+    ];
+    final sheet = highlighted == null
+        ? null
+        : _SelectedSpotSheet(
+            spot: highlighted,
+            isRecommendation: map.selected == null,
+            onClose: map.clearSelection,
+            side: _useSidePanel(context),
+          );
+
     return Scaffold(
       backgroundColor: Palette.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            _Header(map: map),
-            Expanded(
-              child: Stack(
-                children: [
-                  ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      Spacing.md,
-                      Spacing.md,
-                      Spacing.md,
-                      200,
-                    ),
-                    children: [
-                      if (map.showOffline) ...[
-                        OfflineBanner(savedAt: map.savedAt, online: map.online),
-                        const SizedBox(height: Spacing.md),
-                      ],
-                      if (map.notice != null) ...[
-                        NoticeBanner(message: map.notice!),
-                        const SizedBox(height: Spacing.md),
-                      ],
-                      if (map.errorMessage != null && map.spots.isEmpty) ...[
-                        NoticeBanner(
-                          message: map.errorMessage!,
-                          tone: NoticeTone.danger,
-                          icon: Icons.error_outline,
-                        ),
-                        const SizedBox(height: Spacing.md),
-                      ],
-                      const _EntranceCard(),
-                      const SizedBox(height: Spacing.md),
-                      if (map.isLoading && map.spots.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(Spacing.lg),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                      for (final zone in map.zones.entries) ...[
-                        _ZoneSection(
-                          name: zone.key,
-                          spots: zone.value,
-                          map: map,
-                        ),
-                        const SizedBox(height: Spacing.md),
-                      ],
-                    ],
-                  ),
-                  if (highlighted != null)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: _SelectedSpotSheet(
-                        spot: highlighted,
-                        isRecommendation: map.selected == null,
-                        onClose: map.clearSelection,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        child: _useSidePanel(context)
+            ? _landscape(map, content, sheet)
+            : _portrait(map, content, sheet),
       ),
+    );
+  }
+
+  static bool _useSidePanel(BuildContext context) =>
+      HeaderScrollView.isShort(context) &&
+      MediaQuery.sizeOf(context).width >= 600;
+
+  Widget _portrait(
+    LevelMapViewModel map,
+    List<Widget> content,
+    Widget? sheet,
+  ) {
+    return Column(
+      children: [
+        _Header(map: map),
+        Expanded(
+          child: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  Spacing.md,
+                  Spacing.md,
+                  Spacing.md,
+                  200,
+                ),
+                children: content,
+              ),
+              if (sheet != null)
+                Positioned(left: 0, right: 0, bottom: 0, child: sheet),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _landscape(
+    LevelMapViewModel map,
+    List<Widget> content,
+    Widget? sheet,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _Header(map: map)),
+              SliverPadding(
+                padding: const EdgeInsets.all(Spacing.md),
+                sliver: SliverList.list(children: content),
+              ),
+            ],
+          ),
+        ),
+        if (sheet != null)
+          SizedBox(width: _SelectedSpotSheet.sideWidth, child: sheet),
+      ],
     );
   }
 }
@@ -153,6 +190,13 @@ class _Header extends StatelessWidget {
     SpotFilter.vip: 'VIP',
     SpotFilter.electric: 'Electric',
     SpotFilter.accessible: 'Accessible',
+  };
+
+  static const _filterColors = {
+    SpotFilter.available: Palette.success,
+    SpotFilter.vip: Palette.secondary,
+    SpotFilter.electric: Palette.primaryHover,
+    SpotFilter.accessible: Palette.warningText,
   };
 
   @override
@@ -192,7 +236,9 @@ class _Header extends StatelessWidget {
                     if (code != LevelMapViewModel.levelCodes.first)
                       const SizedBox(width: Spacing.xs),
                     Pill(
-                      label: code,
+                      label: map.lastOpenedLevel == code
+                          ? '$code*'
+                          : code,
                       selected: code == map.levelCode,
                       onTap: () => map.selectLevel(code),
                     ),
@@ -201,6 +247,8 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: Spacing.xs),
+          Text('* last opened level', style: AppTypography.caption),
           const SizedBox(height: Spacing.md),
           const SpotLegend(),
           const SizedBox(height: Spacing.md),
@@ -213,6 +261,7 @@ class _Header extends StatelessWidget {
                   Pill(
                     label: entry.value,
                     selected: map.filters.contains(entry.key),
+                    selectedColor: _filterColors[entry.key],
                     onTap: () => map.toggleFilter(entry.key),
                   ),
                   const SizedBox(width: Spacing.sm),
@@ -279,6 +328,13 @@ class _ZoneSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Color? highlightColorFor(ParkingSpot spot) {
+      for (final filter in map.filters) {
+        if (filter.matches(spot)) return _Header._filterColors[filter];
+      }
+      return null;
+    }
+
     final rows = [
       for (var i = 0; i < spots.length; i += _perRow)
         spots.sublist(i, (i + _perRow).clamp(0, spots.length)),
@@ -316,6 +372,7 @@ class _ZoneSection extends StatelessWidget {
                           spot: rows[r][c],
                           selected: rows[r][c].id == map.selected?.id,
                           recommended: rows[r][c].id == recommendedId,
+                          highlightColor: highlightColorFor(rows[r][c]),
                           onTap: () => map.selectSpot(rows[r][c]),
                         )
                       : const SizedBox.shrink(),
@@ -362,11 +419,16 @@ class _SelectedSpotSheet extends StatelessWidget {
     required this.spot,
     required this.isRecommendation,
     required this.onClose,
+    this.side = false,
   });
+
+  static const sideWidth = 300.0;
 
   final ParkingSpot spot;
   final bool isRecommendation;
   final VoidCallback onClose;
+
+  final bool side;
 
   void _reserve(BuildContext context) {
     context.read<ReserveViewModel>().selectSpot(spot);
@@ -375,6 +437,99 @@ class _SelectedSpotSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final details = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!side) ...[
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Palette.border,
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
+            ),
+          ),
+          const SizedBox(height: Spacing.md),
+        ],
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isRecommendation ? 'RECOMMENDED SPOT' : 'SELECTED SPOT',
+                    style: AppTypography.overline,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    spot.code,
+                    style: AppTypography.monoDisplay.copyWith(fontSize: 28),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Spacing.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('Walk to destination', style: AppTypography.caption),
+                const SizedBox(height: 2),
+                Text(
+                  '~${spot.walkMinutes} min',
+                  style: AppTypography.heading1.copyWith(fontSize: 18),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: Spacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton(
+                onPressed: () => _reserve(context),
+                child: const Text('Reserve this spot'),
+              ),
+            ),
+            if (!isRecommendation) ...[
+              const SizedBox(width: Spacing.sm),
+              SizedBox(
+                width: Spacing.touchTarget,
+                height: Spacing.touchTarget,
+                child: OutlinedButton(
+                  onPressed: onClose,
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    side: const BorderSide(color: Palette.border),
+                    foregroundColor: Palette.textSecondary,
+                  ),
+                  child: const Icon(Icons.close, size: 18),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+
+    if (side) {
+      return DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Palette.surface,
+          border: Border(left: BorderSide(color: Palette.border)),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(Spacing.md),
+          child: details,
+        ),
+      );
+    }
     return Container(
       decoration: const BoxDecoration(
         color: Palette.surface,
@@ -387,84 +542,7 @@ class _SelectedSpotSheet extends StatelessWidget {
         Spacing.md,
         Spacing.md,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Palette.border,
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
-            ),
-          ),
-          const SizedBox(height: Spacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isRecommendation ? 'RECOMMENDED SPOT' : 'SELECTED SPOT',
-                      style: AppTypography.overline,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      spot.code,
-                      style: AppTypography.monoDisplay.copyWith(fontSize: 28),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: Spacing.sm),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Walk to destination', style: AppTypography.caption),
-                  const SizedBox(height: 2),
-                  Text(
-                    '~${spot.walkMinutes} min',
-                    style: AppTypography.heading1.copyWith(fontSize: 18),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: Spacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => _reserve(context),
-                  child: const Text('Reserve this spot'),
-                ),
-              ),
-              if (!isRecommendation) ...[
-                const SizedBox(width: Spacing.sm),
-                SizedBox(
-                  width: Spacing.touchTarget,
-                  height: Spacing.touchTarget,
-                  child: OutlinedButton(
-                    onPressed: onClose,
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      side: const BorderSide(color: Palette.border),
-                      foregroundColor: Palette.textSecondary,
-                    ),
-                    child: const Icon(Icons.close, size: 18),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
+      child: details,
     );
   }
 }

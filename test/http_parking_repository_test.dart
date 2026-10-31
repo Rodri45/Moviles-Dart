@@ -31,6 +31,7 @@ void main() {
         'free': 52,
         'reserved': 0,
         'occupied': 8,
+        'disabled': 0,
       },
     ],
   };
@@ -100,6 +101,8 @@ void main() {
 
     expect(result.fromCache, isFalse);
     expect(result.data.levels.single.free, 52);
+    expect(result.data.levels.single.total, 60);
+    expect(result.data.levels.single.physicalTotal, 60);
     expect(box.containsKey('levels'), isTrue);
   });
 

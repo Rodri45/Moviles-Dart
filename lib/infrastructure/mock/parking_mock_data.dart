@@ -26,9 +26,7 @@ abstract final class ParkingMockData {
   );
 
   static const List<Building> buildings = [
-    Building(id: 'ml', name: 'Edificio Mario Laserna'),
     Building(id: 'sd', name: 'Edificio Santo Domingo'),
-    Building(id: 'biblioteca', name: 'Biblioteca General'),
   ];
 
   static final List<LevelForecast> forecasts = [
@@ -87,10 +85,14 @@ abstract final class ParkingMockData {
       code: code,
       name: 'Level $code',
       underground: underground,
-      total: list.length,
+      total:
+          count(SpotStatus.free) +
+          count(SpotStatus.reserved) +
+          count(SpotStatus.occupied),
       free: count(SpotStatus.free),
       reserved: count(SpotStatus.reserved),
       occupied: count(SpotStatus.occupied),
+      disabled: count(SpotStatus.disabled),
     );
   }
 
