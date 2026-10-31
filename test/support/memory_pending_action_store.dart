@@ -1,5 +1,5 @@
-import '../../domain/entities/pending_action.dart';
-import '../../domain/ports/pending_action_store.dart';
+import 'package:parkwise/domain/entities/pending_action.dart';
+import 'package:parkwise/domain/ports/pending_action_store.dart';
 
 class MemoryPendingActionStore implements PendingActionStore {
   final List<PendingAction> actions = [];

@@ -4,16 +4,16 @@ import 'package:flutter/foundation.dart';
 
 import '../../../domain/entities/building.dart';
 import '../../../domain/entities/cached.dart';
-import '../../../domain/errors.dart';
 import '../../../domain/entities/level_forecast.dart';
 import '../../../domain/entities/level_recommendation.dart';
 import '../../../domain/entities/levels_overview.dart';
+import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
+import '../../../domain/ports/forecast_store.dart';
 import '../../../domain/ports/location_provider.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
 import '../../../domain/ports/telemetry.dart';
-import '../../../infrastructure/storage/forecast_file_store.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
 
@@ -39,7 +39,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   final LocationProvider _location;
   final Telemetry _telemetry;
   final DateTime Function() _clock;
-  final ForecastFileStore? _forecastStore;
+  final ForecastStore? _forecastStore;
 
   final Duration refreshEvery;
   Timer? _timer;

@@ -45,18 +45,21 @@ class ReservationHistoryStore {
     List<Map<String, Object?>> reservations,
   ) async {
     await _database.transaction((transaction) async {
-      await transaction.delete(_table, where: 'user_id = ?', whereArgs: [userId]);
+      await transaction.delete(
+        _table,
+        where: 'user_id = ?',
+        whereArgs: [userId],
+      );
       for (final reservation in reservations) {
         await transaction.insert(_table, {
           ...reservation,
           'user_id': userId,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
-      await transaction.insert(
-        'reservation_history_sync',
-        {'user_id': userId, 'synced_at': DateTime.now().toUtc().toIso8601String()},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await transaction.insert('reservation_history_sync', {
+        'user_id': userId,
+        'synced_at': DateTime.now().toUtc().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
 

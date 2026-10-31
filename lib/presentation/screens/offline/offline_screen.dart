@@ -218,7 +218,9 @@ class _CachedLevelCard extends StatelessWidget {
                         ),
                         TextSpan(
                           text:
-                              ' · ${level.reserved} reserved · ${level.occupied} occupied · ${level.disabled} unavailable',
+                              ' · ${level.reserved} reserved'
+                              ' · ${level.occupied} occupied'
+                              ' · ${level.disabled} unavailable',
                           style: AppTypography.caption,
                         ),
                         TextSpan(

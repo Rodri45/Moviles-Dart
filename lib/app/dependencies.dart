@@ -12,6 +12,7 @@ import '../domain/entities/device_description.dart';
 import '../domain/ports/auth_repository.dart';
 import '../domain/ports/connectivity_port.dart';
 import '../domain/ports/directions_launcher.dart';
+import '../domain/ports/forecast_store.dart';
 import '../domain/ports/form_draft_store.dart';
 import '../domain/ports/location_provider.dart';
 import '../domain/ports/lot_redirect_store.dart';
@@ -48,12 +49,12 @@ import '../infrastructure/mock/mock_reservation_outbox.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
 import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
-import '../infrastructure/storage/hive_form_draft_store.dart';
-import '../infrastructure/storage/local_cache.dart';
-import '../infrastructure/storage/local_database.dart';
 import '../infrastructure/storage/car_location_file_store.dart';
 import '../infrastructure/storage/device_preferences_store.dart';
 import '../infrastructure/storage/forecast_file_store.dart';
+import '../infrastructure/storage/hive_form_draft_store.dart';
+import '../infrastructure/storage/local_cache.dart';
+import '../infrastructure/storage/local_database.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
 import '../infrastructure/storage/sqlite_lot_redirect_store.dart';
@@ -195,7 +196,7 @@ class AppDependencies {
   final SpotRanker spotRanker;
   final NearbyLotRepository nearbyLots;
   final LotRedirectStore lotRedirects;
-  final ForecastFileStore? forecastStore;
+  final ForecastStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
     ChangeNotifierProvider(
