@@ -167,7 +167,7 @@ void main() {
       expect(repository.saved, isNull);
     });
 
-    test('without network uses the cached user', () async {
+    test('without network uses the saved user', () async {
       repository
         ..saved = MockAuthRepository.user
         ..meError = const NetworkException('offline');

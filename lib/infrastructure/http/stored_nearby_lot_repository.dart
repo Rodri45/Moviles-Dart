@@ -1,12 +1,12 @@
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/nearby_lot.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/ports/nearby_lot_repository.dart';
 import '../../domain/ports/nearby_lot_store.dart';
 import '../../domain/ports/parking_repository.dart';
 import 'api_client.dart';
 
-class CachedNearbyLotRepository implements NearbyLotRepository {
-  CachedNearbyLotRepository(
+class StoredNearbyLotRepository implements NearbyLotRepository {
+  StoredNearbyLotRepository(
     this._parking,
     this._store, {
     this.maxAge = const Duration(hours: 24),
@@ -19,17 +19,17 @@ class CachedNearbyLotRepository implements NearbyLotRepository {
   final DateTime Function() _clock;
 
   @override
-  Future<Cached<List<NearbyLot>>> lots({bool refresh = false}) async {
+  Future<Saved<List<NearbyLot>>> lots({bool refresh = false}) async {
     final saved = await _store.read();
     if (!refresh && saved != null && _isFresh(saved.savedAt)) return saved;
     try {
       final lots = await _parking.getNearbyLots();
       final now = _clock();
       await _store.save(lots, now);
-      return Cached(lots, savedAt: now);
+      return Saved(lots, savedAt: now);
     } catch (e) {
       if (saved == null || !ApiClient.isNetworkFailure(e)) rethrow;
-      return Cached(saved.data, savedAt: saved.savedAt, fromCache: true);
+      return Saved(saved.data, savedAt: saved.savedAt, fromStorage: true);
     }
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parkwise/domain/entities/nearby_lot.dart';
 import 'package:parkwise/domain/errors.dart';
-import 'package:parkwise/infrastructure/http/cached_nearby_lot_repository.dart';
+import 'package:parkwise/infrastructure/http/stored_nearby_lot_repository.dart';
 import 'package:parkwise/infrastructure/mock/memory_nearby_lot_store.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 
@@ -21,20 +21,20 @@ void main() {
   late DateTime now;
   late _Server server;
   late MemoryNearbyLotStore store;
-  late CachedNearbyLotRepository lots;
+  late StoredNearbyLotRepository lots;
 
   setUp(() {
     now = DateTime.utc(2026, 10, 28, 9);
     server = _Server();
     store = MemoryNearbyLotStore();
-    lots = CachedNearbyLotRepository(server, store, clock: () => now);
+    lots = StoredNearbyLotRepository(server, store, clock: () => now);
   });
 
   test('the first time the lots come from the server and are saved', () async {
     final result = await lots.lots();
 
     expect(server.calls, 1);
-    expect(result.fromCache, isFalse);
+    expect(result.fromStorage, isFalse);
     expect(store.saved!.data.map((lot) => lot.id), ['nearby-1', 'nearby-2']);
   });
 
@@ -72,7 +72,7 @@ void main() {
 
     final result = await lots.lots();
 
-    expect(result.fromCache, isTrue);
+    expect(result.fromStorage, isTrue);
     expect(result.data, hasLength(2));
   });
 

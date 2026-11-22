@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/ports/auth_repository.dart';
 import '../storage/car_location_file_store.dart';
-import '../storage/local_cache.dart';
+import '../storage/offline_store.dart';
 import '../storage/reservation_history_store.dart';
 import '../storage/session_store.dart';
 import 'api_client.dart';
@@ -14,7 +14,7 @@ class HttpAuthRepository implements AuthRepository {
   HttpAuthRepository(
     this._client,
     this._session,
-    this._cache,
+    this._offline,
     this._historyStore,
     this._carLocationStore,
   ) {
@@ -24,7 +24,7 @@ class HttpAuthRepository implements AuthRepository {
   final ApiClient _client;
   final SessionStore _session;
 
-  final LocalCache _cache;
+  final OfflineStore _offline;
   final ReservationHistoryStore _historyStore;
   final CarLocationFileStore _carLocationStore;
   final _expired = StreamController<void>.broadcast();
@@ -53,17 +53,17 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser?> cachedUser() async =>
+  Future<AppUser?> savedUser() async =>
       _session.token == null ? null : _session.user;
 
   @override
   Future<void> logout() async {
     await _session.clear();
-    await _cache.clear();
+    await _offline.clear();
     try {
       await _historyStore.clear();
     } catch (e) {
-      debugPrint('reservation history cache clear failed: $e');
+      debugPrint('reservation history clear failed: $e');
     }
     try {
       await _carLocationStore.clear();

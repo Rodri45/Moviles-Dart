@@ -60,6 +60,9 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
 
   int pendingActions = 0;
 
+  @override
+  bool get showingSavedData => pendingActions > 0;
+
   bool get canConfirm =>
       online && !isBusy && pendingSpot != null && reservation == null;
 

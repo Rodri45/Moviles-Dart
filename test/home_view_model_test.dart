@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:parkwise/domain/entities/cached.dart';
 import 'package:parkwise/domain/entities/level_forecast.dart';
 import 'package:parkwise/domain/entities/levels_overview.dart';
 import 'package:parkwise/domain/entities/parking_spot.dart';
+import 'package:parkwise/domain/entities/saved.dart';
 import 'package:parkwise/domain/entities/spot_filter.dart';
 import 'package:parkwise/domain/errors.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
@@ -18,15 +18,25 @@ import 'package:parkwise/presentation/screens/home/home_view_model.dart';
 class _CountingParking extends MockParkingRepository {
   int levelCalls = 0;
   int spotCalls = 0;
+  int forecastCalls = 0;
 
   @override
-  Future<Cached<LevelsOverview>> getLevels({String? zone}) {
+  Future<List<LevelForecast>> getPredictions({
+    String? level,
+    DateTime? date,
+  }) {
+    forecastCalls++;
+    return super.getPredictions(level: level, date: date);
+  }
+
+  @override
+  Future<Saved<LevelsOverview>> getLevels({String? zone}) {
     levelCalls++;
     return super.getLevels(zone: zone);
   }
 
   @override
-  Future<Cached<List<ParkingSpot>>> getSpots(
+  Future<Saved<List<ParkingSpot>>> getSpots(
     String levelCode, {
     required String destination,
     Set<SpotFilter> filters = const {},
@@ -188,8 +198,28 @@ void main() {
     await home.load();
 
     expect(parking.spotCalls, 3);
-    expect(home.forecastFromCache, isTrue);
+    expect(home.forecastFromStorage, isTrue);
     expect(home.recommendation?.slot, '08:15');
     expect(home.recommendation?.recommended, 'P2');
+  });
+
+  test('the forecast of the same day comes from memory', () async {
+    home = HomeViewModel(
+      parking,
+      MockPreferencesStore(),
+      MockLocationProvider(),
+      telemetry,
+      connectivity,
+      clock: () => DateTime(2026, 11, 21, 7),
+    );
+
+    await home.load();
+    await home.setArrivalTime(9, 0);
+    await home.setArrivalTime(11, 30);
+    expect(parking.forecastCalls, 1);
+    expect(home.forecastFromStorage, isFalse);
+
+    await home.refresh();
+    expect(parking.forecastCalls, 2);
   });
 }
