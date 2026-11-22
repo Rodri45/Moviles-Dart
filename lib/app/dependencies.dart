@@ -29,12 +29,13 @@ import '../infrastructure/device/device_info_reader.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
 import '../infrastructure/device/url_launcher_directions.dart';
 import '../infrastructure/http/api_client.dart';
-import '../infrastructure/http/cached_nearby_lot_repository.dart';
+import '../infrastructure/http/history_memory_cache.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
 import '../infrastructure/http/outbox_reservation_repository.dart';
+import '../infrastructure/http/stored_nearby_lot_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/memory_lot_redirect_store.dart';
 import '../infrastructure/mock/memory_nearby_lot_store.dart';
@@ -53,8 +54,8 @@ import '../infrastructure/storage/car_location_file_store.dart';
 import '../infrastructure/storage/device_preferences_store.dart';
 import '../infrastructure/storage/forecast_file_store.dart';
 import '../infrastructure/storage/hive_form_draft_store.dart';
-import '../infrastructure/storage/local_cache.dart';
 import '../infrastructure/storage/local_database.dart';
+import '../infrastructure/storage/offline_store.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
 import '../infrastructure/storage/sqlite_lot_redirect_store.dart';
@@ -94,7 +95,8 @@ class AppDependencies {
 
   static Future<AppDependencies> create() async {
     await Hive.initFlutter();
-    final cacheBox = await Hive.openBox<String>('cache');
+    if (await Hive.boxExists('cache')) await Hive.deleteBoxFromDisk('cache');
+    final offlineBox = await Hive.openBox<String>('offline');
     final prefsBox = await Hive.openBox<String>('prefs');
     final telemetryBox = await Hive.openBox<String>('telemetry');
     final draftsBox = await Hive.openBox<String>('drafts');
@@ -113,34 +115,37 @@ class AppDependencies {
       httpClient: http.Client(),
       readToken: () => session.token,
     );
-    final cache = LocalCache(cacheBox);
+    final offlineStore = OfflineStore(offlineBox);
     final connectivity = ConnectivityPlusAdapter();
+    connectivity.changes
+        .where((online) => online)
+        .listen((_) => client.breaker.reset());
     final telemetry = TelemetryClient(client, telemetryBox, connectivity)
       ..flush();
     final httpReservations = HttpReservationRepository(
       client,
-      cache,
+      offlineStore,
       historyStore,
       () => session.user?.id,
     );
     final reservations = OutboxReservationRepository(
-      httpReservations,
+      HistoryMemoryCache(httpReservations, () => session.user?.id),
       SqlitePendingActionStore(database),
       connectivity,
       remember: httpReservations.remember,
     )..flush();
-    final parking = HttpParkingRepository(client, cache);
+    final parking = HttpParkingRepository(client, offlineStore);
 
     return AppDependencies(
       auth: HttpAuthRepository(
         client,
         session,
-        cache,
+        offlineStore,
         historyStore,
         carLocationStore,
       ),
       parking: parking,
-      nearbyLots: CachedNearbyLotRepository(
+      nearbyLots: StoredNearbyLotRepository(
         parking,
         SqliteNearbyLotStore(database),
       ),
@@ -165,7 +170,7 @@ class AppDependencies {
     return AppDependencies(
       auth: MockAuthRepository(saved: MockAuthRepository.user),
       parking: parking,
-      nearbyLots: CachedNearbyLotRepository(parking, MemoryNearbyLotStore()),
+      nearbyLots: StoredNearbyLotRepository(parking, MemoryNearbyLotStore()),
       lotRedirects: MemoryLotRedirectStore(),
       reservations: MockReservationRepository(),
       vehicles: MockVehicleLocator(),
@@ -267,7 +272,7 @@ class AppDependencies {
       ),
     ),
     ChangeNotifierProvider(
-      create: (_) => ProfileViewModel(reservations, outbox),
+      create: (_) => ProfileViewModel(reservations, outbox, connectivity),
     ),
   ];
 }

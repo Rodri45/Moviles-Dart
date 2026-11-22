@@ -54,6 +54,11 @@ class CircuitBreaker {
     }
   }
 
+  void reset() {
+    _close();
+    _trialInFlight = false;
+  }
+
   void _close() {
     _failures = 0;
     _openedAt = null;

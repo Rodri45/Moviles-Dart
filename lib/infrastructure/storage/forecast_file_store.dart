@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/level_forecast.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/ports/forecast_store.dart';
 
 class ForecastFileStore implements ForecastStore {
@@ -13,7 +13,7 @@ class ForecastFileStore implements ForecastStore {
   final Directory _directory;
 
   @override
-  Future<Cached<List<LevelForecast>>?> read(DateTime date) async {
+  Future<Saved<List<LevelForecast>>?> read(DateTime date) async {
     final key = _dateKey(date);
     final file = File(path.join(_directory.path, 'forecast.json'));
     if (!await file.exists()) return null;
@@ -30,7 +30,7 @@ class ForecastFileStore implements ForecastStore {
     }
     if (savedDate != key) return null;
 
-    return Cached(
+    return Saved(
       [
         for (final level in rawLevels)
           if (level is Map)
@@ -41,7 +41,7 @@ class ForecastFileStore implements ForecastStore {
             ),
       ],
       savedAt: DateTime.parse(savedAt),
-      fromCache: true,
+      fromStorage: true,
     );
   }
 

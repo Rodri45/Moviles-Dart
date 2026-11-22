@@ -1,32 +1,35 @@
 import '../../domain/entities/building.dart';
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/level_forecast.dart';
 import '../../domain/entities/level_recommendation.dart';
 import '../../domain/entities/levels_overview.dart';
 import '../../domain/entities/nearby_lot.dart';
 import '../../domain/entities/parking_spot.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/entities/spot_filter.dart';
 import '../../domain/ports/parking_repository.dart';
-import '../storage/local_cache.dart';
+import '../storage/offline_store.dart';
 import 'api_client.dart';
 
 class HttpParkingRepository implements ParkingRepository {
-  HttpParkingRepository(this._client, this._cache, {DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
+  HttpParkingRepository(
+    this._client,
+    this._offline, {
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final ApiClient _client;
-  final LocalCache _cache;
+  final OfflineStore _offline;
   final DateTime Function() _clock;
 
   @override
-  Future<Cached<LevelsOverview>> getLevels({String? zone}) => _withCache(
+  Future<Saved<LevelsOverview>> getLevels({String? zone}) => _withOfflineCopy(
     'levels',
     () => _client.get('/levels', query: {'zone': ?zone}),
     (json) => LevelsOverview.fromJson(json as Map<String, dynamic>),
   );
 
   @override
-  Future<Cached<List<ParkingSpot>>> getSpots(
+  Future<Saved<List<ParkingSpot>>> getSpots(
     String levelCode, {
     required String destination,
     Set<SpotFilter> filters = const {},
@@ -36,7 +39,7 @@ class HttpParkingRepository implements ParkingRepository {
     final key = filters.isEmpty ? baseKey : '$baseKey:${names.join(',')}';
 
     try {
-      return await _withCache(
+      return await _withOfflineCopy(
         key,
         () => _client.get(
           '/levels/$levelCode/spots',
@@ -50,18 +53,18 @@ class HttpParkingRepository implements ParkingRepository {
     } catch (e) {
       final entry = filters.isEmpty || !ApiClient.isNetworkFailure(e)
           ? null
-          : _cache.read(baseKey);
+          : _offline.read(baseKey);
       if (entry == null) rethrow;
       final spots = _parseSpots(entry.data)
           .where((spot) => filters.every((f) => f.matches(spot)))
           .toList();
-      return Cached(spots, savedAt: entry.savedAt, fromCache: true);
+      return Saved(spots, savedAt: entry.savedAt, fromStorage: true);
     }
   }
 
   @override
   Future<List<Building>> getBuildings() async {
-    final result = await _withCache(
+    final result = await _withOfflineCopy(
       'buildings',
       () => _client.get('/buildings'),
       (json) => [
@@ -108,7 +111,7 @@ class HttpParkingRepository implements ParkingRepository {
     ];
   }
 
-  Future<Cached<T>> _withCache<T>(
+  Future<Saved<T>> _withOfflineCopy<T>(
     String key,
     Future<dynamic> Function() fetch,
     T Function(Object? json) parse,
@@ -117,12 +120,16 @@ class HttpParkingRepository implements ParkingRepository {
       final json = await fetch();
       final data = parse(json);
       final savedAt = _clock();
-      await _cache.write(key, json, savedAt: savedAt);
-      return Cached(data, savedAt: savedAt);
+      await _offline.write(key, json, savedAt: savedAt);
+      return Saved(data, savedAt: savedAt);
     } catch (e) {
-      final entry = ApiClient.isNetworkFailure(e) ? _cache.read(key) : null;
+      final entry = ApiClient.isNetworkFailure(e) ? _offline.read(key) : null;
       if (entry == null) rethrow;
-      return Cached(parse(entry.data), savedAt: entry.savedAt, fromCache: true);
+      return Saved(
+        parse(entry.data),
+        savedAt: entry.savedAt,
+        fromStorage: true,
+      );
     }
   }
 

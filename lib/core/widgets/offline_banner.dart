@@ -73,7 +73,7 @@ class OfflineBanner extends StatelessWidget {
                         TextSpan(
                           style: body,
                           children: [
-                            const TextSpan(text: 'Showing cached data from '),
+                            const TextSpan(text: 'Showing saved data from '),
                             TextSpan(text: formatTime(saved), style: bold),
                             TextSpan(text: ' · ${formatDate(saved)}'),
                           ],

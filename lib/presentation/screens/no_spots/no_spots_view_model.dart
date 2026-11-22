@@ -29,7 +29,7 @@ class NoSpotsViewModel extends ChangeNotifier with ConnectivityAware {
 
   List<NearbyLot> lots = const [];
   DateTime? savedAt;
-  bool fromCache = false;
+  bool fromStorage = false;
   bool isLoading = false;
   String? errorMessage;
 
@@ -41,6 +41,9 @@ class NoSpotsViewModel extends ChangeNotifier with ConnectivityAware {
 
   bool get notifyPaused => watching && !online;
 
+  @override
+  bool get showingSavedData => fromStorage;
+
   Future<void> load({bool refresh = false}) async {
     isLoading = true;
     errorMessage = null;
@@ -50,7 +53,7 @@ class NoSpotsViewModel extends ChangeNotifier with ConnectivityAware {
       lots = [...result.data]
         ..sort((a, b) => a.walkMinutes.compareTo(b.walkMinutes));
       savedAt = result.savedAt;
-      fromCache = result.fromCache;
+      fromStorage = result.fromStorage;
     } catch (e) {
       errorMessage = errorMessageFor(e);
     } finally {
@@ -87,14 +90,14 @@ class NoSpotsViewModel extends ChangeNotifier with ConnectivityAware {
 
   Future<void> _onReconnect() async {
     if (watching) await _checkCampus();
-    if (fromCache) await load();
+    if (fromStorage) await load();
   }
 
   Future<void> _checkCampus() async {
     if (!online) return;
     try {
       final result = await _parking.getLevels();
-      if (!watching || result.fromCache || result.data.campusFull) return;
+      if (!watching || result.fromStorage || result.data.campusFull) return;
       stopWatching();
       campusOpened = true;
       notifyListeners();

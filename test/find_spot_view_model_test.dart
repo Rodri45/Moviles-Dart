@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:parkwise/domain/entities/cached.dart';
 import 'package:parkwise/domain/entities/parking_spot.dart';
+import 'package:parkwise/domain/entities/saved.dart';
 import 'package:parkwise/domain/entities/spot_filter.dart';
 import 'package:parkwise/domain/services/spot_ranking.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
@@ -13,7 +13,7 @@ class _CountingParking extends MockParkingRepository {
   int calls = 0;
 
   @override
-  Future<Cached<List<ParkingSpot>>> getSpots(
+  Future<Saved<List<ParkingSpot>>> getSpots(
     String levelCode, {
     required String destination,
     Set<SpotFilter> filters = const {},
@@ -150,5 +150,59 @@ void main() {
 
     expect(finder.fromMemory, isTrue);
     expect(telemetry.named('availability_viewed'), hasLength(2));
+  });
+
+  test('going back to a search typed before does not rank again', () async {
+    var ranks = 0;
+    final finder = FindSpotViewModel(
+      parking,
+      MockPreferencesStore(),
+      telemetry,
+      MockConnectivity(),
+      rank: (input) {
+        ranks++;
+        return rankSpotsInline(input);
+      },
+      clock: () => now,
+    );
+    addTearDown(finder.dispose);
+
+    await finder.load();
+    final first = finder.results;
+    finder.query = 'P3';
+    await finder.load();
+    finder.query = '';
+    await finder.load();
+
+    expect(ranks, 2);
+    expect(finder.fromMemory, isTrue);
+    expect(finder.results, first);
+  });
+
+  test('with more searches than room the least used one leaves', () async {
+    var ranks = 0;
+    final finder = FindSpotViewModel(
+      parking,
+      MockPreferencesStore(),
+      telemetry,
+      MockConnectivity(),
+      rank: (input) {
+        ranks++;
+        return rankSpotsInline(input);
+      },
+      clock: () => now,
+    );
+    addTearDown(finder.dispose);
+
+    await finder.load();
+    for (var i = 0; i < FindSpotViewModel.memoryEntries; i++) {
+      finder.query = 'spot $i';
+      await finder.load();
+    }
+    finder.query = '';
+    await finder.load();
+
+    expect(ranks, FindSpotViewModel.memoryEntries + 2);
+    expect(finder.fromMemory, isFalse);
   });
 }

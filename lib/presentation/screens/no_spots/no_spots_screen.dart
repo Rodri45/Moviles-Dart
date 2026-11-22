@@ -66,7 +66,7 @@ class _NoSpotsScreenState extends State<NoSpotsScreen> {
             const SizedBox(height: Spacing.lg),
             Text('Nearby parking', style: AppTypography.heading1),
             const SizedBox(height: Spacing.sm),
-            if (noSpots.fromCache) ...[
+            if (noSpots.fromStorage) ...[
               OfflineBanner(savedAt: noSpots.savedAt, online: noSpots.online),
               const SizedBox(height: Spacing.sm),
             ] else if (noSpots.savedAt != null) ...[

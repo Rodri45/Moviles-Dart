@@ -20,7 +20,7 @@ void main() {
     expect(level.occupancy, 18 / 58);
   });
 
-  test('parking level accepts cached summaries without disabled count', () {
+  test('parking level accepts saved summaries without disabled count', () {
     final level = ParkingLevel.fromJson({
       'code': 'P1',
       'name': 'Level P1',

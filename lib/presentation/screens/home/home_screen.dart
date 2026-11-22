@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: home.load,
+          onRefresh: home.refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               Spacing.md,
@@ -119,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ForecastCard(
                 hours: home.forecast,
                 currentHour: home.forecastHour,
-                live: !home.forecastFromCache,
+                live: !home.forecastFromStorage,
                 onTap: () =>
                     Navigator.of(context).pushNamed(ForecastScreen.routeName),
               ),

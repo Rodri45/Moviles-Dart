@@ -55,7 +55,7 @@ class ProfileScreen extends StatelessWidget {
             const ArrivalQuestionCard(),
             Text('RESERVATION HISTORY', style: AppTypography.overline),
             const SizedBox(height: Spacing.sm),
-            if (profile.historyFromCache) ...[
+            if (profile.historyFromStorage) ...[
               NoticeBanner(
                 title: 'Saved on this phone',
                 message: _savedHistoryMessage(profile.historySavedAt),

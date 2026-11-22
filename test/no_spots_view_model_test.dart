@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parkwise/domain/entities/levels_overview.dart';
-import 'package:parkwise/infrastructure/http/cached_nearby_lot_repository.dart';
+import 'package:parkwise/infrastructure/http/stored_nearby_lot_repository.dart';
 import 'package:parkwise/infrastructure/mock/memory_nearby_lot_store.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_directions_launcher.dart';
@@ -26,7 +26,7 @@ void main() {
     connectivity = MockConnectivity();
     noSpots = NoSpotsViewModel(
       parking,
-      CachedNearbyLotRepository(parking, MemoryNearbyLotStore()),
+      StoredNearbyLotRepository(parking, MemoryNearbyLotStore()),
       directions,
       connectivity,
       checkEvery: const Duration(milliseconds: 10),

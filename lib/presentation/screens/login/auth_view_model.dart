@@ -107,8 +107,8 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   Future<void> restoreSession() async {
-    final cached = await _repository.cachedUser();
-    if (cached == null) return _setStatus(AuthStatus.unauthenticated);
+    final stored = await _repository.savedUser();
+    if (stored == null) return _setStatus(AuthStatus.unauthenticated);
 
     try {
       user = await _repository.me();
@@ -119,9 +119,9 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
         await _repository.logout();
         return _signOut();
       }
-      _openOffline(cached);
+      _openOffline(stored);
     } catch (_) {
-      _openOffline(cached);
+      _openOffline(stored);
     }
   }
 
@@ -183,8 +183,8 @@ class AuthViewModel extends ChangeNotifier with ConnectivityAware {
     return errorMessageFor(error);
   }
 
-  void _openOffline(AppUser cached) {
-    user = cached;
+  void _openOffline(AppUser stored) {
+    user = stored;
     offlineSession = true;
     _sessionRetry?.cancel();
     _sessionRetry = Timer.periodic(sessionRetryEvery, (_) {

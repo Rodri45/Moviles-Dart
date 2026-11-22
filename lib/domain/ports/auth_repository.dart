@@ -11,7 +11,7 @@ abstract interface class AuthRepository {
 
   Future<AppUser> me();
 
-  Future<AppUser?> cachedUser();
+  Future<AppUser?> savedUser();
 
   Future<void> logout();
 
