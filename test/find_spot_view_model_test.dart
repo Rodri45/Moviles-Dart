@@ -3,6 +3,7 @@ import 'package:parkwise/domain/entities/parking_spot.dart';
 import 'package:parkwise/domain/entities/saved.dart';
 import 'package:parkwise/domain/entities/spot_filter.dart';
 import 'package:parkwise/domain/services/spot_ranking.dart';
+import 'package:parkwise/domain/services/voice_query_parser.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 import 'package:parkwise/infrastructure/mock/mock_preferences_store.dart';
@@ -204,5 +205,20 @@ void main() {
 
     expect(ranks, FindSpotViewModel.memoryEntries + 2);
     expect(finder.fromMemory, isFalse);
+  });
+
+  test('a voice search sets the filters and the words of the phrase', () async {
+    const phrase = 'eléctrico en el P2';
+
+    await finder.searchPhrase(phrase, interpretPhrase(phrase), spoken: true);
+
+    expect(finder.filters, {SpotFilter.available, SpotFilter.electric});
+    expect(finder.query, 'P2');
+    expect(finder.results.map((spot) => spot.id), ['P2-A-02']);
+    expect(finder.spokenPhrase, phrase);
+
+    finder.setQuery('P1');
+
+    expect(finder.spokenPhrase, isNull);
   });
 }

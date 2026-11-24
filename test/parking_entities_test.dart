@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:parkwise/domain/entities/building.dart';
 import 'package:parkwise/domain/entities/parking_level.dart';
 import 'package:parkwise/domain/entities/parking_spot.dart';
 
@@ -60,5 +61,24 @@ void main() {
     });
 
     expect(spot.status, SpotStatus.disabled);
+  });
+
+  test('the photo of a building is resolved against the server', () {
+    final building = Building.fromJson({
+      'id': 'sd',
+      'name': 'Edificio Santo Domingo',
+      'imageUrl': '/images/buildings/sd.jpg',
+    }, imageBase: 'https://parkwise.example.com');
+    final withoutPhoto = Building.fromJson({
+      'id': 'ml',
+      'name': 'Edificio Mario Laserna',
+      'imageUrl': null,
+    }, imageBase: 'https://parkwise.example.com');
+
+    expect(
+      building.imageUrl,
+      'https://parkwise.example.com/images/buildings/sd.jpg',
+    );
+    expect(withoutPhoto.imageUrl, isNull);
   });
 }

@@ -6,6 +6,7 @@ import '../../../core/cache/lru_cache.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/saved.dart';
 import '../../../domain/entities/spot_filter.dart';
+import '../../../domain/entities/voice_query.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
@@ -58,6 +59,7 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   bool fromMemory = false;
   bool isLoading = false;
   String? errorMessage;
+  String? spokenPhrase;
 
   bool get showOffline => !online || fromStorage;
 
@@ -81,14 +83,27 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   Future<void> setFilters(Set<SpotFilter> value) async {
     filters = {...value};
     query = '';
+    spokenPhrase = null;
     await load();
   }
 
   void setQuery(String value) {
     query = value;
+    spokenPhrase = null;
     _queryDebounce?.cancel();
     _queryDebounce = Timer(const Duration(milliseconds: 150), _rerank);
     notifyListeners();
+  }
+
+  Future<void> searchPhrase(
+    String phrase,
+    VoiceQuery voiceQuery, {
+    required bool spoken,
+  }) async {
+    spokenPhrase = spoken ? phrase : null;
+    filters = {...voiceQuery.filters};
+    query = voiceQuery.searchText;
+    await load();
   }
 
   Future<void> refresh() => load(force: true);

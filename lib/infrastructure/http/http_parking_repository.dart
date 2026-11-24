@@ -69,7 +69,10 @@ class HttpParkingRepository implements ParkingRepository {
       () => _client.get('/buildings'),
       (json) => [
         for (final b in json as List)
-          Building.fromJson(b as Map<String, dynamic>),
+          Building.fromJson(
+            b as Map<String, dynamic>,
+            imageBase: _client.baseUrl,
+          ),
       ],
     );
     return result.data;
