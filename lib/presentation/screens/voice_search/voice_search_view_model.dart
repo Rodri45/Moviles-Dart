@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../domain/entities/building.dart';
+import '../../../domain/entities/device_description.dart';
 import '../../../domain/entities/recent_search.dart';
 import '../../../domain/entities/voice_language.dart';
 import '../../../domain/entities/voice_query.dart';
@@ -11,6 +12,7 @@ import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
 import '../../../domain/ports/recent_search_store.dart';
 import '../../../domain/ports/speech_recognizer.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../../domain/services/voice_query_parser.dart';
 import '../../shared/connectivity_aware.dart';
 
@@ -40,6 +42,8 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     this._recentSearches,
     this._parking,
     this._preferences,
+    this._telemetry,
+    this._device,
     ConnectivityPort connectivity, {
     this._interpret = interpretPhraseInBackground,
     DateTime Function()? clock,
@@ -64,9 +68,12 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   final RecentSearchStore _recentSearches;
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
+  final Telemetry _telemetry;
+  final DeviceDescription _device;
   final PhraseInterpreter _interpret;
   final DateTime Function() _clock;
   StreamSubscription<SpeechUpdate>? _session;
+  DateTime? _startedAt;
   int _generation = 0;
   VoiceSearchOutcome? _outcome;
 
@@ -103,6 +110,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     words = '';
     heard = VoiceQuery.empty;
     failure = null;
+    _startedAt = _clock();
     notifyListeners();
     _session = _speech.listen(language.localeId).listen(_onSpeech);
   }
@@ -152,6 +160,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   Future<void> _finish(String phrase) async {
     final generation = ++_generation;
     words = phrase;
+    _track('ok');
     final query = await _interpret(phrase);
     if (generation != _generation) return;
     heard = query;
@@ -166,6 +175,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
 
   void _fail(SpeechFailure reason) {
     _generation++;
+    _track(_outcomeOf(reason));
     status = VoiceStatus.failed;
     failure = reason;
     notifyListeners();
@@ -216,6 +226,23 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     await session.cancel();
     await _speech.cancel();
   }
+
+  void _track(String outcome) {
+    final startedAt = _startedAt;
+    _telemetry.track('voice_recognition', {
+      'outcome': outcome,
+      if (startedAt != null)
+        'latencyMs': _clock().difference(startedAt).inMilliseconds,
+      ..._device.toProperties(),
+    });
+  }
+
+  static String _outcomeOf(SpeechFailure reason) => switch (reason) {
+    SpeechFailure.noMatch => 'no_match',
+    SpeechFailure.noPermission => 'no_permission',
+    SpeechFailure.network => 'offline',
+    SpeechFailure.unavailable || SpeechFailure.other => 'error',
+  };
 
   @override
   void dispose() {

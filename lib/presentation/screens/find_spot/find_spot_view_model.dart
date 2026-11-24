@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
 import '../../../core/cache/lru_cache.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/saved.dart';
+import '../../../domain/entities/search_session.dart';
 import '../../../domain/entities/spot_filter.dart';
 import '../../../domain/entities/voice_query.dart';
 import '../../../domain/ports/connectivity_port.dart';
@@ -29,7 +31,9 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
     ConnectivityPort connectivity, {
     this._rank = rankSpotsInBackground,
     DateTime Function()? clock,
-  }) : _memory = LruCache(
+    String Function()? newSearchId,
+  }) : _newSearchId = newSearchId ?? _randomSearchId,
+       _memory = LruCache(
          maxEntries: memoryEntries,
          ttl: memoryTtl,
          clock: clock,
@@ -41,13 +45,19 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
 
   static const memoryTtl = Duration(seconds: 30);
 
+  static const searchSettle = Duration(seconds: 1);
+
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
   final Telemetry _telemetry;
   final SpotRanker _rank;
   final LruCache<String, _Remembered> _memory;
+  final String Function() _newSearchId;
   Timer? _queryDebounce;
+  Timer? _searchSettle;
   int _generation = 0;
+  bool _searchReported = false;
+  bool _typingAfterVoice = false;
 
   Set<SpotFilter> filters = {SpotFilter.available};
   String query = '';
@@ -59,6 +69,7 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   bool fromMemory = false;
   bool isLoading = false;
   String? errorMessage;
+  SearchSession? search;
   String? spokenPhrase;
 
   bool get showOffline => !online || fromStorage;
@@ -83,15 +94,21 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   Future<void> setFilters(Set<SpotFilter> value) async {
     filters = {...value};
     query = '';
-    spokenPhrase = null;
+    _endSearch();
     await load();
   }
 
   void setQuery(String value) {
     query = value;
-    spokenPhrase = null;
+    if (value.trim().isEmpty) {
+      _endSearch();
+    } else if (search?.mode != SearchMode.text) {
+      _startSearch(SearchMode.text, voiceFallback: _typingAfterVoice);
+    }
     _queryDebounce?.cancel();
     _queryDebounce = Timer(const Duration(milliseconds: 150), _rerank);
+    _searchSettle?.cancel();
+    if (search != null) _searchSettle = Timer(searchSettle, reportSearch);
     notifyListeners();
   }
 
@@ -100,10 +117,35 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
     VoiceQuery voiceQuery, {
     required bool spoken,
   }) async {
+    _startSearch(spoken ? SearchMode.voice : SearchMode.text);
     spokenPhrase = spoken ? phrase : null;
     filters = {...voiceQuery.filters};
     query = voiceQuery.searchText;
     await load();
+    reportSearch();
+  }
+
+  void typeAfterVoice() {
+    _endSearch();
+    _typingAfterVoice = true;
+  }
+
+  SearchSession? searchForSelection() {
+    reportSearch();
+    return search;
+  }
+
+  void reportSearch() {
+    final current = search;
+    if (current == null || _searchReported) return;
+    _searchReported = true;
+    _telemetry.track('spot_search', {
+      ...current.properties,
+      'resultCount': results.length,
+      'fromCache': fromMemory,
+      'offline': showOffline,
+      'voiceFallback': current.voiceFallback,
+    });
   }
 
   Future<void> refresh() => load(force: true);
@@ -183,6 +225,32 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
+  void _startSearch(SearchMode mode, {bool voiceFallback = false}) {
+    _searchSettle?.cancel();
+    search = SearchSession(
+      id: _newSearchId(),
+      mode: mode,
+      voiceFallback: voiceFallback,
+    );
+    spokenPhrase = null;
+    _searchReported = false;
+    _typingAfterVoice = false;
+  }
+
+  void _endSearch() {
+    _searchSettle?.cancel();
+    search = null;
+    spokenPhrase = null;
+    _searchReported = false;
+  }
+
+  static String _randomSearchId() {
+    final random = Random.secure();
+    return [
+      for (var i = 0; i < 16; i++) random.nextInt(16).toRadixString(16),
+    ].join();
+  }
+
   static String _memoryKey(
     String destination,
     Set<SpotFilter> filters,
@@ -195,6 +263,7 @@ class FindSpotViewModel extends ChangeNotifier with ConnectivityAware {
   @override
   void dispose() {
     _queryDebounce?.cancel();
+    _searchSettle?.cancel();
     super.dispose();
   }
 }
