@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../domain/entities/building.dart';
+import '../../../domain/entities/recent_search.dart';
 import '../../../domain/entities/voice_language.dart';
 import '../../../domain/entities/voice_query.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
+import '../../../domain/ports/recent_search_store.dart';
 import '../../../domain/ports/speech_recognizer.dart';
 import '../../../domain/services/voice_query_parser.dart';
 import '../../shared/connectivity_aware.dart';
@@ -35,11 +37,13 @@ final class TypeInstead extends VoiceSearchOutcome {
 class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   VoiceSearchViewModel(
     this._speech,
+    this._recentSearches,
     this._parking,
     this._preferences,
     ConnectivityPort connectivity, {
     this._interpret = interpretPhraseInBackground,
-  }) {
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now {
     watchConnectivity(connectivity, _loadDestination);
   }
 
@@ -57,9 +61,11 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   };
 
   final SpeechRecognizer _speech;
+  final RecentSearchStore _recentSearches;
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
   final PhraseInterpreter _interpret;
+  final DateTime Function() _clock;
   StreamSubscription<SpeechUpdate>? _session;
   int _generation = 0;
   VoiceSearchOutcome? _outcome;
@@ -68,6 +74,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   String words = '';
   VoiceQuery heard = VoiceQuery.empty;
   SpeechFailure? failure;
+  List<RecentSearch> recent = const [];
   Building? destination;
 
   VoiceLanguage get language => _preferences.voiceLanguage;
@@ -79,7 +86,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   Future<void> open() async {
     _outcome = null;
     await listen();
-    await _loadDestination();
+    await Future.wait([_loadRecent(), _loadDestination()]);
   }
 
   Future<void> close() => _endSession();
@@ -106,6 +113,13 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     if (value == language) return;
     await _preferences.saveVoiceLanguage(value);
     await listen();
+  }
+
+  Future<void> repeat(RecentSearch search) async {
+    await _endSession();
+    final query = await _interpret(search.phrase);
+    _remember(search.phrase);
+    _complete(PhraseSearch(search.phrase, query, spoken: false));
   }
 
   Future<void> typeInstead() async {
@@ -146,6 +160,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
       notifyListeners();
       return;
     }
+    _remember(phrase);
     _complete(PhraseSearch(phrase, query, spoken: true));
   }
 
@@ -160,6 +175,24 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     _outcome = outcome;
     status = VoiceStatus.ready;
     notifyListeners();
+  }
+
+  void _remember(String phrase) {
+    unawaited(
+      _recentSearches
+          .save(phrase, _clock())
+          .then((_) => _loadRecent())
+          .catchError((Object e) => debugPrint('recent search not saved: $e')),
+    );
+  }
+
+  Future<void> _loadRecent() async {
+    try {
+      recent = await _recentSearches.recent();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('recent searches not read: $e');
+    }
   }
 
   Future<void> _loadDestination() async {

@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 class LocalDatabase {
   static const fileName = 'parkwise_local.db';
-  static const version = 3;
+  static const version = 4;
 
   static Future<Database> open({String? databasePath}) async {
     final location =
@@ -20,6 +20,7 @@ class LocalDatabase {
     if (from < 1) await _createReservationHistory(db);
     if (from < 2) await _createPendingActions(db);
     if (from < 3) await _createNearbyLotTables(db);
+    if (from < 4) await _createRecentSearches(db);
   }
 
   static Future<void> _createReservationHistory(Database db) async {
@@ -78,6 +79,13 @@ class LocalDatabase {
       'ON lot_redirects (lot_id, redirected_at)',
     );
   }
+
+  static Future<void> _createRecentSearches(Database db) => db.execute('''
+    CREATE TABLE recent_searches (
+      phrase TEXT PRIMARY KEY COLLATE NOCASE,
+      searched_at TEXT NOT NULL
+    )
+  ''');
 
   static Future<void> _createPendingActions(Database db) => db.execute('''
     CREATE TABLE pending_actions (
