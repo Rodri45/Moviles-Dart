@@ -11,6 +11,7 @@ class DevicePreferencesStore implements PreferencesStore {
   static const _arrivalTimeKey = 'arrival_time';
   static const _lastOpenedLevelKey = 'last_opened_level';
   static const _voiceLanguageKey = 'voice_language';
+  static const _plannerLevelKey = 'planner_level';
   static const _lastReportKindKey = 'last_report_kind';
   static const defaultDestination = 'sd';
 
@@ -36,6 +37,9 @@ class DevicePreferencesStore implements PreferencesStore {
   }
 
   @override
+  String? get plannerLevel => _preferences.getString(_plannerLevelKey);
+
+  @override
   String? get lastReportKind => _preferences.getString(_lastReportKindKey);
 
   @override
@@ -58,6 +62,11 @@ class DevicePreferencesStore implements PreferencesStore {
   @override
   Future<void> saveVoiceLanguage(VoiceLanguage language) async {
     await _preferences.setString(_voiceLanguageKey, language.name);
+  }
+
+  @override
+  Future<void> savePlannerLevel(String levelCode) async {
+    await _preferences.setString(_plannerLevelKey, levelCode);
   }
 
   @override

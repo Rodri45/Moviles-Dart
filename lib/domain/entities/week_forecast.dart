@@ -1,10 +1,20 @@
 class DayForecast {
   const DayForecast({required this.date, required this.levels});
 
+  factory DayForecast.fromJson(Map<String, dynamic> json) => DayForecast(
+    date: DateTime.parse(json['date'] as String),
+    levels: {
+      for (final entry in (json['levels'] as Map<String, dynamic>).entries)
+        entry.key: WeekForecast._occupancy(entry.value as List),
+    },
+  );
+
   final DateTime date;
   final Map<String, List<double?>> levels;
 
   int get number => dayNumber(date);
+
+  Map<String, Object?> toJson() => {'date': isoDay(date), 'levels': levels};
 }
 
 class WeekForecast {
@@ -31,6 +41,14 @@ class WeekForecast {
     );
   }
 
+  factory WeekForecast.fromJson(Map<String, dynamic> json) => WeekForecast(
+    hours: _hours(json['hours'] as List),
+    days: [
+      for (final day in json['days'] as List)
+        DayForecast.fromJson(day as Map<String, dynamic>),
+    ],
+  );
+
   factory WeekForecast.merge(Iterable<WeekForecast> parts) {
     final days = <int, DayForecast>{};
     var hours = const <int>[];
@@ -52,6 +70,11 @@ class WeekForecast {
 
   final List<int> hours;
   final List<DayForecast> days;
+
+  Map<String, Object?> toJson() => {
+    'hours': hours,
+    'days': [for (final day in days) day.toJson()],
+  };
 
   static List<int> _hours(List<dynamic> values) => [
     for (final hour in values) (hour as num).toInt(),

@@ -28,6 +28,7 @@ import '../domain/ports/reservation_repository.dart';
 import '../domain/ports/speech_recognizer.dart';
 import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
+import '../domain/ports/week_forecast_store.dart';
 import '../domain/services/photo_compression.dart';
 import '../domain/services/spot_ranking.dart';
 import '../domain/services/voice_query_parser.dart';
@@ -52,6 +53,7 @@ import '../infrastructure/mock/memory_lot_redirect_store.dart';
 import '../infrastructure/mock/memory_nearby_lot_store.dart';
 import '../infrastructure/mock/memory_pending_report_store.dart';
 import '../infrastructure/mock/memory_recent_search_store.dart';
+import '../infrastructure/mock/memory_week_forecast_store.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_directions_launcher.dart';
@@ -79,6 +81,7 @@ import '../infrastructure/storage/sqlite_nearby_lot_store.dart';
 import '../infrastructure/storage/sqlite_pending_action_store.dart';
 import '../infrastructure/storage/sqlite_pending_report_store.dart';
 import '../infrastructure/storage/sqlite_recent_search_store.dart';
+import '../infrastructure/storage/week_forecast_file_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
 import '../presentation/screens/home/home_view_model.dart';
@@ -117,6 +120,7 @@ class AppDependencies {
     required this.recentSearches,
     required this.phraseInterpreter,
     required this.heatMapBuilder,
+    required this.weekStore,
     required this.reports,
     required this.reportQueue,
     required this.photos,
@@ -204,6 +208,7 @@ class AppDependencies {
       recentSearches: SqliteRecentSearchStore(database),
       phraseInterpreter: interpretPhraseInBackground,
       heatMapBuilder: buildHeatMapInBackground,
+      weekStore: WeekForecastFileStore(supportDirectory),
       reports: reports,
       reportQueue: reports,
       photos: CameraPhotoSource(),
@@ -240,6 +245,7 @@ class AppDependencies {
       recentSearches: MemoryRecentSearchStore(),
       phraseInterpreter: interpretPhraseInline,
       heatMapBuilder: buildHeatMapInline,
+      weekStore: MemoryWeekForecastStore(),
       reports: reports,
       reportQueue: reports,
       photos: MockPhotoSource(),
@@ -266,6 +272,7 @@ class AppDependencies {
   final RecentSearchStore recentSearches;
   final PhraseInterpreter phraseInterpreter;
   final HeatMapBuilder heatMapBuilder;
+  final WeekForecastStore weekStore;
   final ReportRepository reports;
   final ReportQueue reportQueue;
   final PhotoSource photos;
@@ -327,6 +334,8 @@ class AppDependencies {
       create: (_) => WeekPlanViewModel(
         parking,
         preferences,
+        weekStore,
+        connectivity,
         buildHeatMap: heatMapBuilder,
       ),
     ),
