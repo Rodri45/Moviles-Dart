@@ -69,6 +69,7 @@ class _FindSpotScreenState extends State<FindSpotScreen> {
         _query.text = query.searchText;
         await finder.searchPhrase(phrase, query, spoken: spoken);
       case TypeInstead(:final words):
+        finder.typeAfterVoice();
         _query.value = TextEditingValue(
           text: words,
           selection: TextSelection.collapsed(offset: words.length),
@@ -459,7 +460,10 @@ class _ReserveButton extends StatelessWidget {
       ),
       onPressed: spot.isFree
           ? () {
-              context.read<ReserveViewModel>().selectSpot(spot);
+              final search = context
+                  .read<FindSpotViewModel>()
+                  .searchForSelection();
+              context.read<ReserveViewModel>().selectSpot(spot, search: search);
               MainShell.openTab(context, AppTab.reserve);
             }
           : null,

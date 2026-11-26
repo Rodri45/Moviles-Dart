@@ -7,10 +7,12 @@ import '../../../core/cache/building_photo_cache.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
+import '../../../core/format.dart';
 import '../../../core/widgets/lot_photo.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/pill.dart';
 import '../../../domain/entities/building.dart';
+import '../../../domain/entities/recent_search.dart';
 import '../../../domain/entities/spot_filter.dart';
 import '../../../domain/entities/voice_language.dart';
 import '../../../domain/entities/voice_query.dart';
@@ -87,6 +89,10 @@ class _VoiceSearchScreenState extends State<VoiceSearchScreen> {
                     const SizedBox(height: Spacing.md),
                   ],
                   _TryCard(phrases: voice.tryPhrases),
+                  if (voice.recent.isNotEmpty) ...[
+                    const SizedBox(height: Spacing.lg),
+                    _RecentList(searches: voice.recent, onTap: voice.repeat),
+                  ],
                   const SizedBox(height: Spacing.lg),
                   OutlinedButton.icon(
                     onPressed: voice.typeInstead,
@@ -351,6 +357,61 @@ class _TryCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _RecentList extends StatelessWidget {
+  const _RecentList({required this.searches, required this.onTap});
+
+  final List<RecentSearch> searches;
+  final ValueChanged<RecentSearch> onTap;
+
+  static String _when(DateTime at) {
+    final local = at.toLocal();
+    final now = DateTime.now();
+    final today =
+        local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+    return today ? formatTime(local) : formatDate(local);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('Recent searches', style: AppTypography.heading2),
+            ),
+            Text('Saved on this phone', style: AppTypography.caption),
+          ],
+        ),
+        for (final search in searches)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            minTileHeight: Spacing.touchTarget,
+            leading: const Icon(
+              Icons.mic_none,
+              size: 18,
+              color: Palette.textSecondary,
+            ),
+            title: Text(
+              search.phrase,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.body,
+            ),
+            trailing: Text(
+              _when(search.searchedAt),
+              style: AppTypography.monoData,
+            ),
+            onTap: () => onTap(search),
+          ),
+      ],
     );
   }
 }
