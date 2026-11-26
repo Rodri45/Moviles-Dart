@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/cache/level_photo_cache.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
+import '../../../core/widgets/lot_photo.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/pill.dart';
 import '../home/home_view_model.dart';
@@ -48,6 +50,7 @@ class _WeekPlanScreenState extends State<WeekPlanScreen> {
   }
 
   void _useTime(BestTime time) {
+    context.read<WeekPlanViewModel>().useTime(time);
     unawaited(context.read<HomeViewModel>().planArrival(time.start));
     Navigator.of(context).pop();
   }
@@ -68,7 +71,14 @@ class _WeekPlanScreenState extends State<WeekPlanScreen> {
             builder: (context, constraints) => ListView(
               padding: const EdgeInsets.all(Spacing.md),
               children: [
-                if (week.errorMessage != null) ...[
+                if (week.showingSavedData) ...[
+                  NoticeBanner(
+                    title: week.online ? 'Server unreachable' : 'No signal',
+                    message: _savedWeekMessage(week),
+                    icon: week.online ? Icons.cloud_off : Icons.wifi_off,
+                  ),
+                  const SizedBox(height: Spacing.md),
+                ] else if (week.errorMessage != null) ...[
                   NoticeBanner(
                     message: week.errorMessage!,
                     tone: NoticeTone.danger,
@@ -94,11 +104,7 @@ class _WeekPlanScreenState extends State<WeekPlanScreen> {
                 ],
                 if (week.updatedAt != null) ...[
                   const SizedBox(height: Spacing.md),
-                  Text(
-                    'Based on the last 4 weeks of occupancy · Updated '
-                    '${formatTime(week.updatedAt!)}',
-                    style: AppTypography.caption,
-                  ),
+                  Text(_footer(week), style: AppTypography.caption),
                 ],
               ],
             ),
@@ -107,6 +113,35 @@ class _WeekPlanScreenState extends State<WeekPlanScreen> {
       ),
     );
   }
+}
+
+String _savedWeekMessage(WeekPlanViewModel week) {
+  final savedAt = week.updatedAt;
+  if (!week.fromStorage || savedAt == null) {
+    return 'There is no week saved on this phone yet. It loads by itself '
+        'when the signal returns.';
+  }
+  final saved =
+      'Showing the week saved on ${formatDayMonth(savedAt)} at '
+      '${formatTime(savedAt)}.';
+  final missing = week.missingDays;
+  if (missing.isEmpty) return saved;
+  if (missing.length == 1) {
+    return '$saved ${formatWeekday(missing.first)} was not saved yet.';
+  }
+  return '$saved ${formatWeekday(missing.first)} to '
+      '${formatWeekday(missing.last)} were not saved yet.';
+}
+
+String _footer(WeekPlanViewModel week) {
+  final at = week.updatedAt!;
+  final when = week.fromStorage
+      ? 'Saved ${formatDayMonth(at)}, ${formatTime(at)}'
+      : 'Updated ${formatTime(at)}';
+  final kept = week.savedOnPhone && !week.fromStorage
+      ? ' · Kept on this phone'
+      : '';
+  return 'Based on the last 4 weeks of occupancy · $when$kept';
 }
 
 class _Controls extends StatelessWidget {
@@ -167,10 +202,7 @@ class _HeatMapCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'PREDICTED OCCUPANCY · ${week.level}',
-              style: AppTypography.overline,
-            ),
+            _LevelHeader(week: week),
             const SizedBox(height: Spacing.sm),
             if (rows.isEmpty || !week.hasWeek)
               SizedBox(
@@ -187,11 +219,60 @@ class _HeatMapCard extends StatelessWidget {
             else ...[
               _HeatGrid(hours: week.hours, rows: rows),
               const SizedBox(height: Spacing.sm),
-              _Legend(arrivalAt: week.arrivalAt),
+              _Legend(arrivalAt: week.arrivalAt, saved: week.fromStorage),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LevelHeader extends StatelessWidget {
+  const _LevelHeader({required this.week});
+
+  final WeekPlanViewModel week;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = week.photoUrl;
+    return Row(
+      children: [
+        if (photo != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Radii.sm),
+            child: SizedBox(
+              width: 48,
+              child: LotPhoto(
+                name: 'Level ${week.level}',
+                url: photo,
+                height: 48,
+                cacheManager: LevelPhotoCache.manager,
+              ),
+            ),
+          ),
+          const SizedBox(width: Spacing.sm),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'PREDICTED OCCUPANCY · ${week.level}'
+                '${week.fromStorage ? ' · SAVED' : ''}',
+                style: AppTypography.overline,
+              ),
+              if (photo != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Entrance of Level ${week.level}',
+                  style: AppTypography.caption,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -248,6 +329,7 @@ class _HeatGrid extends StatelessWidget {
                 Expanded(
                   child: _Cell(
                     cell: row.cells[index],
+                    saved: row.saved,
                     label: '${formatWeekday(row.date)} ${hours[index]}:00',
                   ),
                 ),
@@ -261,15 +343,22 @@ class _HeatGrid extends StatelessWidget {
 }
 
 class _Cell extends StatelessWidget {
-  const _Cell({required this.cell, required this.label});
+  const _Cell({required this.cell, required this.saved, required this.label});
 
   final HeatCell cell;
+  final bool saved;
   final String label;
 
   @override
   Widget build(BuildContext context) {
     final step = cell.step;
     final occupancy = cell.occupancy;
+    if (!saved) {
+      return Semantics(
+        label: '$label, not saved',
+        child: const SizedBox(height: 22, child: _Hatch()),
+      );
+    }
     return Semantics(
       label: occupancy == null
           ? '$label, no data'
@@ -288,10 +377,48 @@ class _Cell extends StatelessWidget {
   }
 }
 
+class _Hatch extends StatelessWidget {
+  const _Hatch();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(Radii.badge),
+      child: const CustomPaint(
+        painter: _HatchPainter(),
+        child: SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+class _HatchPainter extends CustomPainter {
+  const _HatchPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = Palette.surface);
+    final line = Paint()
+      ..color = Palette.border
+      ..strokeWidth = 3;
+    for (var x = -size.height; x < size.width; x += 6) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        line,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HatchPainter oldDelegate) => false;
+}
+
 class _Legend extends StatelessWidget {
-  const _Legend({required this.arrivalAt});
+  const _Legend({required this.arrivalAt, required this.saved});
 
   final DateTime arrivalAt;
+  final bool saved;
 
   @override
   Widget build(BuildContext context) {
@@ -322,6 +449,11 @@ class _Legend extends StatelessWidget {
           ),
         ),
         Text('Best near ${formatTime(arrivalAt)}', style: style),
+        if (saved) ...[
+          const SizedBox(width: Spacing.sm),
+          const SizedBox(width: 12, height: 12, child: _Hatch()),
+          Text('Not saved', style: style),
+        ],
       ],
     );
   }
@@ -347,7 +479,12 @@ class _BestTimesCard extends StatelessWidget {
               Spacing.md,
               6,
             ),
-            child: Text('BEST TIMES THIS WEEK', style: AppTypography.overline),
+            child: Text(
+              week.fromStorage
+                  ? 'BEST TIMES IN THE SAVED DAYS'
+                  : 'BEST TIMES THIS WEEK',
+              style: AppTypography.overline,
+            ),
           ),
           if (best.isEmpty)
             Padding(

@@ -50,6 +50,17 @@ void main() {
     );
   });
 
+  test('the level of Plan your week is kept', () async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final store = DevicePreferencesStore(box, sharedPreferences);
+
+    expect(store.plannerLevel, isNull);
+
+    await store.savePlannerLevel('P3');
+
+    expect(DevicePreferencesStore(box, sharedPreferences).plannerLevel, 'P3');
+  });
+
   test('the last problem type of a report is kept', () async {
     final sharedPreferences = await SharedPreferences.getInstance();
     final store = DevicePreferencesStore(box, sharedPreferences);

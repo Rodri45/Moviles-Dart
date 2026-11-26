@@ -7,6 +7,7 @@ class MockPreferencesStore implements PreferencesStore {
     this.arrivalTime,
     this.lastOpenedLevel,
     this.voiceLanguage = VoiceLanguage.spanish,
+    this.plannerLevel,
     this.lastReportKind,
   });
 
@@ -21,6 +22,9 @@ class MockPreferencesStore implements PreferencesStore {
 
   @override
   VoiceLanguage voiceLanguage;
+
+  @override
+  String? plannerLevel;
 
   @override
   String? lastReportKind;
@@ -42,6 +46,11 @@ class MockPreferencesStore implements PreferencesStore {
   @override
   Future<void> saveVoiceLanguage(VoiceLanguage value) async {
     voiceLanguage = value;
+  }
+
+  @override
+  Future<void> savePlannerLevel(String value) async {
+    plannerLevel = value;
   }
 
   @override
