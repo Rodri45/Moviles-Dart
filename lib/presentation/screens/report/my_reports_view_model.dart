@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/cache/array_map_cache.dart';
 import '../../../domain/entities/spot_report.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
@@ -14,14 +15,25 @@ class MyReportsViewModel extends ChangeNotifier with ConnectivityAware {
   MyReportsViewModel(
     this._reports,
     this._queue,
-    ConnectivityPort connectivity,
-  ) {
+    ConnectivityPort connectivity, {
+    DateTime Function()? clock,
+  }) : _memory = ArrayMapCache(
+         maxEntries: memoryReports,
+         ttl: memoryTtl,
+         clock: clock,
+       ) {
     _updatesSub = _queue.updates.listen(_onUpdate);
     watchConnectivity(connectivity, load);
   }
 
+  static const memoryReports = 32;
+
+  static const memoryTtl = Duration(seconds: 60);
+
   final ReportRepository _reports;
   final ReportQueue _queue;
+  final ArrayMapCache<String, SpotReport> _memory;
+  List<String> _sentIds = const [];
   late final StreamSubscription<SpotReport> _updatesSub;
   List<SpotReport> _sent = const [];
   List<SpotReport> _pending = const [];
@@ -52,16 +64,27 @@ class MyReportsViewModel extends ChangeNotifier with ConnectivityAware {
   @override
   bool get showingSavedData => fromStorage;
 
-  Future<void> load() async {
+  Future<void> refresh() => load(refresh: true);
+
+  Future<void> load({bool refresh = false}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
     _pending = await _readPending();
+    final remembered = refresh ? null : _fromMemory();
+    if (remembered != null) {
+      _sent = remembered;
+      fromStorage = false;
+      isLoading = false;
+      _notify();
+      return;
+    }
     try {
       final result = await _reports.mine();
       _sent = result.data;
       savedAt = result.savedAt;
       fromStorage = result.fromStorage;
+      if (!result.fromStorage) _remember(result.data);
     } catch (e) {
       final offline = e is NetworkException && _pending.isNotEmpty;
       errorMessage = offline ? null : errorMessageFor(e);
@@ -71,6 +94,8 @@ class MyReportsViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   void reset() {
+    _memory.clear();
+    _sentIds = const [];
     _sent = const [];
     _pending = const [];
     _rejected = const [];
@@ -93,12 +118,42 @@ class MyReportsViewModel extends ChangeNotifier with ConnectivityAware {
           for (final item in _sent)
             if (item.clientId != report.clientId) item,
         ];
+        if (_sentIds.isNotEmpty) {
+          _memory.put(report.clientId, report);
+          _sentIds = [
+            report.clientId,
+            for (final id in _sentIds)
+              if (id != report.clientId) id,
+          ];
+        }
       case ReportState.rejected:
         _rejected = [..._rejected, report];
       case ReportState.waiting || ReportState.sending:
         break;
     }
     unawaited(_refreshPending());
+  }
+
+  List<SpotReport>? _fromMemory() {
+    if (_sentIds.isEmpty) return null;
+    final remembered = <SpotReport>[];
+    for (final id in _sentIds) {
+      final report = _memory.get(id);
+      if (report == null) return null;
+      remembered.add(report);
+    }
+    return remembered;
+  }
+
+  void _remember(List<SpotReport> reports) {
+    if (reports.length > memoryReports) {
+      _sentIds = const [];
+      return;
+    }
+    for (final report in reports) {
+      _memory.put(report.clientId, report);
+    }
+    _sentIds = [for (final report in reports) report.clientId];
   }
 
   Future<void> _refreshPending() async {
