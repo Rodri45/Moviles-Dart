@@ -268,6 +268,8 @@ class AppDependencies {
         recentSearches,
         parking,
         preferences,
+        telemetry,
+        device,
         connectivity,
         interpret: phraseInterpreter,
       ),
