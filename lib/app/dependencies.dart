@@ -19,13 +19,17 @@ import '../domain/ports/lot_redirect_store.dart';
 import '../domain/ports/nearby_lot_repository.dart';
 import '../domain/ports/parking_repository.dart';
 import '../domain/ports/preferences_store.dart';
+import '../domain/ports/recent_search_store.dart';
 import '../domain/ports/reservation_outbox.dart';
 import '../domain/ports/reservation_repository.dart';
+import '../domain/ports/speech_recognizer.dart';
 import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
 import '../domain/services/spot_ranking.dart';
+import '../domain/services/voice_query_parser.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
 import '../infrastructure/device/device_info_reader.dart';
+import '../infrastructure/device/device_speech_recognizer.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
 import '../infrastructure/device/url_launcher_directions.dart';
 import '../infrastructure/http/api_client.dart';
@@ -39,6 +43,7 @@ import '../infrastructure/http/stored_nearby_lot_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/memory_lot_redirect_store.dart';
 import '../infrastructure/mock/memory_nearby_lot_store.dart';
+import '../infrastructure/mock/memory_recent_search_store.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_directions_launcher.dart';
@@ -48,6 +53,7 @@ import '../infrastructure/mock/mock_parking_repository.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
 import '../infrastructure/mock/mock_reservation_outbox.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
+import '../infrastructure/mock/mock_speech_recognizer.dart';
 import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
 import '../infrastructure/storage/car_location_file_store.dart';
@@ -61,6 +67,7 @@ import '../infrastructure/storage/session_store.dart';
 import '../infrastructure/storage/sqlite_lot_redirect_store.dart';
 import '../infrastructure/storage/sqlite_nearby_lot_store.dart';
 import '../infrastructure/storage/sqlite_pending_action_store.dart';
+import '../infrastructure/storage/sqlite_recent_search_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
 import '../presentation/screens/home/home_view_model.dart';
@@ -71,6 +78,7 @@ import '../presentation/screens/no_spots/no_spots_view_model.dart';
 import '../presentation/screens/offline/offline_view_model.dart';
 import '../presentation/screens/profile/profile_view_model.dart';
 import '../presentation/screens/reserve/reserve_view_model.dart';
+import '../presentation/screens/voice_search/voice_search_view_model.dart';
 import '../presentation/shell/shell_view_model.dart';
 
 class AppDependencies {
@@ -90,6 +98,9 @@ class AppDependencies {
     required this.spotRanker,
     required this.nearbyLots,
     required this.lotRedirects,
+    required this.speech,
+    required this.recentSearches,
+    required this.phraseInterpreter,
     this.forecastStore,
   });
 
@@ -161,6 +172,9 @@ class AppDependencies {
       directions: UrlLauncherDirections(),
       telemetry: telemetry,
       device: await readDeviceDescription(),
+      speech: DeviceSpeechRecognizer(),
+      recentSearches: SqliteRecentSearchStore(database),
+      phraseInterpreter: interpretPhraseInBackground,
       forecastStore: forecastStore,
     );
   }
@@ -183,6 +197,9 @@ class AppDependencies {
       outbox: MockReservationOutbox(),
       drafts: MockFormDraftStore(),
       spotRanker: rankSpotsInline,
+      speech: MockSpeechRecognizer(),
+      recentSearches: MemoryRecentSearchStore(),
+      phraseInterpreter: interpretPhraseInline,
     );
   }
 
@@ -201,6 +218,9 @@ class AppDependencies {
   final SpotRanker spotRanker;
   final NearbyLotRepository nearbyLots;
   final LotRedirectStore lotRedirects;
+  final SpeechRecognizer speech;
+  final RecentSearchStore recentSearches;
+  final PhraseInterpreter phraseInterpreter;
   final ForecastStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
@@ -240,6 +260,18 @@ class AppDependencies {
         telemetry,
         connectivity,
         rank: spotRanker,
+      ),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => VoiceSearchViewModel(
+        speech,
+        recentSearches,
+        parking,
+        preferences,
+        telemetry,
+        device,
+        connectivity,
+        interpret: phraseInterpreter,
       ),
     ),
     ChangeNotifierProvider(

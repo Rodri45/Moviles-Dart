@@ -23,6 +23,7 @@ dependencies:
   path_provider: ^2.1.6
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
+  speech_to_text: ^7.5.0
   sqflite: ^2.4.5
   url_launcher: ^6.3.1
 

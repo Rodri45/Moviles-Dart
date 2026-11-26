@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:parkwise/domain/entities/search_session.dart';
 import 'package:parkwise/domain/errors.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_location_provider.dart';
@@ -44,6 +45,17 @@ void main() {
       expect(selected['levelCode'], spot.levelCode);
       expect(telemetry.named('reserve_confirm_tapped'), hasLength(1));
       expect(telemetry.named('reserve_failed'), isEmpty);
+    });
+
+    test('a spot chosen from a search carries the search id', () {
+      reserve.selectSpot(
+        spot,
+        search: const SearchSession(id: 'search-1', mode: SearchMode.voice),
+      );
+
+      final selected = telemetry.named('spot_selected').single;
+      expect(selected['searchId'], 'search-1');
+      expect(selected['mode'], 'voice');
     });
 
     test('a spot taken by someone else is reported with its reason', () async {

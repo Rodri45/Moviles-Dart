@@ -7,6 +7,7 @@ import '../presentation/screens/forecast/forecast_screen.dart';
 import '../presentation/screens/no_spots/no_spots_screen.dart';
 import '../presentation/screens/offline/offline_screen.dart';
 import '../presentation/screens/register/register_screen.dart';
+import '../presentation/screens/voice_search/voice_search_screen.dart';
 import '../presentation/shell/auth_gate.dart';
 
 abstract final class AppRouter {
@@ -26,6 +27,7 @@ abstract final class AppRouter {
       NoSpotsScreen.routeName => const NoSpotsScreen(),
       FindMyCarScreen.routeName => const FindMyCarScreen(),
       OfflineScreen.routeName => const OfflineScreen(),
+      VoiceSearchScreen.routeName => const VoiceSearchScreen(),
       _ => const AuthGate(),
     };
 

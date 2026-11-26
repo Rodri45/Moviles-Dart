@@ -22,6 +22,7 @@ import 'package:parkwise/presentation/screens/profile/profile_screen.dart';
 import 'package:parkwise/presentation/screens/register/register_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_view_model.dart';
+import 'package:parkwise/presentation/screens/voice_search/voice_search_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'support/test_app.dart';
@@ -45,6 +46,7 @@ void main() {
     'No campus spots': NoSpotsScreen(),
     'Find my car': FindMyCarScreen(),
     'Offline': OfflineScreen(),
+    'Voice search': VoiceSearchScreen(),
   };
 
   const sizes = <String, Size>{

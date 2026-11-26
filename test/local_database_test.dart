@@ -8,6 +8,7 @@ import 'package:parkwise/infrastructure/storage/reservation_history_store.dart';
 import 'package:parkwise/infrastructure/storage/sqlite_lot_redirect_store.dart';
 import 'package:parkwise/infrastructure/storage/sqlite_nearby_lot_store.dart';
 import 'package:parkwise/infrastructure/storage/sqlite_pending_action_store.dart';
+import 'package:parkwise/infrastructure/storage/sqlite_recent_search_store.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -80,7 +81,7 @@ void main() {
       );
       expect(
         tables.map((row) => row['name']),
-        containsAll(['nearby_lots', 'lot_redirects']),
+        containsAll(['nearby_lots', 'lot_redirects', 'recent_searches']),
       );
     } finally {
       await db.close();
@@ -193,6 +194,30 @@ void main() {
       expect(latest.answered, isTrue);
       expect(latest.parked, isTrue);
       expect(latest.redirectedAt, at);
+    } finally {
+      await db.close();
+    }
+  });
+
+  test('recent searches keep the last ten, each phrase once', () async {
+    final db = await LocalDatabase.open(databasePath: inMemoryDatabasePath);
+    final store = SqliteRecentSearchStore(db);
+    final start = DateTime.utc(2026, 11, 24, 7);
+    try {
+      for (var i = 0; i < 12; i++) {
+        await store.save('spot $i', start.add(Duration(minutes: i)));
+      }
+      await store.save('SPOT 5', start.add(const Duration(hours: 1)));
+
+      final recent = await store.recent();
+      expect(recent, hasLength(SqliteRecentSearchStore.keep));
+      expect(recent.first.phrase, 'SPOT 5');
+      expect(recent.first.searchedAt, start.add(const Duration(hours: 1)));
+      expect(recent.map((search) => search.phrase), isNot(contains('spot 1')));
+      expect(
+        recent.where((search) => search.phrase.toLowerCase() == 'spot 5'),
+        hasLength(1),
+      );
     } finally {
       await db.close();
     }

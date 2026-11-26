@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parkwise/domain/entities/parking_spot.dart';
 import 'package:parkwise/domain/entities/saved.dart';
+import 'package:parkwise/domain/entities/search_session.dart';
 import 'package:parkwise/domain/entities/spot_filter.dart';
 import 'package:parkwise/domain/services/spot_ranking.dart';
+import 'package:parkwise/domain/services/voice_query_parser.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 import 'package:parkwise/infrastructure/mock/mock_preferences_store.dart';
@@ -204,5 +206,80 @@ void main() {
 
     expect(ranks, FindSpotViewModel.memoryEntries + 2);
     expect(finder.fromMemory, isFalse);
+  });
+
+  group('BQ13 searches', () {
+    late FindSpotViewModel finder;
+    var ids = 0;
+
+    setUp(() {
+      ids = 0;
+      finder = FindSpotViewModel(
+        parking,
+        MockPreferencesStore(),
+        telemetry,
+        MockConnectivity(),
+        rank: rankSpotsInline,
+        clock: () => now,
+        newSearchId: () => 'search-${++ids}',
+      );
+    });
+
+    tearDown(() => finder.dispose());
+
+    test('a voice search sets filters and words and is sent once', () async {
+      const phrase = 'eléctrico en el P2';
+
+      await finder.searchPhrase(phrase, interpretPhrase(phrase), spoken: true);
+
+      expect(finder.filters, {SpotFilter.available, SpotFilter.electric});
+      expect(finder.query, 'P2');
+      expect(finder.results.map((spot) => spot.id), ['P2-A-02']);
+      expect(finder.spokenPhrase, phrase);
+      expect(finder.searchForSelection()?.mode, SearchMode.voice);
+      expect(telemetry.named('spot_search').single, {
+        'searchId': 'search-1',
+        'mode': 'voice',
+        'resultCount': 1,
+        'fromCache': false,
+        'offline': false,
+        'voiceFallback': false,
+      });
+    });
+
+    test('a repeated recent search counts as text', () async {
+      await finder.searchPhrase(
+        'VIP en P1',
+        interpretPhrase('VIP en P1'),
+        spoken: false,
+      );
+
+      expect(finder.spokenPhrase, isNull);
+      expect(telemetry.named('spot_search').single['mode'], 'text');
+    });
+
+    test('typing after a failed voice search keeps that mark once', () {
+      finder.typeAfterVoice();
+      finder.setQuery('P1');
+      final first = finder.searchForSelection();
+      finder.setQuery('');
+      finder.setQuery('B');
+      final second = finder.searchForSelection();
+
+      expect(first?.id, 'search-1');
+      expect(second?.id, 'search-2');
+      final events = telemetry.named('spot_search').toList();
+      expect(events.map((event) => event['mode']), ['text', 'text']);
+      expect(events.map((event) => event['voiceFallback']), [true, false]);
+    });
+
+    test('a word erased before it settles is not a search', () {
+      finder.setQuery('P');
+      finder.setQuery('');
+
+      expect(finder.search, isNull);
+      expect(finder.searchForSelection(), isNull);
+      expect(telemetry.named('spot_search'), isEmpty);
+    });
   });
 }
