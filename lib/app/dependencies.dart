@@ -18,15 +18,19 @@ import '../domain/ports/location_provider.dart';
 import '../domain/ports/lot_redirect_store.dart';
 import '../domain/ports/nearby_lot_repository.dart';
 import '../domain/ports/parking_repository.dart';
+import '../domain/ports/photo_source.dart';
 import '../domain/ports/preferences_store.dart';
 import '../domain/ports/recent_search_store.dart';
+import '../domain/ports/report_repository.dart';
 import '../domain/ports/reservation_outbox.dart';
 import '../domain/ports/reservation_repository.dart';
 import '../domain/ports/speech_recognizer.dart';
 import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
+import '../domain/services/photo_compression.dart';
 import '../domain/services/spot_ranking.dart';
 import '../domain/services/voice_query_parser.dart';
+import '../infrastructure/device/camera_photo_source.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
 import '../infrastructure/device/device_info_reader.dart';
 import '../infrastructure/device/device_speech_recognizer.dart';
@@ -36,6 +40,7 @@ import '../infrastructure/http/api_client.dart';
 import '../infrastructure/http/history_memory_cache.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
+import '../infrastructure/http/http_report_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
 import '../infrastructure/http/outbox_reservation_repository.dart';
@@ -50,7 +55,9 @@ import '../infrastructure/mock/mock_directions_launcher.dart';
 import '../infrastructure/mock/mock_form_draft_store.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
+import '../infrastructure/mock/mock_photo_source.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
+import '../infrastructure/mock/mock_report_repository.dart';
 import '../infrastructure/mock/mock_reservation_outbox.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
 import '../infrastructure/mock/mock_speech_recognizer.dart';
@@ -77,6 +84,8 @@ import '../presentation/screens/no_spots/lot_arrival_view_model.dart';
 import '../presentation/screens/no_spots/no_spots_view_model.dart';
 import '../presentation/screens/offline/offline_view_model.dart';
 import '../presentation/screens/profile/profile_view_model.dart';
+import '../presentation/screens/report/my_reports_view_model.dart';
+import '../presentation/screens/report/report_view_model.dart';
 import '../presentation/screens/reserve/reserve_view_model.dart';
 import '../presentation/screens/voice_search/voice_search_view_model.dart';
 import '../presentation/shell/shell_view_model.dart';
@@ -101,6 +110,9 @@ class AppDependencies {
     required this.speech,
     required this.recentSearches,
     required this.phraseInterpreter,
+    required this.reports,
+    required this.photos,
+    required this.photoCompressor,
     this.forecastStore,
   });
 
@@ -175,6 +187,13 @@ class AppDependencies {
       speech: DeviceSpeechRecognizer(),
       recentSearches: SqliteRecentSearchStore(database),
       phraseInterpreter: interpretPhraseInBackground,
+      reports: HttpReportRepository(
+        client,
+        offlineStore,
+        () => session.token,
+      ),
+      photos: CameraPhotoSource(),
+      photoCompressor: compressPhotoInBackground,
       forecastStore: forecastStore,
     );
   }
@@ -200,6 +219,9 @@ class AppDependencies {
       speech: MockSpeechRecognizer(),
       recentSearches: MemoryRecentSearchStore(),
       phraseInterpreter: interpretPhraseInline,
+      reports: MockReportRepository(),
+      photos: MockPhotoSource(),
+      photoCompressor: compressPhotoInline,
     );
   }
 
@@ -221,6 +243,9 @@ class AppDependencies {
   final SpeechRecognizer speech;
   final RecentSearchStore recentSearches;
   final PhraseInterpreter phraseInterpreter;
+  final ReportRepository reports;
+  final PhotoSource photos;
+  final PhotoCompressor photoCompressor;
   final ForecastStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
@@ -274,6 +299,16 @@ class AppDependencies {
         interpret: phraseInterpreter,
       ),
     ),
+    ChangeNotifierProvider(
+      create: (_) => ReportViewModel(
+        reports,
+        photos,
+        parking,
+        preferences,
+        compress: photoCompressor,
+      ),
+    ),
+    ChangeNotifierProvider(create: (_) => MyReportsViewModel(reports)),
     ChangeNotifierProvider(
       create: (_) => OfflineViewModel(
         parking,
