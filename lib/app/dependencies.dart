@@ -335,6 +335,7 @@ class AppDependencies {
         parking,
         preferences,
         weekStore,
+        telemetry,
         connectivity,
         buildHeatMap: heatMapBuilder,
       ),

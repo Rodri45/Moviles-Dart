@@ -8,6 +8,7 @@ import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
+import '../../../domain/ports/telemetry.dart';
 import '../../../domain/ports/week_forecast_store.dart';
 import '../../shared/connectivity_aware.dart';
 import '../../shared/error_messages.dart';
@@ -18,6 +19,7 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
     this._parking,
     this._preferences,
     this._store,
+    this._telemetry,
     ConnectivityPort connectivity, {
     this._buildHeatMap = buildHeatMapInBackground,
     DateTime Function()? clock,
@@ -43,9 +45,12 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
   final WeekForecastStore _store;
+  final Telemetry _telemetry;
   final HeatMapBuilder _buildHeatMap;
   final DateTime Function() _clock;
   final SparseArrayCache<DayForecast> _memory;
+  final Set<String> _viewedLevels = {};
+  Map<String, String>? _photos;
   Map<int, DayForecast> _days = const {};
   int _generation = 0;
   bool _disposed = false;
@@ -71,6 +76,8 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
 
   bool get hasWeek => _days.isNotEmpty;
 
+  String? get photoUrl => _photos?[level];
+
   List<DateTime> get missingDays => [
     for (final date in days)
       if (_days[dayNumber(date)]?.levels[level] == null) date,
@@ -83,6 +90,7 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
     arrivalAt = _preferences.arrivalTime ?? _clock().add(defaultLead);
     final saved = _preferences.plannerLevel;
     if (saved != null && levelCodes.contains(saved)) level = saved;
+    _viewedLevels.clear();
     return load();
   }
 
@@ -99,12 +107,15 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
         remembered,
         at: _memory.storedAt(dayNumber(days.first)) ?? _clock(),
       );
-    } else {
-      await _fetchWeek(days.first);
     }
+    await Future.wait([
+      if (remembered == null) _fetchWeek(days.first),
+      if (refresh || _photos == null) _loadPhotos(),
+    ]);
     isLoading = false;
     await _updateHeatMap();
     notifyListeners();
+    _trackView();
   }
 
   Future<void> selectLevel(String code) async {
@@ -118,6 +129,7 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
     );
     await _updateHeatMap();
     notifyListeners();
+    _trackView();
   }
 
   Future<void> setArrivalTime(int hour, int minute) async {
@@ -126,6 +138,15 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
     await _updateHeatMap();
     notifyListeners();
+  }
+
+  void useTime(BestTime time) {
+    _telemetry.track('week_slot_used', {
+      'day': isoDay(time.start),
+      'hour': time.start.hour,
+      'level': level,
+      'predicted': (time.occupancy * 100).round(),
+    });
   }
 
   WeekForecast? _fromMemory() {
@@ -175,6 +196,15 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
       errorMessage =
           'The week of ${failed.keys.join(', ')} could not be loaded. '
           'Pull down to try again.';
+    }
+  }
+
+  Future<void> _loadPhotos() async {
+    try {
+      final levels = (await _parking.getLevels()).data.levels;
+      _photos = {for (final item in levels) item.code: ?item.imageUrl};
+    } catch (e) {
+      debugPrint('level photos failed: $e');
     }
   }
 
@@ -233,6 +263,15 @@ class WeekPlanViewModel extends ChangeNotifier with ConnectivityAware {
     );
     final result = await _buildHeatMap(request);
     if (generation == _generation) heatMap = result;
+  }
+
+  void _trackView() {
+    if (!hasWeek || !_viewedLevels.add(level)) return;
+    _telemetry.track('week_viewed', {
+      'level': level,
+      'arrivalHour': arrivalAt.hour,
+      'offline': showingSavedData,
+    });
   }
 
   static bool _isUnreachable(Object error) =>

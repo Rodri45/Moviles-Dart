@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:parkwise/domain/entities/levels_overview.dart';
+import 'package:parkwise/domain/entities/parking_level.dart';
 import 'package:parkwise/domain/entities/saved.dart';
 import 'package:parkwise/domain/entities/week_forecast.dart';
 import 'package:parkwise/domain/errors.dart';
@@ -9,6 +11,7 @@ import 'package:parkwise/infrastructure/mock/memory_week_forecast_store.dart';
 import 'package:parkwise/infrastructure/mock/mock_connectivity.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 import 'package:parkwise/infrastructure/mock/mock_preferences_store.dart';
+import 'package:parkwise/infrastructure/mock/mock_telemetry.dart';
 import 'package:parkwise/infrastructure/mock/parking_mock_data.dart';
 import 'package:parkwise/presentation/screens/week_plan/week_heat_map.dart';
 import 'package:parkwise/presentation/screens/week_plan/week_plan_view_model.dart';
@@ -44,12 +47,14 @@ void main() {
   late MockPreferencesStore preferences;
   late MemoryWeekForecastStore store;
   late MockConnectivity connectivity;
+  late MockTelemetry telemetry;
   late WeekPlanViewModel week;
 
   WeekPlanViewModel planner() => WeekPlanViewModel(
     parking,
     preferences,
     store,
+    telemetry,
     connectivity,
     buildHeatMap: buildHeatMapInline,
     clock: () => now,
@@ -63,6 +68,7 @@ void main() {
     );
     store = MemoryWeekForecastStore();
     connectivity = MockConnectivity();
+    telemetry = MockTelemetry();
     week = planner();
   });
 
@@ -224,6 +230,7 @@ void main() {
       week.heatMap.best.every((time) => time.start.day <= 26),
       isTrue,
     );
+    expect(telemetry.named('week_viewed').single['offline'], isTrue);
   });
 
   test('without signal and without a saved week it says so', () async {
@@ -252,5 +259,58 @@ void main() {
     expect(week.unreachable, isFalse);
     expect(week.fromStorage, isFalse);
     expect(week.hasWeek, isTrue);
+  });
+
+  test('each level shown in a visit is reported once', () async {
+    await week.open();
+    await week.selectLevel('P2');
+    await week.selectLevel('P1');
+    await week.refresh();
+
+    expect(telemetry.named('week_viewed').toList(), [
+      {'level': 'P1', 'arrivalHour': 8, 'offline': false},
+      {'level': 'P2', 'arrivalHour': 8, 'offline': false},
+    ]);
+
+    await week.open();
+    expect(telemetry.named('week_viewed'), hasLength(3));
+  });
+
+  test('using a time reports the day, the hour and the prediction', () async {
+    await week.open();
+
+    week.useTime(week.heatMap.best.first);
+
+    expect(telemetry.named('week_slot_used').single, {
+      'day': '2026-11-27',
+      'hour': 7,
+      'level': 'P1',
+      'predicted': 52,
+    });
+  });
+
+  test('the photo of the entrance follows the level', () async {
+    parking.levels = LevelsOverview(
+      generatedAt: now,
+      campusFull: false,
+      levels: const [
+        ParkingLevel(
+          code: 'P2',
+          name: 'Level P2',
+          underground: true,
+          total: 48,
+          free: 10,
+          reserved: 0,
+          occupied: 38,
+          imageUrl: 'https://parkwise.example.com/images/levels/P2.jpg',
+        ),
+      ],
+    );
+
+    await week.open();
+    expect(week.photoUrl, isNull);
+
+    await week.selectLevel('P2');
+    expect(week.photoUrl, 'https://parkwise.example.com/images/levels/P2.jpg');
   });
 }

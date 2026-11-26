@@ -81,4 +81,19 @@ void main() {
     );
     expect(withoutPhoto.imageUrl, isNull);
   });
+
+  test('the photo of a level entrance is resolved against the server', () {
+    final level = ParkingLevel.fromJson({
+      'code': 'P2',
+      'name': 'Level P2',
+      'underground': true,
+      'total': 48,
+      'free': 10,
+      'reserved': 0,
+      'occupied': 38,
+      'imageUrl': '/images/levels/P2.jpg',
+    }, imageBase: 'https://parkwise.example.com');
+
+    expect(level.imageUrl, 'https://parkwise.example.com/images/levels/P2.jpg');
+  });
 }

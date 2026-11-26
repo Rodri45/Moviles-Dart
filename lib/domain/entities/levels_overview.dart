@@ -7,12 +7,18 @@ class LevelsOverview {
     required this.levels,
   });
 
-  factory LevelsOverview.fromJson(Map<String, dynamic> json) => LevelsOverview(
+  factory LevelsOverview.fromJson(
+    Map<String, dynamic> json, {
+    String? imageBase,
+  }) => LevelsOverview(
     generatedAt: DateTime.parse(json['generatedAt'] as String),
     campusFull: json['campusFull'] as bool,
     levels: [
       for (final level in json['levels'] as List)
-        ParkingLevel.fromJson(level as Map<String, dynamic>),
+        ParkingLevel.fromJson(
+          level as Map<String, dynamic>,
+          imageBase: imageBase,
+        ),
     ],
   );
 
