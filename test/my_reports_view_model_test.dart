@@ -23,13 +23,20 @@ void main() {
   late MockConnectivity connectivity;
   late OutboxReportRepository outbox;
   late MyReportsViewModel reports;
+  late DateTime now;
 
   setUp(() {
+    now = DateTime(2026, 11, 24, 9);
     server = MockReportRepository();
     store = MemoryPendingReportStore();
     connectivity = MockConnectivity();
     outbox = OutboxReportRepository(server, store, connectivity);
-    reports = MyReportsViewModel(outbox, outbox, connectivity);
+    reports = MyReportsViewModel(
+      outbox,
+      outbox,
+      connectivity,
+      clock: () => now,
+    );
   });
 
   tearDown(() {
@@ -94,5 +101,43 @@ void main() {
 
     expect(reports.reports, isEmpty);
     expect(await outbox.pending(), isEmpty);
+  });
+
+  test('going back to the list within a minute uses the memory', () async {
+    await outbox.send(report('a'));
+    await reports.load();
+    expect(server.mineCalls, 1);
+
+    now = now.add(const Duration(seconds: 59));
+    await reports.load();
+    expect(server.mineCalls, 1);
+    expect(reports.reports.single.clientId, 'a');
+
+    now = now.add(const Duration(seconds: 2));
+    await reports.load();
+    expect(server.mineCalls, 2);
+
+    await reports.refresh();
+    expect(server.mineCalls, 3);
+  });
+
+  test('a report sent while the list is in memory joins it', () async {
+    await outbox.send(report('a', hour: 7));
+    await reports.load();
+    server.failure = const NetworkException('offline');
+    await outbox.send(report('bb'));
+    await pumpEventQueue();
+    server.failure = null;
+    await outbox.flush();
+    await pumpEventQueue();
+
+    await reports.load();
+
+    expect(server.mineCalls, 1);
+    expect(reports.reports.map((item) => item.clientId), ['bb', 'a']);
+    expect(
+      reports.reports.every((item) => item.state == ReportState.sent),
+      isTrue,
+    );
   });
 }

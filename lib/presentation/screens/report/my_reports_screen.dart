@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/cache/report_photo_cache.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
@@ -50,7 +53,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: reports.load,
+          onRefresh: reports.refresh,
           child: LayoutBuilder(
             builder: (context, constraints) => ListView(
               padding: EdgeInsets.symmetric(
@@ -98,7 +101,11 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   _NoReports(onReport: _newReport)
                 else
                   for (final report in reports.reports) ...[
-                    _ReportCard(report: report, now: now),
+                    _ReportCard(
+                      report: report,
+                      now: now,
+                      photoHeaders: reports.photoHeaders,
+                    ),
                     const SizedBox(height: 10),
                   ],
               ],
@@ -175,10 +182,15 @@ class _NoReports extends StatelessWidget {
 }
 
 class _ReportCard extends StatelessWidget {
-  const _ReportCard({required this.report, required this.now});
+  const _ReportCard({
+    required this.report,
+    required this.now,
+    required this.photoHeaders,
+  });
 
   final SpotReport report;
   final DateTime now;
+  final Map<String, String> photoHeaders;
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +200,7 @@ class _ReportCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ReportThumbnail(report: report),
+            _ReportThumbnail(report: report, headers: photoHeaders),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -224,26 +236,58 @@ class _ReportCard extends StatelessWidget {
 }
 
 class _ReportThumbnail extends StatelessWidget {
-  const _ReportThumbnail({required this.report});
+  const _ReportThumbnail({required this.report, required this.headers});
+
+  static const size = 56.0;
 
   final SpotReport report;
+  final Map<String, String> headers;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        color: Palette.background,
-        borderRadius: BorderRadius.circular(Radii.sm),
-      ),
-      child: Icon(
-        report.hasPhoto ? Icons.image_outlined : Icons.report_outlined,
-        size: 22,
-        color: Palette.textSecondary,
+    final url = report.photoUrl;
+    final file = report.photoPath;
+    final cacheWidth = (size * MediaQuery.devicePixelRatioOf(context)).round();
+    final Widget child;
+    if (file != null) {
+      child = Image.file(
+        File(file),
+        width: size,
+        height: size,
+        cacheWidth: cacheWidth,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _icon(Icons.image_outlined),
+      );
+    } else if (url != null) {
+      child = CachedNetworkImage(
+        imageUrl: url,
+        httpHeaders: headers,
+        cacheManager: ReportPhotoCache.manager,
+        width: size,
+        height: size,
+        memCacheWidth: cacheWidth,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => _icon(Icons.image_outlined),
+        errorWidget: (_, _, _) => _icon(Icons.image_outlined),
+      );
+    } else {
+      child = _icon(Icons.report_outlined);
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: Semantics(
+        label: report.hasPhoto ? 'Report photo' : 'Report without a photo',
+        child: child,
       ),
     );
   }
+
+  static Widget _icon(IconData icon) => Container(
+    width: size,
+    height: size,
+    color: Palette.background,
+    child: Icon(icon, size: 22, color: Palette.textSecondary),
+  );
 }
 
 class _StateBadge extends StatelessWidget {
