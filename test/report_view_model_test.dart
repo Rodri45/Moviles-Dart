@@ -5,6 +5,7 @@ import 'package:parkwise/domain/entities/parking_spot.dart';
 import 'package:parkwise/domain/entities/report_photo.dart';
 import 'package:parkwise/domain/entities/spot_report.dart';
 import 'package:parkwise/domain/errors.dart';
+import 'package:parkwise/infrastructure/mock/mock_form_draft_store.dart';
 import 'package:parkwise/infrastructure/mock/mock_parking_repository.dart';
 import 'package:parkwise/infrastructure/mock/mock_photo_source.dart';
 import 'package:parkwise/infrastructure/mock/mock_preferences_store.dart';
@@ -27,6 +28,8 @@ void main() {
   );
   final now = DateTime(2026, 11, 24, 8, 14);
   late MockReportRepository reports;
+  late MockPreferencesStore preferences;
+  late MockFormDraftStore drafts;
   late MockPhotoSource camera;
   late ReportViewModel report;
   late List<Uint8List> compressed;
@@ -43,7 +46,8 @@ void main() {
     reports,
     source,
     MockParkingRepository(),
-    MockPreferencesStore(),
+    preferences,
+    drafts,
     compress: compress,
     newId: () => 'client-1',
     clock: () => now,
@@ -51,6 +55,8 @@ void main() {
 
   setUp(() {
     reports = MockReportRepository();
+    preferences = MockPreferencesStore();
+    drafts = MockFormDraftStore();
     camera = MockPhotoSource(photo: Uint8List(2400000));
     compressed = [];
     report = build(camera);
@@ -135,5 +141,60 @@ void main() {
     expect(report.canSend, isFalse);
     expect(await report.send(), isNull);
     expect(reports.sendCalls, 0);
+  });
+
+  test('a report left halfway comes back when the view opens', () async {
+    report
+      ..start(spot: spot)
+      ..chooseKind(ReportKind.damaged)
+      ..changeNote('Paint gone');
+    await pumpEventQueue();
+
+    final next = build(camera);
+    addTearDown(next.dispose);
+    next.start();
+
+    expect(next.spot?.id, 'P2-A-14');
+    expect(next.spot?.levelCode, 'P2');
+    expect(next.spot?.status, SpotStatus.free);
+    expect(next.kind, ReportKind.damaged);
+    expect(next.note, 'Paint gone');
+  });
+
+  test('another spot starts a new report with the last type used', () async {
+    preferences.lastReportKind = 'blocked';
+    report
+      ..start(spot: spot)
+      ..changeNote('Old note');
+    await pumpEventQueue();
+
+    report.start(
+      spot: const ParkingSpot(
+        id: 'P1-A-01',
+        code: 'A-01',
+        zone: 'A',
+        levelCode: 'P1',
+        status: SpotStatus.occupied,
+        walkMinutes: 2,
+      ),
+    );
+
+    expect(report.kind, ReportKind.blocked);
+    expect(report.note, isEmpty);
+  });
+
+  test('sending keeps the type for next time and clears the draft', () async {
+    report
+      ..start(spot: spot)
+      ..chooseKind(ReportKind.damaged);
+
+    await report.send();
+    await pumpEventQueue();
+
+    expect(preferences.lastReportKind, 'damaged');
+    expect(drafts.read(ReportViewModel.draftForm), isEmpty);
+    report.start();
+    expect(report.spot, isNull);
+    expect(report.kind, ReportKind.damaged);
   });
 }

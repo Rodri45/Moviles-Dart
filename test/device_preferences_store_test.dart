@@ -49,4 +49,18 @@ void main() {
       VoiceLanguage.english,
     );
   });
+
+  test('the last problem type of a report is kept', () async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final store = DevicePreferencesStore(box, sharedPreferences);
+
+    expect(store.lastReportKind, isNull);
+
+    await store.saveLastReportKind('blocked');
+
+    expect(
+      DevicePreferencesStore(box, sharedPreferences).lastReportKind,
+      'blocked',
+    );
+  });
 }

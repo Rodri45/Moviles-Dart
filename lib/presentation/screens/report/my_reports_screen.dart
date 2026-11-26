@@ -58,6 +58,22 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                 vertical: Spacing.md,
               ),
               children: [
+                if (reports.waiting > 0) ...[
+                  NoticeBanner(
+                    title: reports.online ? 'Sending' : 'No signal',
+                    message: _waitingMessage(reports.waiting, reports.online),
+                    icon: reports.online ? Icons.upload : Icons.wifi_off,
+                  ),
+                  const SizedBox(height: Spacing.md),
+                ],
+                if (reports.rejected.isNotEmpty) ...[
+                  NoticeBanner(
+                    message: _rejectedMessage(reports.rejected),
+                    tone: NoticeTone.danger,
+                    icon: Icons.error_outline,
+                  ),
+                  const SizedBox(height: Spacing.md),
+                ],
                 if (reports.fromStorage) ...[
                   NoticeBanner(
                     title: 'Saved on this phone',
@@ -92,6 +108,20 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       ),
     );
   }
+}
+
+String _waitingMessage(int count, bool online) {
+  final reports = count == 1 ? '1 report is' : '$count reports are';
+  return online
+      ? '$reports going to ParkWise, one at a time.'
+      : '$reports saved on this phone and will be sent when you are back '
+            'online.';
+}
+
+String _rejectedMessage(List<SpotReport> rejected) {
+  final spots = rejected.map((report) => report.spotId).join(', ');
+  return 'ParkWise did not accept the report of $spots. You can send it '
+      'again with Report a problem.';
 }
 
 String _savedMessage(DateTime? savedAt) {

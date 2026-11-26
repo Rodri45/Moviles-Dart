@@ -21,6 +21,7 @@ import '../domain/ports/parking_repository.dart';
 import '../domain/ports/photo_source.dart';
 import '../domain/ports/preferences_store.dart';
 import '../domain/ports/recent_search_store.dart';
+import '../domain/ports/report_queue.dart';
 import '../domain/ports/report_repository.dart';
 import '../domain/ports/reservation_outbox.dart';
 import '../domain/ports/reservation_repository.dart';
@@ -43,11 +44,13 @@ import '../infrastructure/http/http_parking_repository.dart';
 import '../infrastructure/http/http_report_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
+import '../infrastructure/http/outbox_report_repository.dart';
 import '../infrastructure/http/outbox_reservation_repository.dart';
 import '../infrastructure/http/stored_nearby_lot_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/memory_lot_redirect_store.dart';
 import '../infrastructure/mock/memory_nearby_lot_store.dart';
+import '../infrastructure/mock/memory_pending_report_store.dart';
 import '../infrastructure/mock/memory_recent_search_store.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
@@ -74,6 +77,7 @@ import '../infrastructure/storage/session_store.dart';
 import '../infrastructure/storage/sqlite_lot_redirect_store.dart';
 import '../infrastructure/storage/sqlite_nearby_lot_store.dart';
 import '../infrastructure/storage/sqlite_pending_action_store.dart';
+import '../infrastructure/storage/sqlite_pending_report_store.dart';
 import '../infrastructure/storage/sqlite_recent_search_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
@@ -111,6 +115,7 @@ class AppDependencies {
     required this.recentSearches,
     required this.phraseInterpreter,
     required this.reports,
+    required this.reportQueue,
     required this.photos,
     required this.photoCompressor,
     this.forecastStore,
@@ -158,6 +163,14 @@ class AppDependencies {
       remember: httpReservations.remember,
     )..flush();
     final parking = HttpParkingRepository(client, offlineStore);
+    final reports = OutboxReportRepository(
+      HttpReportRepository(client, offlineStore, () => session.token),
+      SqlitePendingReportStore(
+        database,
+        Directory(path.join(supportDirectory.path, 'report_photos')),
+      ),
+      connectivity,
+    )..flush();
 
     return AppDependencies(
       auth: HttpAuthRepository(
@@ -187,11 +200,8 @@ class AppDependencies {
       speech: DeviceSpeechRecognizer(),
       recentSearches: SqliteRecentSearchStore(database),
       phraseInterpreter: interpretPhraseInBackground,
-      reports: HttpReportRepository(
-        client,
-        offlineStore,
-        () => session.token,
-      ),
+      reports: reports,
+      reportQueue: reports,
       photos: CameraPhotoSource(),
       photoCompressor: compressPhotoInBackground,
       forecastStore: forecastStore,
@@ -200,6 +210,12 @@ class AppDependencies {
 
   factory AppDependencies.mock() {
     final parking = MockParkingRepository();
+    final connectivity = MockConnectivity();
+    final reports = OutboxReportRepository(
+      MockReportRepository(),
+      MemoryPendingReportStore(),
+      connectivity,
+    );
     return AppDependencies(
       auth: MockAuthRepository(saved: MockAuthRepository.user),
       parking: parking,
@@ -207,7 +223,7 @@ class AppDependencies {
       lotRedirects: MemoryLotRedirectStore(),
       reservations: MockReservationRepository(),
       vehicles: MockVehicleLocator(),
-      connectivity: MockConnectivity(),
+      connectivity: connectivity,
       preferences: MockPreferencesStore(),
       location: MockLocationProvider(),
       directions: MockDirectionsLauncher(),
@@ -219,7 +235,8 @@ class AppDependencies {
       speech: MockSpeechRecognizer(),
       recentSearches: MemoryRecentSearchStore(),
       phraseInterpreter: interpretPhraseInline,
-      reports: MockReportRepository(),
+      reports: reports,
+      reportQueue: reports,
       photos: MockPhotoSource(),
       photoCompressor: compressPhotoInline,
     );
@@ -244,6 +261,7 @@ class AppDependencies {
   final RecentSearchStore recentSearches;
   final PhraseInterpreter phraseInterpreter;
   final ReportRepository reports;
+  final ReportQueue reportQueue;
   final PhotoSource photos;
   final PhotoCompressor photoCompressor;
   final ForecastStore? forecastStore;
@@ -305,10 +323,13 @@ class AppDependencies {
         photos,
         parking,
         preferences,
+        drafts,
         compress: photoCompressor,
       ),
     ),
-    ChangeNotifierProvider(create: (_) => MyReportsViewModel(reports)),
+    ChangeNotifierProvider(
+      create: (_) => MyReportsViewModel(reports, reportQueue, connectivity),
+    ),
     ChangeNotifierProvider(
       create: (_) => OfflineViewModel(
         parking,
