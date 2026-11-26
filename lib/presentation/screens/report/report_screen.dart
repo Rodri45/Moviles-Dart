@@ -10,7 +10,6 @@ import '../../../core/widgets/pill.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/report_photo.dart';
 import '../../../domain/entities/spot_report.dart';
-import 'my_reports_view_model.dart';
 import 'report_view_model.dart';
 
 String shownAs(SpotStatus status) => switch (status) {
@@ -68,14 +67,15 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> _send() async {
-    final reports = context.read<MyReportsViewModel>();
     final messenger = ScaffoldMessenger.of(context);
     final sent = await _report.send();
     if (!mounted || sent == null) return;
-    reports.added(sent);
-    messenger.showSnackBar(
-      SnackBar(content: Text('Report of ${sent.spotId} sent. Thank you.')),
-    );
+    final message = sent.state == ReportState.sent
+        ? 'Report of ${sent.spotId} sent. Thank you.'
+        : 'Report of ${sent.spotId} saved on this phone. It will be sent '
+              'when you are back online.';
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+    _note.clear();
     Navigator.of(context).pop(sent);
   }
 
@@ -138,6 +138,12 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               )
             : const Text('Send report'),
+      ),
+      const SizedBox(height: Spacing.sm),
+      Text(
+        'Without signal it is saved and sent when you are back online.',
+        textAlign: TextAlign.center,
+        style: AppTypography.caption,
       ),
     ];
 
