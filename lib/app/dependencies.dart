@@ -92,6 +92,8 @@ import '../presentation/screens/report/my_reports_view_model.dart';
 import '../presentation/screens/report/report_view_model.dart';
 import '../presentation/screens/reserve/reserve_view_model.dart';
 import '../presentation/screens/voice_search/voice_search_view_model.dart';
+import '../presentation/screens/week_plan/week_heat_map.dart';
+import '../presentation/screens/week_plan/week_plan_view_model.dart';
 import '../presentation/shell/shell_view_model.dart';
 
 class AppDependencies {
@@ -114,6 +116,7 @@ class AppDependencies {
     required this.speech,
     required this.recentSearches,
     required this.phraseInterpreter,
+    required this.heatMapBuilder,
     required this.reports,
     required this.reportQueue,
     required this.photos,
@@ -200,6 +203,7 @@ class AppDependencies {
       speech: DeviceSpeechRecognizer(),
       recentSearches: SqliteRecentSearchStore(database),
       phraseInterpreter: interpretPhraseInBackground,
+      heatMapBuilder: buildHeatMapInBackground,
       reports: reports,
       reportQueue: reports,
       photos: CameraPhotoSource(),
@@ -235,6 +239,7 @@ class AppDependencies {
       speech: MockSpeechRecognizer(),
       recentSearches: MemoryRecentSearchStore(),
       phraseInterpreter: interpretPhraseInline,
+      heatMapBuilder: buildHeatMapInline,
       reports: reports,
       reportQueue: reports,
       photos: MockPhotoSource(),
@@ -260,6 +265,7 @@ class AppDependencies {
   final SpeechRecognizer speech;
   final RecentSearchStore recentSearches;
   final PhraseInterpreter phraseInterpreter;
+  final HeatMapBuilder heatMapBuilder;
   final ReportRepository reports;
   final ReportQueue reportQueue;
   final PhotoSource photos;
@@ -315,6 +321,13 @@ class AppDependencies {
         device,
         connectivity,
         interpret: phraseInterpreter,
+      ),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => WeekPlanViewModel(
+        parking,
+        preferences,
+        buildHeatMap: heatMapBuilder,
       ),
     ),
     ChangeNotifierProvider(

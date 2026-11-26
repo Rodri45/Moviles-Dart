@@ -222,4 +222,25 @@ void main() {
     await home.refresh();
     expect(parking.forecastCalls, 2);
   });
+
+  test('a time chosen in Plan your week becomes the arrival', () async {
+    final preferences = MockPreferencesStore();
+    home = HomeViewModel(
+      parking,
+      preferences,
+      MockLocationProvider(),
+      telemetry,
+      connectivity,
+      clock: () => DateTime(2026, 11, 23, 6),
+    );
+    final thursday = DateTime(2026, 11, 26, 7);
+
+    await home.planArrival(thursday);
+
+    expect(home.arrivalAt, thursday);
+    expect(home.arrivesToday, isFalse);
+    expect(preferences.arrivalTime, thursday);
+    expect(telemetry.named('forecast_viewed').last['source'], 'week_plan');
+    expect(parking.forecastCalls, 1);
+  });
 }

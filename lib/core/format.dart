@@ -17,6 +17,11 @@ const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 String formatWeekday(DateTime date) => _weekdays[date.toLocal().weekday - 1];
 
+String formatDayMonth(DateTime date) {
+  final local = date.toLocal();
+  return '${formatWeekday(local)} ${local.day} ${_months[local.month - 1]}';
+}
+
 String formatDate(DateTime date) {
   final local = date.toLocal();
   return '${_months[local.month - 1]} ${local.day}, ${local.year}';

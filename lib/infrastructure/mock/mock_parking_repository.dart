@@ -6,6 +6,7 @@ import '../../domain/entities/nearby_lot.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/entities/saved.dart';
 import '../../domain/entities/spot_filter.dart';
+import '../../domain/entities/week_forecast.dart';
 import '../../domain/ports/parking_repository.dart';
 import 'parking_mock_data.dart';
 
@@ -53,6 +54,14 @@ class MockParkingRepository implements ParkingRepository {
       recommended: 'P2',
       predictions: const {'P1': 0.9, 'P2': 0.6, 'P3': 0.7},
     );
+  }
+
+  @override
+  Future<WeekForecast> getWeekForecast(
+    String level, {
+    required DateTime from,
+  }) async {
+    return ParkingMockData.week(level, from);
   }
 
   @override

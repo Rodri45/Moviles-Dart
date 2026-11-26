@@ -16,6 +16,7 @@ void main() {
   late Box<String> box;
   late bool online;
   late int status;
+  late Map<String, String> lastQuery;
   late HttpParkingRepository repository;
   final savedAt = DateTime(2026, 10, 2, 8, 3);
 
@@ -63,6 +64,28 @@ void main() {
     },
   ];
 
+  final weekJson = {
+    'from': '2026-11-23',
+    'hours': [6, 7],
+    'levels': [
+      {
+        'code': 'P2',
+        'days': [
+          {
+            'date': '2026-11-23',
+            'weekday': 1,
+            'occupancy': [0.21, null],
+          },
+          {
+            'date': '2026-11-24',
+            'weekday': 2,
+            'occupancy': [0.3, 0.5],
+          },
+        ],
+      },
+    ],
+  };
+
   setUpAll(() async {
     dir = await Directory.systemTemp.createTemp('parkwise_offline_test');
     Hive.init(dir.path);
@@ -79,8 +102,12 @@ void main() {
     status = 200;
     final client = MockClient((request) async {
       if (!online) throw http.ClientException('offline');
-      final body = request.url.path.endsWith('/levels')
+      lastQuery = request.url.queryParameters;
+      final path = request.url.path;
+      final body = path.endsWith('/levels')
           ? levelsJson
+          : path.endsWith('/predictions/week')
+          ? weekJson
           : spotsJson;
       return http.Response(
         status == 200 ? jsonEncode(body) : '{"error":"Level not found"}',
@@ -159,5 +186,20 @@ void main() {
       repository.getSpots('P1', destination: 'ml'),
       throwsA(isA<ApiException>()),
     );
+  });
+
+  test('the week of a level is asked from a date and read by day', () async {
+    final week = await repository.getWeekForecast(
+      'P2',
+      from: DateTime(2026, 11, 23, 9),
+    );
+
+    expect(lastQuery, {'level': 'P2', 'from': '2026-11-23'});
+    expect(week.hours, [6, 7]);
+    expect(week.days.map((day) => day.date), [
+      DateTime(2026, 11, 23),
+      DateTime(2026, 11, 24),
+    ]);
+    expect(week.days.first.levels['P2'], [0.21, null]);
   });
 }
