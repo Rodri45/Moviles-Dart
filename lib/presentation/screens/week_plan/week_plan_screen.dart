@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/cache/level_photo_cache.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/spacing.dart';
 import '../../../core/design/typography.dart';
 import '../../../core/format.dart';
+import '../../../core/widgets/lot_photo.dart';
 import '../../../core/widgets/notice_banner.dart';
 import '../../../core/widgets/pill.dart';
 import '../home/home_view_model.dart';
@@ -48,6 +50,7 @@ class _WeekPlanScreenState extends State<WeekPlanScreen> {
   }
 
   void _useTime(BestTime time) {
+    context.read<WeekPlanViewModel>().useTime(time);
     unawaited(context.read<HomeViewModel>().planArrival(time.start));
     Navigator.of(context).pop();
   }
@@ -199,11 +202,7 @@ class _HeatMapCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'PREDICTED OCCUPANCY · ${week.level}'
-              '${week.fromStorage ? ' · SAVED' : ''}',
-              style: AppTypography.overline,
-            ),
+            _LevelHeader(week: week),
             const SizedBox(height: Spacing.sm),
             if (rows.isEmpty || !week.hasWeek)
               SizedBox(
@@ -225,6 +224,55 @@ class _HeatMapCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LevelHeader extends StatelessWidget {
+  const _LevelHeader({required this.week});
+
+  final WeekPlanViewModel week;
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = week.photoUrl;
+    return Row(
+      children: [
+        if (photo != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Radii.sm),
+            child: SizedBox(
+              width: 48,
+              child: LotPhoto(
+                name: 'Level ${week.level}',
+                url: photo,
+                height: 48,
+                cacheManager: LevelPhotoCache.manager,
+              ),
+            ),
+          ),
+          const SizedBox(width: Spacing.sm),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'PREDICTED OCCUPANCY · ${week.level}'
+                '${week.fromStorage ? ' · SAVED' : ''}',
+                style: AppTypography.overline,
+              ),
+              if (photo != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Entrance of Level ${week.level}',
+                  style: AppTypography.caption,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

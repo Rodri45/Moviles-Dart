@@ -26,7 +26,10 @@ class HttpParkingRepository implements ParkingRepository {
   Future<Saved<LevelsOverview>> getLevels({String? zone}) => _withOfflineCopy(
     'levels',
     () => _client.get('/levels', query: {'zone': ?zone}),
-    (json) => LevelsOverview.fromJson(json as Map<String, dynamic>),
+    (json) => LevelsOverview.fromJson(
+      json as Map<String, dynamic>,
+      imageBase: _client.baseUrl,
+    ),
   );
 
   @override
