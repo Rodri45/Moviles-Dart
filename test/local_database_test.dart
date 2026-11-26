@@ -81,7 +81,12 @@ void main() {
       );
       expect(
         tables.map((row) => row['name']),
-        containsAll(['nearby_lots', 'lot_redirects', 'recent_searches']),
+        containsAll([
+          'nearby_lots',
+          'lot_redirects',
+          'recent_searches',
+          'pending_reports',
+        ]),
       );
     } finally {
       await db.close();

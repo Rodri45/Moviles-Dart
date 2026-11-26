@@ -20,6 +20,8 @@ import 'package:parkwise/presentation/screens/no_spots/no_spots_screen.dart';
 import 'package:parkwise/presentation/screens/offline/offline_screen.dart';
 import 'package:parkwise/presentation/screens/profile/profile_screen.dart';
 import 'package:parkwise/presentation/screens/register/register_screen.dart';
+import 'package:parkwise/presentation/screens/report/my_reports_screen.dart';
+import 'package:parkwise/presentation/screens/report/report_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_view_model.dart';
 import 'package:parkwise/presentation/screens/voice_search/voice_search_screen.dart';
@@ -47,6 +49,8 @@ void main() {
     'Find my car': FindMyCarScreen(),
     'Offline': OfflineScreen(),
     'Voice search': VoiceSearchScreen(),
+    'Report a problem': ReportScreen(),
+    'My reports': MyReportsScreen(),
   };
 
   const sizes = <String, Size>{

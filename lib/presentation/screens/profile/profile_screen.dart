@@ -12,6 +12,7 @@ import '../../../domain/entities/app_user.dart';
 import '../../shared/arrival_question_card.dart';
 import '../../shared/pending_actions_banner.dart';
 import '../login/auth_view_model.dart';
+import '../report/my_reports_screen.dart';
 import 'profile_view_model.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -51,6 +52,8 @@ class ProfileScreen extends StatelessWidget {
           children: [
             if (user != null)
               _UserCard(user: user, offline: auth.offlineSession),
+            const SizedBox(height: Spacing.lg),
+            const _ReportsLink(),
             const SizedBox(height: Spacing.lg),
             const ArrivalQuestionCard(),
             Text('RESERVATION HISTORY', style: AppTypography.overline),
@@ -96,6 +99,30 @@ String _savedHistoryMessage(DateTime? savedAt) {
   if (savedAt == null) return 'It updates when you\'re back online.';
   return 'Updated ${formatDate(savedAt)} at ${formatTime(savedAt)}. '
       'It updates when you\'re back online.';
+}
+
+class _ReportsLink extends StatelessWidget {
+  const _ReportsLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        onTap: () =>
+            Navigator.of(context).pushNamed(MyReportsScreen.routeName),
+        leading: const Icon(Icons.flag_outlined, color: Palette.primary),
+        title: Text('My reports', style: AppTypography.heading2),
+        subtitle: Text(
+          'Spots you reported and their state',
+          style: AppTypography.caption,
+        ),
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: Palette.textSecondary,
+        ),
+      ),
+    );
+  }
 }
 
 class _LogoutDialog extends StatelessWidget {
