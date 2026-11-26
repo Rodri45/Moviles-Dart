@@ -25,6 +25,7 @@ import 'package:parkwise/presentation/screens/report/report_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_screen.dart';
 import 'package:parkwise/presentation/screens/reserve/reserve_view_model.dart';
 import 'package:parkwise/presentation/screens/voice_search/voice_search_screen.dart';
+import 'package:parkwise/presentation/screens/week_plan/week_plan_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'support/test_app.dart';
@@ -49,6 +50,7 @@ void main() {
     'Find my car': FindMyCarScreen(),
     'Offline': OfflineScreen(),
     'Voice search': VoiceSearchScreen(),
+    'Plan your week': WeekPlanScreen(),
     'Report a problem': ReportScreen(),
     'My reports': MyReportsScreen(),
   };

@@ -9,6 +9,8 @@ abstract interface class PreferencesStore {
 
   VoiceLanguage get voiceLanguage;
 
+  String? get plannerLevel;
+
   String? get lastReportKind;
 
   Future<void> saveDestination(String buildingId);
@@ -18,6 +20,8 @@ abstract interface class PreferencesStore {
   Future<void> saveLastOpenedLevel(String levelCode);
 
   Future<void> saveVoiceLanguage(VoiceLanguage language);
+
+  Future<void> savePlannerLevel(String levelCode);
 
   Future<void> saveLastReportKind(String kind);
 }

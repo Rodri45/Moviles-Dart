@@ -6,6 +6,7 @@ import '../../domain/entities/nearby_lot.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/entities/saved.dart';
 import '../../domain/entities/spot_filter.dart';
+import '../../domain/entities/week_forecast.dart';
 import '../../domain/ports/parking_repository.dart';
 import '../storage/offline_store.dart';
 import 'api_client.dart';
@@ -25,7 +26,10 @@ class HttpParkingRepository implements ParkingRepository {
   Future<Saved<LevelsOverview>> getLevels({String? zone}) => _withOfflineCopy(
     'levels',
     () => _client.get('/levels', query: {'zone': ?zone}),
-    (json) => LevelsOverview.fromJson(json as Map<String, dynamic>),
+    (json) => LevelsOverview.fromJson(
+      json as Map<String, dynamic>,
+      imageBase: _client.baseUrl,
+    ),
   );
 
   @override
@@ -100,6 +104,18 @@ class HttpParkingRepository implements ParkingRepository {
       query: {'arrivalAt': arrivalAt.toUtc().toIso8601String()},
     );
     return LevelRecommendation.fromJson(json as Map<String, dynamic>);
+  }
+
+  @override
+  Future<WeekForecast> getWeekForecast(
+    String level, {
+    required DateTime from,
+  }) async {
+    final json = await _client.get(
+      '/predictions/week',
+      query: {'level': level, 'from': isoDay(from)},
+    );
+    return WeekForecast.fromApi(json as Map<String, dynamic>);
   }
 
   @override

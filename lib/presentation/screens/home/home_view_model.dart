@@ -85,6 +85,13 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
 
   int get forecastHour => arrivalAt.hour;
 
+  bool get arrivesToday {
+    final now = _clock();
+    return arrivalAt.year == now.year &&
+        arrivalAt.month == now.month &&
+        arrivalAt.day == now.day;
+  }
+
   List<HourlyOccupancy> get forecast {
     if (_forecasts.isEmpty) return const [];
     final hourly = hourlyOccupancy(_forecasts);
@@ -144,6 +151,16 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     final now = _clock();
     var arrival = DateTime(now.year, now.month, now.day, hour, minute);
     if (arrival.isBefore(now)) arrival = arrival.add(const Duration(days: 1));
+    await _changeArrival(arrival, source: 'arrival_time_changed');
+  }
+
+  Future<void> planArrival(DateTime arrival) =>
+      _changeArrival(arrival, source: 'week_plan');
+
+  Future<void> _changeArrival(
+    DateTime arrival, {
+    required String source,
+  }) async {
     arrivalAt = arrival;
     String? preferenceError;
     try {
@@ -152,7 +169,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
       preferenceError = errorMessageFor(e);
       debugPrint('arrival time could not be saved: $e');
     }
-    _telemetry.track('forecast_viewed', {'source': 'arrival_time_changed'});
+    _telemetry.track('forecast_viewed', {'source': source});
     notifyListeners();
     await _loadForecast();
     forecastErrorMessage ??= preferenceError;
