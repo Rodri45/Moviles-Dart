@@ -46,10 +46,13 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     this._device,
     ConnectivityPort connectivity, {
     this._interpret = interpretPhraseInBackground,
+    this._previewDelay = defaultPreviewDelay,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now {
     watchConnectivity(connectivity, _loadDestination);
   }
+
+  static const defaultPreviewDelay = Duration(milliseconds: 300);
 
   static const examples = {
     VoiceLanguage.spanish: [
@@ -71,10 +74,14 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   final Telemetry _telemetry;
   final DeviceDescription _device;
   final PhraseInterpreter _interpret;
+  final Duration _previewDelay;
   final DateTime Function() _clock;
+  Timer? _previewTimer;
   StreamSubscription<SpeechUpdate>? _session;
   DateTime? _startedAt;
   int _generation = 0;
+  int _interpreted = 0;
+  int _thrownAway = 0;
   VoiceSearchOutcome? _outcome;
 
   VoiceStatus status = VoiceStatus.ready;
@@ -111,6 +118,8 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     heard = VoiceQuery.empty;
     failure = null;
     _startedAt = _clock();
+    _interpreted = 0;
+    _thrownAway = 0;
     notifyListeners();
     _session = _speech.listen(language.localeId).listen(_onSpeech);
   }
@@ -143,7 +152,8 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
       case SpeechHeard(:final words):
         this.words = words;
         notifyListeners();
-        unawaited(_preview(words));
+        _previewTimer?.cancel();
+        _previewTimer = Timer(_previewDelay, () => unawaited(_preview(words)));
       case SpeechFailed(:final reason):
         _fail(reason);
     }
@@ -151,17 +161,25 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
 
   Future<void> _preview(String phrase) async {
     final generation = ++_generation;
+    _interpreted++;
     final query = await _interpret(phrase);
-    if (generation != _generation || !isListening) return;
+    if (generation != _generation || !isListening) {
+      _thrownAway++;
+      return;
+    }
     heard = query;
     notifyListeners();
   }
 
   Future<void> _finish(String phrase) async {
+    _previewTimer?.cancel();
     final generation = ++_generation;
     words = phrase;
     _track('ok');
     final query = await _interpret(phrase);
+    debugPrint(
+      'voice previews: $_interpreted interpreted, $_thrownAway thrown away',
+    );
     if (generation != _generation) return;
     heard = query;
     if (!query.understood) {
@@ -174,6 +192,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   void _fail(SpeechFailure reason) {
+    _previewTimer?.cancel();
     _generation++;
     _track(_outcomeOf(reason));
     status = VoiceStatus.failed;
@@ -219,6 +238,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   Future<void> _endSession() async {
+    _previewTimer?.cancel();
     _generation++;
     final session = _session;
     _session = null;
@@ -246,6 +266,7 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
 
   @override
   void dispose() {
+    _previewTimer?.cancel();
     unawaited(_session?.cancel());
     super.dispose();
   }
