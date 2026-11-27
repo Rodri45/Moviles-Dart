@@ -75,6 +75,8 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
   StreamSubscription<SpeechUpdate>? _session;
   DateTime? _startedAt;
   int _generation = 0;
+  int _interpreted = 0;
+  int _thrownAway = 0;
   VoiceSearchOutcome? _outcome;
 
   VoiceStatus status = VoiceStatus.ready;
@@ -111,6 +113,8 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     heard = VoiceQuery.empty;
     failure = null;
     _startedAt = _clock();
+    _interpreted = 0;
+    _thrownAway = 0;
     notifyListeners();
     _session = _speech.listen(language.localeId).listen(_onSpeech);
   }
@@ -151,8 +155,12 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
 
   Future<void> _preview(String phrase) async {
     final generation = ++_generation;
+    _interpreted++;
     final query = await _interpret(phrase);
-    if (generation != _generation || !isListening) return;
+    if (generation != _generation || !isListening) {
+      _thrownAway++;
+      return;
+    }
     heard = query;
     notifyListeners();
   }
@@ -162,6 +170,9 @@ class VoiceSearchViewModel extends ChangeNotifier with ConnectivityAware {
     words = phrase;
     _track('ok');
     final query = await _interpret(phrase);
+    debugPrint(
+      'voice previews: $_interpreted interpreted, $_thrownAway thrown away',
+    );
     if (generation != _generation) return;
     heard = query;
     if (!query.understood) {
