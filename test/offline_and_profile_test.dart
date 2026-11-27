@@ -62,6 +62,36 @@ void main() {
     expect(auth.status, AuthStatus.unauthenticated);
   });
 
+  testWidgets('retry without signal says that it is still offline', (
+    tester,
+  ) async {
+    final deps = AppDependencies.mock();
+    (deps.connectivity as MockConnectivity).online = false;
+    await tester.pumpWidget(
+      testApp(
+        Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(OfflineScreen.routeName),
+              child: const Text('Open offline view'),
+            ),
+          ),
+        ),
+        dependencies: deps,
+      ),
+    );
+    await tester.tap(find.text('Open offline view'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Retry connection'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OfflineScreen), findsOneWidget);
+    expect(find.textContaining('Still no signal'), findsOneWidget);
+    expect(find.textContaining('Last try at'), findsOneWidget);
+  });
+
   testWidgets('the offline view closes when the signal returns', (
     tester,
   ) async {

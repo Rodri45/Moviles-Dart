@@ -41,6 +41,7 @@ class OfflineViewModel extends ChangeNotifier with ConnectivityAware {
   Reservation? reservation;
   int pendingActions = 0;
   bool isLoading = false;
+  DateTime? lastTry;
 
   String get mapLevel => reservation?.levelCode ?? 'P1';
 
@@ -76,6 +77,7 @@ class OfflineViewModel extends ChangeNotifier with ConnectivityAware {
       debugPrint('offline map failed: $e');
     }
     pendingActions = await _outbox.pendingCount();
+    lastTry = _clock();
     isLoading = false;
     notifyListeners();
   }
