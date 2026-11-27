@@ -105,8 +105,14 @@ class ReportViewModel extends ChangeNotifier {
     if (original == null) return;
     isCompressing = true;
     notifyListeners();
+    final watch = Stopwatch()..start();
     try {
-      photo = await _compress(original);
+      final compressed = await _compress(original);
+      photo = compressed;
+      debugPrint(
+        'photo ready in ${watch.elapsedMilliseconds} ms: '
+        '${original.length ~/ 1024} KB to ${compressed.sizeBytes ~/ 1024} KB',
+      );
     } catch (e) {
       debugPrint('photo not compressed: $e');
       errorMessage = 'The photo could not be read. Take it again.';
