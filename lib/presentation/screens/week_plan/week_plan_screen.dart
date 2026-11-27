@@ -34,6 +34,10 @@ class WeekPlanScreen extends StatefulWidget {
 }
 
 class _WeekPlanScreenState extends State<WeekPlanScreen> {
+  List<HeatRow>? _gridRows;
+  List<int>? _gridHours;
+  Widget _grid = const SizedBox.shrink();
+
   @override
   void initState() {
     super.initState();
@@ -55,10 +59,21 @@ class _WeekPlanScreenState extends State<WeekPlanScreen> {
     Navigator.of(context).pop();
   }
 
+  Widget _heatGrid(WeekPlanViewModel week) {
+    final rows = week.heatMap.rows;
+    final hours = week.hours;
+    if (!identical(rows, _gridRows) || !identical(hours, _gridHours)) {
+      _gridRows = rows;
+      _gridHours = hours;
+      _grid = _HeatGrid(hours: hours, rows: rows);
+    }
+    return _grid;
+  }
+
   @override
   Widget build(BuildContext context) {
     final week = context.watch<WeekPlanViewModel>();
-    final heatMap = _HeatMapCard(week: week);
+    final heatMap = _HeatMapCard(week: week, grid: _heatGrid(week));
     final bestTimes = _BestTimesCard(week: week, onUse: _useTime);
 
     return Scaffold(
@@ -189,9 +204,10 @@ class _Controls extends StatelessWidget {
 }
 
 class _HeatMapCard extends StatelessWidget {
-  const _HeatMapCard({required this.week});
+  const _HeatMapCard({required this.week, required this.grid});
 
   final WeekPlanViewModel week;
+  final Widget grid;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +233,7 @@ class _HeatMapCard extends StatelessWidget {
                 ),
               )
             else ...[
-              _HeatGrid(hours: week.hours, rows: rows),
+              grid,
               const SizedBox(height: Spacing.sm),
               _Legend(arrivalAt: week.arrivalAt, saved: week.fromStorage),
             ],
@@ -342,6 +358,16 @@ class _HeatGrid extends StatelessWidget {
   }
 }
 
+int _cellBuilds = 0;
+
+void _countCellBuild() {
+  if (_cellBuilds++ > 0) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    debugPrint('heat map cells built in this frame: $_cellBuilds');
+    _cellBuilds = 0;
+  });
+}
+
 class _Cell extends StatelessWidget {
   const _Cell({required this.cell, required this.saved, required this.label});
 
@@ -351,6 +377,7 @@ class _Cell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _countCellBuild();
     final step = cell.step;
     final occupancy = cell.occupancy;
     if (!saved) {
