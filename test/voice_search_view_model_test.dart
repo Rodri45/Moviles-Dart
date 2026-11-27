@@ -37,6 +37,7 @@ void main() {
       const DeviceDescription(model: 'Pixel 7', osVersion: '15'),
       connectivity,
       interpret: interpretPhraseInline,
+      previewDelay: Duration.zero,
       clock: () => now,
     );
   });
@@ -68,6 +69,38 @@ void main() {
       'osVersion': '15',
     });
     expect((await recent.recent()).single.phrase, 'eléctrico en el P2');
+  });
+
+  test('only the last words of a quick burst are interpreted', () async {
+    final interpreted = <String>[];
+    final counted = VoiceSearchViewModel(
+      speech,
+      recent,
+      MockParkingRepository(),
+      preferences,
+      telemetry,
+      const DeviceDescription(model: 'Pixel 7', osVersion: '15'),
+      connectivity,
+      interpret: (phrase) {
+        interpreted.add(phrase);
+        return interpretPhraseInline(phrase);
+      },
+      previewDelay: const Duration(milliseconds: 50),
+      clock: () => now,
+    );
+    addTearDown(counted.dispose);
+    await counted.open();
+
+    speech.hear('eléctrico');
+    speech.hear('eléctrico en');
+    speech.hear('eléctrico en el');
+    await pumpEventQueue();
+    expect(counted.words, 'eléctrico en el');
+    expect(interpreted, isEmpty);
+
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    expect(interpreted, ['eléctrico en el']);
+    expect(counted.heard.filters, contains(SpotFilter.electric));
   });
 
   test('a phrase without a level, zone or type asks to try again', () async {
