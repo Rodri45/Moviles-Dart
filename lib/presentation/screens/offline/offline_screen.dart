@@ -52,6 +52,20 @@ class _OfflineScreenState extends State<OfflineScreen> {
     );
   }
 
+  Future<void> _retry() async {
+    final messenger = ScaffoldMessenger.of(context);
+    await _offline.load();
+    if (!mounted || _offline.recovered) return;
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Still no signal. The saved data stays on the phone and updates '
+          'by itself when the signal returns.',
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _offline.removeListener(_closeWhenBack);
@@ -85,10 +99,27 @@ class _OfflineScreenState extends State<OfflineScreen> {
               ),
               const SizedBox(height: Spacing.lg),
               FilledButton.icon(
-                onPressed: offline.isLoading ? null : offline.load,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Retry connection'),
+                onPressed: offline.isLoading ? null : _retry,
+                icon: offline.isLoading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh, size: 18),
+                label: Text(
+                  offline.isLoading
+                      ? 'Trying to connect…'
+                      : 'Retry connection',
+                ),
               ),
+              if (offline.lastTry case final lastTry?) ...[
+                const SizedBox(height: Spacing.sm),
+                Text(
+                  'Last try at ${formatTime(lastTry)}',
+                  style: AppTypography.caption,
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: Spacing.lg),
             ],
             Text('SAVED AVAILABILITY', style: AppTypography.overline),
