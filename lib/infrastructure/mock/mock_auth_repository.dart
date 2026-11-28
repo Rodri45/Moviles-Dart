@@ -53,7 +53,7 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser?> cachedUser() async => saved;
+  Future<AppUser?> savedUser() async => saved;
 
   @override
   Future<void> logout() async => saved = null;

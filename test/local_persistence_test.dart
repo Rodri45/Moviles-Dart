@@ -88,10 +88,10 @@ void main() {
 
     await store.write(date, forecast);
 
-    final cached = await store.read(date);
-    expect(cached?.fromCache, isTrue);
-    expect(cached?.data.single.code, 'P2');
-    expect(cached?.data.single.points.single.occupancy, 0.42);
+    final stored = await store.read(date);
+    expect(stored?.fromStorage, isTrue);
+    expect(stored?.data.single.code, 'P2');
+    expect(stored?.data.single.points.single.occupancy, 0.42);
     expect(await store.read(date.add(const Duration(days: 1))), isNull);
   });
 }

@@ -14,6 +14,7 @@ import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/spot_filter.dart';
 import '../../shell/main_shell.dart';
 import '../../shell/shell_view_model.dart';
+import '../report/report_screen.dart';
 import '../reserve/reserve_view_model.dart';
 import 'level_map_view_model.dart';
 
@@ -514,6 +515,17 @@ class _SelectedSpotSheet extends StatelessWidget {
               ),
             ],
           ],
+        ),
+        const SizedBox(height: Spacing.xs),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamed(ReportScreen.routeName, arguments: spot),
+            icon: const Icon(Icons.flag_outlined, size: 18),
+            label: const Text('Report a problem with this spot'),
+          ),
         ),
       ],
     );

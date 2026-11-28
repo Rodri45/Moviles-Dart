@@ -7,6 +7,7 @@ import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/lead_time_advice.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/reservation.dart';
+import '../../../domain/entities/search_session.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/location_provider.dart';
@@ -60,6 +61,9 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
 
   int pendingActions = 0;
 
+  @override
+  bool get showingSavedData => pendingActions > 0;
+
   bool get canConfirm =>
       online && !isBusy && pendingSpot != null && reservation == null;
 
@@ -75,12 +79,12 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
-  void selectSpot(ParkingSpot spot) {
+  void selectSpot(ParkingSpot spot, {SearchSession? search}) {
     pendingSpot = spot;
     errorMessage = reservation == null
         ? null
         : 'You already have a reservation. Cancel it to pick another spot.';
-    _track('spot_selected', spot);
+    _track('spot_selected', spot, search: search);
     notifyListeners();
   }
 
@@ -232,11 +236,17 @@ class ReserveViewModel extends ChangeNotifier with ConnectivityAware {
     notifyListeners();
   }
 
-  void _track(String name, ParkingSpot spot, {String? reason}) {
+  void _track(
+    String name,
+    ParkingSpot spot, {
+    String? reason,
+    SearchSession? search,
+  }) {
     _telemetry?.track(name, {
       'levelCode': spot.levelCode,
       'spotCode': spot.code,
       'reason': ?reason,
+      ...?search?.properties,
     });
   }
 

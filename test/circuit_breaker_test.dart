@@ -100,4 +100,14 @@ void main() {
     expect(await trial, 'ok');
     expect(breaker.state, CircuitState.closed);
   });
+
+  test('reset closes an open breaker right away', () async {
+    await failTimes(3);
+    expect(breaker.state, CircuitState.open);
+
+    breaker.reset();
+
+    expect(breaker.state, CircuitState.closed);
+    expect(await breaker.run(ok), 'ok');
+  });
 }

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../cache/lot_photo_cache.dart';
 import '../design/palette.dart';
@@ -11,11 +12,13 @@ class LotPhoto extends StatelessWidget {
     required this.name,
     required this.url,
     this.height = 96,
+    this.cacheManager,
   });
 
   final String name;
   final String? url;
   final double height;
+  final BaseCacheManager? cacheManager;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +32,7 @@ class LotPhoto extends StatelessWidget {
           : LayoutBuilder(
               builder: (context, constraints) => CachedNetworkImage(
                 imageUrl: url,
-                cacheManager: LotPhotoCache.manager,
+                cacheManager: cacheManager ?? LotPhotoCache.manager,
                 memCacheWidth: (constraints.maxWidth * ratio).round(),
                 fit: BoxFit.cover,
                 fadeInDuration: const Duration(milliseconds: 150),

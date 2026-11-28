@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../domain/entities/parking_spot.dart';
 import '../domain/entities/spot_filter.dart';
 import '../presentation/screens/find_my_car/find_my_car_screen.dart';
 import '../presentation/screens/find_spot/find_spot_screen.dart';
@@ -7,12 +8,17 @@ import '../presentation/screens/forecast/forecast_screen.dart';
 import '../presentation/screens/no_spots/no_spots_screen.dart';
 import '../presentation/screens/offline/offline_screen.dart';
 import '../presentation/screens/register/register_screen.dart';
+import '../presentation/screens/report/my_reports_screen.dart';
+import '../presentation/screens/report/report_screen.dart';
+import '../presentation/screens/voice_search/voice_search_screen.dart';
+import '../presentation/screens/week_plan/week_plan_screen.dart';
 import '../presentation/shell/auth_gate.dart';
 
 abstract final class AppRouter {
   static const String root = '/';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
+    final arguments = settings.arguments;
     final page = switch (settings.name) {
       RegisterScreen.routeName => const RegisterScreen(),
       FindSpotScreen.routeName => const FindSpotScreen(),
@@ -26,6 +32,12 @@ abstract final class AppRouter {
       NoSpotsScreen.routeName => const NoSpotsScreen(),
       FindMyCarScreen.routeName => const FindMyCarScreen(),
       OfflineScreen.routeName => const OfflineScreen(),
+      VoiceSearchScreen.routeName => const VoiceSearchScreen(),
+      WeekPlanScreen.routeName => const WeekPlanScreen(),
+      ReportScreen.routeName => ReportScreen(
+        spot: arguments is ParkingSpot ? arguments : null,
+      ),
+      MyReportsScreen.routeName => const MyReportsScreen(),
       _ => const AuthGate(),
     };
 

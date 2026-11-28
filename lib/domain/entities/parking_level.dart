@@ -10,18 +10,28 @@ class ParkingLevel {
     required this.reserved,
     required this.occupied,
     this.disabled = 0,
+    this.imageUrl,
   });
 
-  factory ParkingLevel.fromJson(Map<String, dynamic> json) => ParkingLevel(
-    code: json['code'] as String,
-    name: json['name'] as String,
-    underground: json['underground'] as bool,
-    total: (json['total'] as num).toInt(),
-    free: (json['free'] as num).toInt(),
-    reserved: (json['reserved'] as num).toInt(),
-    occupied: (json['occupied'] as num).toInt(),
-    disabled: (json['disabled'] as num?)?.toInt() ?? 0,
-  );
+  factory ParkingLevel.fromJson(
+    Map<String, dynamic> json, {
+    String? imageBase,
+  }) {
+    final image = json['imageUrl'] as String?;
+    return ParkingLevel(
+      code: json['code'] as String,
+      name: json['name'] as String,
+      underground: json['underground'] as bool,
+      total: (json['total'] as num).toInt(),
+      free: (json['free'] as num).toInt(),
+      reserved: (json['reserved'] as num).toInt(),
+      occupied: (json['occupied'] as num).toInt(),
+      disabled: (json['disabled'] as num?)?.toInt() ?? 0,
+      imageUrl: image == null || imageBase == null
+          ? image
+          : Uri.parse(imageBase).resolve(image).toString(),
+    );
+  }
 
   final String code;
   final String name;
@@ -31,6 +41,7 @@ class ParkingLevel {
   final int reserved;
   final int occupied;
   final int disabled;
+  final String? imageUrl;
 
   int get physicalTotal => total + disabled;
   double get occupancy => total == 0 ? 0 : (reserved + occupied) / total;

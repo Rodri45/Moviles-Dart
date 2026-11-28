@@ -1,17 +1,17 @@
 import 'package:flutter/foundation.dart';
 
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/lead_time_advice.dart';
 import '../../domain/entities/reservation.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/ports/reservation_repository.dart';
-import '../storage/local_cache.dart';
+import '../storage/offline_store.dart';
 import '../storage/reservation_history_store.dart';
 import 'api_client.dart';
 
 class HttpReservationRepository implements ReservationRepository {
   HttpReservationRepository(
     this._client,
-    this._cache,
+    this._offline,
     this._historyStore,
     this._currentUserId,
   );
@@ -19,7 +19,7 @@ class HttpReservationRepository implements ReservationRepository {
   static const _activeKey = 'active_reservation';
 
   final ApiClient _client;
-  final LocalCache _cache;
+  final OfflineStore _offline;
   final ReservationHistoryStore _historyStore;
   final String? Function() _currentUserId;
 
@@ -46,14 +46,14 @@ class HttpReservationRepository implements ReservationRepository {
       return reservation;
     } catch (e) {
       final outage = ApiClient.isNetworkFailure(e);
-      final saved = outage ? _cache.read(_activeKey)?.data : null;
+      final saved = outage ? _offline.read(_activeKey)?.data : null;
       if (saved == null) rethrow;
       return Reservation.fromJson(saved as Map<String, dynamic>);
     }
   }
 
   @override
-  Future<Cached<List<Reservation>>> history() async {
+  Future<Saved<List<Reservation>>> history() async {
     final userId = _currentUserId();
     try {
       final json = await _client.get('/reservations/me') as List;
@@ -66,17 +66,17 @@ class HttpReservationRepository implements ReservationRepository {
             for (final reservation in reservations) _toRow(reservation),
           ]);
         } catch (e) {
-          debugPrint('reservation history cache write failed: $e');
+          debugPrint('reservation history write failed: $e');
         }
       }
-      return Cached(reservations, savedAt: DateTime.now());
+      return Saved(reservations, savedAt: DateTime.now());
     } catch (error) {
       if (!ApiClient.isNetworkFailure(error) || userId == null) rethrow;
-      final cached = await _historyStore.read(userId);
-      if (cached == null) rethrow;
-      return Cached(
+      final stored = await _historyStore.read(userId);
+      if (stored == null) rethrow;
+      return Saved(
         [
-          for (final row in cached.reservations)
+          for (final row in stored.reservations)
           Reservation.fromJson({
             'id': row['reservation_id'],
             'spotId': row['spot_id'],
@@ -89,8 +89,8 @@ class HttpReservationRepository implements ReservationRepository {
             'releasedAt': row['released_at'],
           }),
         ],
-        savedAt: cached.savedAt,
-        fromCache: true,
+        savedAt: stored.savedAt,
+        fromStorage: true,
       );
     }
   }
@@ -115,7 +115,7 @@ class HttpReservationRepository implements ReservationRepository {
     try {
       await _historyStore.upsert(userId, _toRow(reservation));
     } catch (e) {
-      debugPrint('reservation history cache update failed: $e');
+      debugPrint('reservation history update failed: $e');
     }
   }
 
@@ -133,8 +133,8 @@ class HttpReservationRepository implements ReservationRepository {
 
   Future<void> _rememberActive(Reservation? reservation) {
     if (reservation == null || !reservation.isOpen) {
-      return _cache.delete(_activeKey);
+      return _offline.delete(_activeKey);
     }
-    return _cache.write(_activeKey, reservation.toJson());
+    return _offline.write(_activeKey, reservation.toJson());
   }
 }

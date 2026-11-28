@@ -13,6 +13,15 @@ const _months = [
   'Dec',
 ];
 
+const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+String formatWeekday(DateTime date) => _weekdays[date.toLocal().weekday - 1];
+
+String formatDayMonth(DateTime date) {
+  final local = date.toLocal();
+  return '${formatWeekday(local)} ${local.day} ${_months[local.month - 1]}';
+}
+
 String formatDate(DateTime date) {
   final local = date.toLocal();
   return '${_months[local.month - 1]} ${local.day}, ${local.year}';
@@ -29,4 +38,11 @@ String formatCountdown(Duration duration) {
   final minutes = duration.inMinutes.toString().padLeft(2, '0');
   final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
   return '$minutes:$seconds';
+}
+
+String formatBytes(int bytes) {
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / 1024).ceil()} KB';
 }

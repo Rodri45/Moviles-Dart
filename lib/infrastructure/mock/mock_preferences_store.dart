@@ -1,3 +1,4 @@
+import '../../domain/entities/voice_language.dart';
 import '../../domain/ports/preferences_store.dart';
 
 class MockPreferencesStore implements PreferencesStore {
@@ -5,6 +6,9 @@ class MockPreferencesStore implements PreferencesStore {
     this.destination = 'sd',
     this.arrivalTime,
     this.lastOpenedLevel,
+    this.voiceLanguage = VoiceLanguage.spanish,
+    this.plannerLevel,
+    this.lastReportKind,
   });
 
   @override
@@ -15,6 +19,15 @@ class MockPreferencesStore implements PreferencesStore {
 
   @override
   String? lastOpenedLevel;
+
+  @override
+  VoiceLanguage voiceLanguage;
+
+  @override
+  String? plannerLevel;
+
+  @override
+  String? lastReportKind;
 
   @override
   Future<void> saveDestination(String buildingId) async =>
@@ -28,5 +41,20 @@ class MockPreferencesStore implements PreferencesStore {
   @override
   Future<void> saveLastOpenedLevel(String value) async {
     lastOpenedLevel = value;
+  }
+
+  @override
+  Future<void> saveVoiceLanguage(VoiceLanguage value) async {
+    voiceLanguage = value;
+  }
+
+  @override
+  Future<void> savePlannerLevel(String value) async {
+    plannerLevel = value;
+  }
+
+  @override
+  Future<void> saveLastReportKind(String value) async {
+    lastReportKind = value;
   }
 }

@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/lead_time_advice.dart';
 import '../../domain/entities/pending_action.dart';
 import '../../domain/entities/reservation.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/errors.dart';
 import '../../domain/ports/connectivity_port.dart';
 import '../../domain/ports/pending_action_store.dart';
@@ -80,7 +80,7 @@ class OutboxReservationRepository
   );
 
   @override
-  Future<Cached<List<Reservation>>> history() => _inner.history();
+  Future<Saved<List<Reservation>>> history() => _inner.history();
 
   @override
   Future<OutboxStatus> flush() =>

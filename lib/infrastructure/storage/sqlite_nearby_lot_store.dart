@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/nearby_lot.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/ports/nearby_lot_store.dart';
 
 class SqliteNearbyLotStore implements NearbyLotStore {
@@ -12,10 +12,10 @@ class SqliteNearbyLotStore implements NearbyLotStore {
   final Database _db;
 
   @override
-  Future<Cached<List<NearbyLot>>?> read() async {
+  Future<Saved<List<NearbyLot>>?> read() async {
     final rows = await _db.query(_table, orderBy: 'walk_minutes ASC, id ASC');
     if (rows.isEmpty) return null;
-    return Cached(
+    return Saved(
       [
         for (final row in rows)
           NearbyLot(

@@ -21,6 +21,7 @@ import '../level_map/level_map_view_model.dart';
 import '../login/auth_view_model.dart';
 import '../no_spots/no_spots_screen.dart';
 import '../offline/offline_screen.dart';
+import '../week_plan/week_plan_screen.dart';
 import 'home_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -84,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: home.load,
+          onRefresh: home.refresh,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               Spacing.md,
@@ -119,10 +120,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ForecastCard(
                 hours: home.forecast,
                 currentHour: home.forecastHour,
-                live: !home.forecastFromCache,
+                live: !home.forecastFromStorage,
                 onTap: () =>
                     Navigator.of(context).pushNamed(ForecastScreen.routeName),
               ),
+              const SizedBox(height: Spacing.sm),
+              const _WeekPlanLink(),
               const SizedBox(height: Spacing.lg),
               Text('PARKING LEVELS', style: AppTypography.overline),
               const SizedBox(height: Spacing.sm),
@@ -277,7 +280,13 @@ class _ArrivalCard extends StatelessWidget {
                     style: body,
                     children: [
                       const TextSpan(text: 'Arriving '),
-                      TextSpan(text: formatTime(home.arrivalAt), style: bold),
+                      TextSpan(
+                        text: home.arrivesToday
+                            ? formatTime(home.arrivalAt)
+                            : '${formatWeekday(home.arrivalAt)} '
+                                  '${formatTime(home.arrivalAt)}',
+                        style: bold,
+                      ),
                       TextSpan(
                         text: best == null ? ' · no history yet' : ' · best ',
                       ),
@@ -292,6 +301,57 @@ class _ArrivalCard extends StatelessWidget {
               Text(
                 'Change',
                 style: AppTypography.button.copyWith(color: Palette.primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekPlanLink extends StatelessWidget {
+  const _WeekPlanLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: () => Navigator.of(context).pushNamed(WeekPlanScreen.routeName),
+        borderRadius: BorderRadius.circular(Radii.card),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.md,
+            vertical: 12,
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.calendar_view_week,
+                size: 18,
+                color: Palette.primary,
+              ),
+              const SizedBox(width: Spacing.sm),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: AppTypography.caption,
+                    children: [
+                      TextSpan(
+                        text: 'Plan your week',
+                        style: AppTypography.heading2,
+                      ),
+                      const TextSpan(text: ' · best times of the next 7 days'),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: Palette.textSecondary,
               ),
             ],
           ),

@@ -9,13 +9,14 @@ import 'package:parkwise/domain/entities/spot_filter.dart';
 import 'package:parkwise/domain/errors.dart';
 import 'package:parkwise/infrastructure/http/api_client.dart';
 import 'package:parkwise/infrastructure/http/http_parking_repository.dart';
-import 'package:parkwise/infrastructure/storage/local_cache.dart';
+import 'package:parkwise/infrastructure/storage/offline_store.dart';
 
 void main() {
   late Directory dir;
   late Box<String> box;
   late bool online;
   late int status;
+  late Map<String, String> lastQuery;
   late HttpParkingRepository repository;
   final savedAt = DateTime(2026, 10, 2, 8, 3);
 
@@ -63,8 +64,30 @@ void main() {
     },
   ];
 
+  final weekJson = {
+    'from': '2026-11-23',
+    'hours': [6, 7],
+    'levels': [
+      {
+        'code': 'P2',
+        'days': [
+          {
+            'date': '2026-11-23',
+            'weekday': 1,
+            'occupancy': [0.21, null],
+          },
+          {
+            'date': '2026-11-24',
+            'weekday': 2,
+            'occupancy': [0.3, 0.5],
+          },
+        ],
+      },
+    ],
+  };
+
   setUpAll(() async {
-    dir = await Directory.systemTemp.createTemp('parkwise_cache_test');
+    dir = await Directory.systemTemp.createTemp('parkwise_offline_test');
     Hive.init(dir.path);
   });
 
@@ -74,13 +97,17 @@ void main() {
   });
 
   setUp(() async {
-    box = await Hive.openBox<String>('cache_${DateTime.now().microsecond}');
+    box = await Hive.openBox<String>('offline_${DateTime.now().microsecond}');
     online = true;
     status = 200;
     final client = MockClient((request) async {
       if (!online) throw http.ClientException('offline');
-      final body = request.url.path.endsWith('/levels')
+      lastQuery = request.url.queryParameters;
+      final path = request.url.path;
+      final body = path.endsWith('/levels')
           ? levelsJson
+          : path.endsWith('/predictions/week')
+          ? weekJson
           : spotsJson;
       return http.Response(
         status == 200 ? jsonEncode(body) : '{"error":"Level not found"}',
@@ -89,7 +116,7 @@ void main() {
     });
     repository = HttpParkingRepository(
       ApiClient(httpClient: client, readToken: () => null),
-      LocalCache(box),
+      OfflineStore(box),
       clock: () => savedAt,
     );
   });
@@ -99,7 +126,7 @@ void main() {
   test('returns live data and keeps a copy', () async {
     final result = await repository.getLevels();
 
-    expect(result.fromCache, isFalse);
+    expect(result.fromStorage, isFalse);
     expect(result.data.levels.single.free, 52);
     expect(result.data.levels.single.total, 60);
     expect(result.data.levels.single.physicalTotal, 60);
@@ -107,30 +134,30 @@ void main() {
   });
 
   test(
-    'returns the cached levels with their time when the network fails',
+    'returns the saved levels with their time when the network fails',
     () async {
       await repository.getLevels();
       online = false;
 
       final result = await repository.getLevels();
 
-      expect(result.fromCache, isTrue);
+      expect(result.fromStorage, isTrue);
       expect(result.savedAt, savedAt);
       expect(result.data.levels.single.code, 'P1');
     },
   );
 
-  test('keeps serving the cache while the breaker is open', () async {
+  test('keeps serving the saved copy while the breaker is open', () async {
     await repository.getLevels();
     online = false;
 
     for (var i = 0; i < 5; i++) {
       final result = await repository.getLevels();
-      expect(result.fromCache, isTrue);
+      expect(result.fromStorage, isTrue);
     }
   });
 
-  test('spots per level fall back to the cache, filtered locally', () async {
+  test('spots per level use the saved copy, filtered locally', () async {
     await repository.getSpots('P1', destination: 'ml');
     online = false;
 
@@ -141,17 +168,17 @@ void main() {
       filters: {SpotFilter.available},
     );
 
-    expect(all.fromCache, isTrue);
+    expect(all.fromStorage, isTrue);
     expect(all.data, hasLength(2));
     expect(free.data.map((s) => s.code), ['A-01']);
   });
 
-  test('without a cached copy the network error is rethrown', () async {
+  test('without a saved copy the network error is rethrown', () async {
     online = false;
     expect(repository.getLevels(), throwsA(isA<NetworkException>()));
   });
 
-  test('a 4xx is not hidden behind the cache', () async {
+  test('a 4xx is not hidden behind the saved copy', () async {
     await repository.getSpots('P1', destination: 'ml');
     status = 404;
 
@@ -159,5 +186,20 @@ void main() {
       repository.getSpots('P1', destination: 'ml'),
       throwsA(isA<ApiException>()),
     );
+  });
+
+  test('the week of a level is asked from a date and read by day', () async {
+    final week = await repository.getWeekForecast(
+      'P2',
+      from: DateTime(2026, 11, 23, 9),
+    );
+
+    expect(lastQuery, {'level': 'P2', 'from': '2026-11-23'});
+    expect(week.hours, [6, 7]);
+    expect(week.days.map((day) => day.date), [
+      DateTime(2026, 11, 23),
+      DateTime(2026, 11, 24),
+    ]);
+    expect(week.days.first.levels['P2'], [0.21, null]);
   });
 }

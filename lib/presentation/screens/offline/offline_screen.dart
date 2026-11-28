@@ -52,6 +52,20 @@ class _OfflineScreenState extends State<OfflineScreen> {
     );
   }
 
+  Future<void> _retry() async {
+    final messenger = ScaffoldMessenger.of(context);
+    await _offline.load();
+    if (!mounted || _offline.recovered) return;
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Still no signal. The saved data stays on the phone and updates '
+          'by itself when the signal returns.',
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _offline.removeListener(_closeWhenBack);
@@ -85,18 +99,35 @@ class _OfflineScreenState extends State<OfflineScreen> {
               ),
               const SizedBox(height: Spacing.lg),
               FilledButton.icon(
-                onPressed: offline.isLoading ? null : offline.load,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Retry connection'),
+                onPressed: offline.isLoading ? null : _retry,
+                icon: offline.isLoading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh, size: 18),
+                label: Text(
+                  offline.isLoading
+                      ? 'Trying to connect…'
+                      : 'Retry connection',
+                ),
               ),
+              if (offline.lastTry case final lastTry?) ...[
+                const SizedBox(height: Spacing.sm),
+                Text(
+                  'Last try at ${formatTime(lastTry)}',
+                  style: AppTypography.caption,
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: Spacing.lg),
             ],
-            Text('CACHED AVAILABILITY', style: AppTypography.overline),
+            Text('SAVED AVAILABILITY', style: AppTypography.overline),
             const SizedBox(height: Spacing.sm),
             if (levels == null)
               Text('Nothing saved yet', style: AppTypography.caption),
             for (final level in levels?.data.levels ?? const []) ...[
-              _CachedLevelCard(level: level, savedAt: levels!.savedAt),
+              _SavedLevelCard(level: level, savedAt: levels!.savedAt),
               const SizedBox(height: Spacing.sm),
             ],
             const SizedBox(height: Spacing.md),
@@ -112,7 +143,7 @@ class _OfflineScreenState extends State<OfflineScreen> {
             ],
             if (map != null && map.data.isNotEmpty) ...[
               const SizedBox(height: Spacing.md),
-              _CachedMapCard(level: offline.mapLevel, spots: map.data),
+              _SavedMapCard(level: offline.mapLevel, spots: map.data),
             ],
             const SizedBox(height: Spacing.md),
             if (offline.recovered) ...[
@@ -174,8 +205,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _CachedLevelCard extends StatelessWidget {
-  const _CachedLevelCard({required this.level, required this.savedAt});
+class _SavedLevelCard extends StatelessWidget {
+  const _SavedLevelCard({required this.level, required this.savedAt});
 
   final ParkingLevel level;
   final DateTime savedAt;
@@ -224,7 +255,7 @@ class _CachedLevelCard extends StatelessWidget {
                           style: AppTypography.caption,
                         ),
                         TextSpan(
-                          text: '   cached ${formatTime(savedAt)}',
+                          text: '   saved ${formatTime(savedAt)}',
                           style: AppTypography.monoData.copyWith(fontSize: 11),
                         ),
                       ],
@@ -237,7 +268,7 @@ class _CachedLevelCard extends StatelessWidget {
             ),
             const SizedBox(width: Spacing.sm),
             const _Tag(
-              label: 'CACHED',
+              label: 'SAVED',
               color: Palette.warningText,
               background: Palette.warningSoft,
             ),
@@ -360,8 +391,8 @@ class _SavedReservationCard extends StatelessWidget {
   }
 }
 
-class _CachedMapCard extends StatelessWidget {
-  const _CachedMapCard({required this.level, required this.spots});
+class _SavedMapCard extends StatelessWidget {
+  const _SavedMapCard({required this.level, required this.spots});
 
   static const _perRow = 6;
   static const _rows = 3;
@@ -383,7 +414,7 @@ class _CachedMapCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Level $level · cached map',
+                    'Level $level · saved map',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.heading2,

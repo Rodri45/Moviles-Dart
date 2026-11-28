@@ -5,6 +5,7 @@ import '../../domain/entities/nearby_lot.dart';
 import '../../domain/entities/parking_level.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/entities/reservation.dart';
+import '../../domain/entities/week_forecast.dart';
 
 abstract final class ParkingMockData {
   static final DateTime now = DateTime(2026, 10, 2, 8);
@@ -41,6 +42,18 @@ abstract final class ParkingMockData {
       ],
     ),
   ];
+
+  static final List<int> weekHours = [
+    for (var hour = 6; hour < 20; hour++) hour,
+  ];
+
+  static WeekForecast week(String level, DateTime from) => WeekForecast(
+    hours: weekHours,
+    days: [
+      for (var offset = 0; offset < 7; offset++)
+        _weekDay(level, DateTime(from.year, from.month, from.day + offset)),
+    ],
+  );
 
   static const List<NearbyLot> nearbyLots = [
     NearbyLot(
@@ -93,6 +106,38 @@ abstract final class ParkingMockData {
       reserved: count(SpotStatus.reserved),
       occupied: count(SpotStatus.occupied),
       disabled: count(SpotStatus.disabled),
+    );
+  }
+
+  static DayForecast _weekDay(String level, DateTime date) {
+    const hourly = [
+      0.30,
+      0.62,
+      0.88,
+      0.94,
+      0.90,
+      0.84,
+      0.72,
+      0.70,
+      0.76,
+      0.72,
+      0.60,
+      0.48,
+      0.38,
+      0.28,
+    ];
+    const byWeekday = [1.0, 1.02, 0.97, 1.0, 0.84, 0.36, 0.14];
+    final byLevel = switch (level) {
+      'P2' => 0.9,
+      'P3' => 0.75,
+      _ => 1.0,
+    };
+    final factor = byWeekday[date.weekday - 1] * byLevel;
+    return DayForecast(
+      date: date,
+      levels: {
+        level: [for (final value in hourly) (value * factor).clamp(0.0, 1.0)],
+      },
     );
   }
 

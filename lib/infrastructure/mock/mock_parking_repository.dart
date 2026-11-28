@@ -1,11 +1,12 @@
 import '../../domain/entities/building.dart';
-import '../../domain/entities/cached.dart';
 import '../../domain/entities/level_forecast.dart';
 import '../../domain/entities/level_recommendation.dart';
 import '../../domain/entities/levels_overview.dart';
 import '../../domain/entities/nearby_lot.dart';
 import '../../domain/entities/parking_spot.dart';
+import '../../domain/entities/saved.dart';
 import '../../domain/entities/spot_filter.dart';
+import '../../domain/entities/week_forecast.dart';
 import '../../domain/ports/parking_repository.dart';
 import 'parking_mock_data.dart';
 
@@ -16,12 +17,12 @@ class MockParkingRepository implements ParkingRepository {
   LevelsOverview levels;
 
   @override
-  Future<Cached<LevelsOverview>> getLevels({String? zone}) async {
-    return Cached(levels, savedAt: ParkingMockData.now);
+  Future<Saved<LevelsOverview>> getLevels({String? zone}) async {
+    return Saved(levels, savedAt: ParkingMockData.now);
   }
 
   @override
-  Future<Cached<List<ParkingSpot>>> getSpots(
+  Future<Saved<List<ParkingSpot>>> getSpots(
     String levelCode, {
     required String destination,
     Set<SpotFilter> filters = const {},
@@ -29,7 +30,7 @@ class MockParkingRepository implements ParkingRepository {
     final spots = (ParkingMockData.spots[levelCode] ?? const <ParkingSpot>[])
         .where((spot) => filters.every((f) => f.matches(spot)))
         .toList();
-    return Cached(spots, savedAt: ParkingMockData.now);
+    return Saved(spots, savedAt: ParkingMockData.now);
   }
 
   @override
@@ -53,6 +54,14 @@ class MockParkingRepository implements ParkingRepository {
       recommended: 'P2',
       predictions: const {'P1': 0.9, 'P2': 0.6, 'P3': 0.7},
     );
+  }
+
+  @override
+  Future<WeekForecast> getWeekForecast(
+    String level, {
+    required DateTime from,
+  }) async {
+    return ParkingMockData.week(level, from);
   }
 
   @override

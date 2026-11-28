@@ -52,13 +52,16 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   Set<SpotFilter> filters = {};
   ParkingSpot? selected;
   DateTime? savedAt;
-  bool fromCache = false;
+  bool fromStorage = false;
   bool isLoading = false;
   String? errorMessage;
 
   String? notice;
 
-  bool get showOffline => !online || fromCache;
+  bool get showOffline => !online || fromStorage;
+
+  @override
+  bool get showingSavedData => fromStorage;
 
   bool get awaitingPaint => _mapLoadStartedAt != null && spots.isNotEmpty;
 
@@ -147,8 +150,8 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
     if (started == null) return;
     _reportMapLoad(
       started,
-      success: !fromCache,
-      errorType: fromCache ? 'offline_cache' : null,
+      success: !fromStorage,
+      errorType: fromStorage ? 'offline_copy' : null,
     );
   }
 
@@ -171,7 +174,7 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
       if (code != levelCode) return;
       spots = result.data;
       savedAt = result.savedAt;
-      fromCache = result.fromCache;
+      fromStorage = result.fromStorage;
       errorMessage = null;
       _refreshSelection();
       _reportAvailabilityViewed();
@@ -179,8 +182,8 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
       if (spots.isEmpty && started != null) {
         _reportMapLoad(
           started,
-          success: !fromCache,
-          errorType: fromCache ? 'offline_cache' : null,
+          success: !fromStorage,
+          errorType: fromStorage ? 'offline_copy' : null,
         );
       }
     } catch (e) {
@@ -212,7 +215,7 @@ class LevelMapViewModel extends ChangeNotifier with ConnectivityAware {
   }
 
   void _reportAvailabilityViewed() {
-    if (!_visible || _availabilityReportedForVisit || fromCache) return;
+    if (!_visible || _availabilityReportedForVisit || fromStorage) return;
     _availabilityReportedForVisit = true;
     _telemetry.track('availability_viewed', {
       'source': 'level_map',

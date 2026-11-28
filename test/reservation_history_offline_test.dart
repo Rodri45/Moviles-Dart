@@ -6,13 +6,13 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:parkwise/infrastructure/http/api_client.dart';
 import 'package:parkwise/infrastructure/http/http_reservation_repository.dart';
-import 'package:parkwise/infrastructure/storage/local_cache.dart';
+import 'package:parkwise/infrastructure/storage/offline_store.dart';
 import 'package:parkwise/infrastructure/storage/reservation_history_store.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   late Directory directory;
-  late Box<String> cacheBox;
+  late Box<String> offlineBox;
   late ReservationHistoryStore historyStore;
   late HttpReservationRepository repository;
   var online = true;
@@ -30,7 +30,7 @@ void main() {
   });
 
   setUp(() async {
-    cacheBox = await Hive.openBox<String>('cache');
+    offlineBox = await Hive.openBox<String>('offline');
     historyStore = await ReservationHistoryStore.open(
       databasePath: inMemoryDatabasePath,
     );
@@ -52,7 +52,7 @@ void main() {
         readToken: () => 'session-token',
         baseUrl: 'https://test.example',
       ),
-      LocalCache(cacheBox),
+      OfflineStore(offlineBox),
       historyStore,
       () => 'user-a',
     );
@@ -60,21 +60,21 @@ void main() {
 
   tearDown(() async {
     await historyStore.close();
-    await cacheBox.deleteFromDisk();
+    await offlineBox.deleteFromDisk();
   });
 
-  test('reservation history falls back to the signed-in user SQLite cache', () async {
+  test('reservation history falls back to the signed-in user SQLite copy', () async {
     expect((await repository.history()).data.single.id, 'reservation-1');
     online = false;
 
     final offlineHistory = await repository.history();
     expect(offlineHistory.data.single.id, 'reservation-1');
     expect(offlineHistory.data.single.status.name, 'fulfilled');
-    expect(offlineHistory.fromCache, isTrue);
+    expect(offlineHistory.fromStorage, isTrue);
     expect(await historyStore.read('user-b'), isNull);
   });
 
-  test('offline history does not pretend an unprimed cache is real data', () async {
+  test('offline history does not pretend an unprimed copy is real data', () async {
     online = false;
     await expectLater(repository.history(), throwsA(isA<Exception>()));
   });

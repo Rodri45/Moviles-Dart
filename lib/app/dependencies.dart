@@ -18,48 +18,70 @@ import '../domain/ports/location_provider.dart';
 import '../domain/ports/lot_redirect_store.dart';
 import '../domain/ports/nearby_lot_repository.dart';
 import '../domain/ports/parking_repository.dart';
+import '../domain/ports/photo_source.dart';
 import '../domain/ports/preferences_store.dart';
+import '../domain/ports/recent_search_store.dart';
+import '../domain/ports/report_queue.dart';
+import '../domain/ports/report_repository.dart';
 import '../domain/ports/reservation_outbox.dart';
 import '../domain/ports/reservation_repository.dart';
+import '../domain/ports/speech_recognizer.dart';
 import '../domain/ports/telemetry.dart';
 import '../domain/ports/vehicle_locator.dart';
+import '../domain/ports/week_forecast_store.dart';
+import '../domain/services/photo_compression.dart';
 import '../domain/services/spot_ranking.dart';
+import '../domain/services/voice_query_parser.dart';
+import '../infrastructure/device/camera_photo_source.dart';
 import '../infrastructure/device/connectivity_plus_adapter.dart';
 import '../infrastructure/device/device_info_reader.dart';
+import '../infrastructure/device/device_speech_recognizer.dart';
 import '../infrastructure/device/geolocator_location_provider.dart';
 import '../infrastructure/device/url_launcher_directions.dart';
 import '../infrastructure/http/api_client.dart';
-import '../infrastructure/http/cached_nearby_lot_repository.dart';
+import '../infrastructure/http/history_memory_cache.dart';
 import '../infrastructure/http/http_auth_repository.dart';
 import '../infrastructure/http/http_parking_repository.dart';
+import '../infrastructure/http/http_report_repository.dart';
 import '../infrastructure/http/http_reservation_repository.dart';
 import '../infrastructure/http/http_vehicle_locator.dart';
+import '../infrastructure/http/outbox_report_repository.dart';
 import '../infrastructure/http/outbox_reservation_repository.dart';
+import '../infrastructure/http/stored_nearby_lot_repository.dart';
 import '../infrastructure/http/telemetry_client.dart';
 import '../infrastructure/mock/memory_lot_redirect_store.dart';
 import '../infrastructure/mock/memory_nearby_lot_store.dart';
+import '../infrastructure/mock/memory_pending_report_store.dart';
+import '../infrastructure/mock/memory_recent_search_store.dart';
+import '../infrastructure/mock/memory_week_forecast_store.dart';
 import '../infrastructure/mock/mock_auth_repository.dart';
 import '../infrastructure/mock/mock_connectivity.dart';
 import '../infrastructure/mock/mock_directions_launcher.dart';
 import '../infrastructure/mock/mock_form_draft_store.dart';
 import '../infrastructure/mock/mock_location_provider.dart';
 import '../infrastructure/mock/mock_parking_repository.dart';
+import '../infrastructure/mock/mock_photo_source.dart';
 import '../infrastructure/mock/mock_preferences_store.dart';
+import '../infrastructure/mock/mock_report_repository.dart';
 import '../infrastructure/mock/mock_reservation_outbox.dart';
 import '../infrastructure/mock/mock_reservation_repository.dart';
+import '../infrastructure/mock/mock_speech_recognizer.dart';
 import '../infrastructure/mock/mock_telemetry.dart';
 import '../infrastructure/mock/mock_vehicle_locator.dart';
 import '../infrastructure/storage/car_location_file_store.dart';
 import '../infrastructure/storage/device_preferences_store.dart';
 import '../infrastructure/storage/forecast_file_store.dart';
 import '../infrastructure/storage/hive_form_draft_store.dart';
-import '../infrastructure/storage/local_cache.dart';
 import '../infrastructure/storage/local_database.dart';
+import '../infrastructure/storage/offline_store.dart';
 import '../infrastructure/storage/reservation_history_store.dart';
 import '../infrastructure/storage/session_store.dart';
 import '../infrastructure/storage/sqlite_lot_redirect_store.dart';
 import '../infrastructure/storage/sqlite_nearby_lot_store.dart';
 import '../infrastructure/storage/sqlite_pending_action_store.dart';
+import '../infrastructure/storage/sqlite_pending_report_store.dart';
+import '../infrastructure/storage/sqlite_recent_search_store.dart';
+import '../infrastructure/storage/week_forecast_file_store.dart';
 import '../presentation/screens/find_my_car/find_my_car_view_model.dart';
 import '../presentation/screens/find_spot/find_spot_view_model.dart';
 import '../presentation/screens/home/home_view_model.dart';
@@ -69,7 +91,12 @@ import '../presentation/screens/no_spots/lot_arrival_view_model.dart';
 import '../presentation/screens/no_spots/no_spots_view_model.dart';
 import '../presentation/screens/offline/offline_view_model.dart';
 import '../presentation/screens/profile/profile_view_model.dart';
+import '../presentation/screens/report/my_reports_view_model.dart';
+import '../presentation/screens/report/report_view_model.dart';
 import '../presentation/screens/reserve/reserve_view_model.dart';
+import '../presentation/screens/voice_search/voice_search_view_model.dart';
+import '../presentation/screens/week_plan/week_heat_map.dart';
+import '../presentation/screens/week_plan/week_plan_view_model.dart';
 import '../presentation/shell/shell_view_model.dart';
 
 class AppDependencies {
@@ -89,12 +116,22 @@ class AppDependencies {
     required this.spotRanker,
     required this.nearbyLots,
     required this.lotRedirects,
+    required this.speech,
+    required this.recentSearches,
+    required this.phraseInterpreter,
+    required this.heatMapBuilder,
+    required this.weekStore,
+    required this.reports,
+    required this.reportQueue,
+    required this.photos,
+    required this.photoCompressor,
     this.forecastStore,
   });
 
   static Future<AppDependencies> create() async {
     await Hive.initFlutter();
-    final cacheBox = await Hive.openBox<String>('cache');
+    if (await Hive.boxExists('cache')) await Hive.deleteBoxFromDisk('cache');
+    final offlineBox = await Hive.openBox<String>('offline');
     final prefsBox = await Hive.openBox<String>('prefs');
     final telemetryBox = await Hive.openBox<String>('telemetry');
     final draftsBox = await Hive.openBox<String>('drafts');
@@ -113,34 +150,45 @@ class AppDependencies {
       httpClient: http.Client(),
       readToken: () => session.token,
     );
-    final cache = LocalCache(cacheBox);
+    final offlineStore = OfflineStore(offlineBox);
     final connectivity = ConnectivityPlusAdapter();
+    connectivity.changes
+        .where((online) => online)
+        .listen((_) => client.breaker.reset());
     final telemetry = TelemetryClient(client, telemetryBox, connectivity)
       ..flush();
     final httpReservations = HttpReservationRepository(
       client,
-      cache,
+      offlineStore,
       historyStore,
       () => session.user?.id,
     );
     final reservations = OutboxReservationRepository(
-      httpReservations,
+      HistoryMemoryCache(httpReservations, () => session.user?.id),
       SqlitePendingActionStore(database),
       connectivity,
       remember: httpReservations.remember,
     )..flush();
-    final parking = HttpParkingRepository(client, cache);
+    final parking = HttpParkingRepository(client, offlineStore);
+    final reports = OutboxReportRepository(
+      HttpReportRepository(client, offlineStore, () => session.token),
+      SqlitePendingReportStore(
+        database,
+        Directory(path.join(supportDirectory.path, 'report_photos')),
+      ),
+      connectivity,
+    )..flush();
 
     return AppDependencies(
       auth: HttpAuthRepository(
         client,
         session,
-        cache,
+        offlineStore,
         historyStore,
         carLocationStore,
       ),
       parking: parking,
-      nearbyLots: CachedNearbyLotRepository(
+      nearbyLots: StoredNearbyLotRepository(
         parking,
         SqliteNearbyLotStore(database),
       ),
@@ -156,20 +204,35 @@ class AppDependencies {
       directions: UrlLauncherDirections(),
       telemetry: telemetry,
       device: await readDeviceDescription(),
+      speech: DeviceSpeechRecognizer(),
+      recentSearches: SqliteRecentSearchStore(database),
+      phraseInterpreter: interpretPhraseInBackground,
+      heatMapBuilder: buildHeatMapInBackground,
+      weekStore: WeekForecastFileStore(supportDirectory),
+      reports: reports,
+      reportQueue: reports,
+      photos: CameraPhotoSource(),
+      photoCompressor: compressPhotoInBackground,
       forecastStore: forecastStore,
     );
   }
 
   factory AppDependencies.mock() {
     final parking = MockParkingRepository();
+    final connectivity = MockConnectivity();
+    final reports = OutboxReportRepository(
+      MockReportRepository(),
+      MemoryPendingReportStore(),
+      connectivity,
+    );
     return AppDependencies(
       auth: MockAuthRepository(saved: MockAuthRepository.user),
       parking: parking,
-      nearbyLots: CachedNearbyLotRepository(parking, MemoryNearbyLotStore()),
+      nearbyLots: StoredNearbyLotRepository(parking, MemoryNearbyLotStore()),
       lotRedirects: MemoryLotRedirectStore(),
       reservations: MockReservationRepository(),
       vehicles: MockVehicleLocator(),
-      connectivity: MockConnectivity(),
+      connectivity: connectivity,
       preferences: MockPreferencesStore(),
       location: MockLocationProvider(),
       directions: MockDirectionsLauncher(),
@@ -178,6 +241,15 @@ class AppDependencies {
       outbox: MockReservationOutbox(),
       drafts: MockFormDraftStore(),
       spotRanker: rankSpotsInline,
+      speech: MockSpeechRecognizer(),
+      recentSearches: MemoryRecentSearchStore(),
+      phraseInterpreter: interpretPhraseInline,
+      heatMapBuilder: buildHeatMapInline,
+      weekStore: MemoryWeekForecastStore(),
+      reports: reports,
+      reportQueue: reports,
+      photos: MockPhotoSource(),
+      photoCompressor: compressPhotoInline,
     );
   }
 
@@ -196,6 +268,15 @@ class AppDependencies {
   final SpotRanker spotRanker;
   final NearbyLotRepository nearbyLots;
   final LotRedirectStore lotRedirects;
+  final SpeechRecognizer speech;
+  final RecentSearchStore recentSearches;
+  final PhraseInterpreter phraseInterpreter;
+  final HeatMapBuilder heatMapBuilder;
+  final WeekForecastStore weekStore;
+  final ReportRepository reports;
+  final ReportQueue reportQueue;
+  final PhotoSource photos;
+  final PhotoCompressor photoCompressor;
   final ForecastStore? forecastStore;
 
   List<SingleChildWidget> get providers => [
@@ -238,6 +319,41 @@ class AppDependencies {
       ),
     ),
     ChangeNotifierProvider(
+      create: (_) => VoiceSearchViewModel(
+        speech,
+        recentSearches,
+        parking,
+        preferences,
+        telemetry,
+        device,
+        connectivity,
+        interpret: phraseInterpreter,
+      ),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => WeekPlanViewModel(
+        parking,
+        preferences,
+        weekStore,
+        telemetry,
+        connectivity,
+        buildHeatMap: heatMapBuilder,
+      ),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => ReportViewModel(
+        reports,
+        photos,
+        parking,
+        preferences,
+        drafts,
+        compress: photoCompressor,
+      ),
+    ),
+    ChangeNotifierProvider(
+      create: (_) => MyReportsViewModel(reports, reportQueue, connectivity),
+    ),
+    ChangeNotifierProvider(
       create: (_) => OfflineViewModel(
         parking,
         reservations,
@@ -267,7 +383,7 @@ class AppDependencies {
       ),
     ),
     ChangeNotifierProvider(
-      create: (_) => ProfileViewModel(reservations, outbox),
+      create: (_) => ProfileViewModel(reservations, outbox, connectivity),
     ),
   ];
 }

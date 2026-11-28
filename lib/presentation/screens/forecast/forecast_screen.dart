@@ -26,7 +26,7 @@ class ForecastScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Occupancy forecast')),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: home.load,
+          onRefresh: home.refresh,
           child: ListView(
             padding: const EdgeInsets.all(Spacing.md),
             children: [
@@ -35,7 +35,7 @@ class ForecastScreen extends StatelessWidget {
                 '${formatTime(home.arrivalAt)}',
                 style: AppTypography.heading1,
               ),
-              if (home.forecastFromCache) ...[
+              if (home.forecastFromStorage) ...[
                 const SizedBox(height: Spacing.md),
                 OfflineBanner(
                   savedAt: home.forecastSavedAt,
@@ -98,7 +98,7 @@ class _LevelForecast extends StatelessWidget {
         ForecastCard(
           hours: visibleHours,
           currentHour: home.forecastHour,
-          live: !home.forecastFromCache,
+          live: !home.forecastFromStorage,
         ),
         if (predicted != null) ...[
           const SizedBox(height: Spacing.xs),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:parkwise/domain/entities/voice_language.dart';
 import 'package:parkwise/infrastructure/storage/device_preferences_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -33,5 +34,44 @@ void main() {
     expect(store.arrivalTime, arrival);
     expect(store.lastOpenedLevel, 'P2');
     expect(store.destination, 'eng');
+  });
+
+  test('the voice language is spanish until another one is saved', () async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final store = DevicePreferencesStore(box, sharedPreferences);
+
+    expect(store.voiceLanguage, VoiceLanguage.spanish);
+
+    await store.saveVoiceLanguage(VoiceLanguage.english);
+
+    expect(
+      DevicePreferencesStore(box, sharedPreferences).voiceLanguage,
+      VoiceLanguage.english,
+    );
+  });
+
+  test('the level of Plan your week is kept', () async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final store = DevicePreferencesStore(box, sharedPreferences);
+
+    expect(store.plannerLevel, isNull);
+
+    await store.savePlannerLevel('P3');
+
+    expect(DevicePreferencesStore(box, sharedPreferences).plannerLevel, 'P3');
+  });
+
+  test('the last problem type of a report is kept', () async {
+    final sharedPreferences = await SharedPreferences.getInstance();
+    final store = DevicePreferencesStore(box, sharedPreferences);
+
+    expect(store.lastReportKind, isNull);
+
+    await store.saveLastReportKind('blocked');
+
+    expect(
+      DevicePreferencesStore(box, sharedPreferences).lastReportKind,
+      'blocked',
+    );
   });
 }

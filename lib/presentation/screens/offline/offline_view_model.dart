@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../domain/entities/cached.dart';
 import '../../../domain/entities/levels_overview.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/reservation.dart';
+import '../../../domain/entities/saved.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/parking_repository.dart';
 import '../../../domain/ports/preferences_store.dart';
@@ -36,15 +36,19 @@ class OfflineViewModel extends ChangeNotifier with ConnectivityAware {
   final DateTime Function() _clock;
   StreamSubscription<OutboxStatus>? _outboxSub;
 
-  Cached<LevelsOverview>? levels;
-  Cached<List<ParkingSpot>>? map;
+  Saved<LevelsOverview>? levels;
+  Saved<List<ParkingSpot>>? map;
   Reservation? reservation;
   int pendingActions = 0;
   bool isLoading = false;
+  DateTime? lastTry;
 
   String get mapLevel => reservation?.levelCode ?? 'P1';
 
-  bool get recovered => online && levels != null && !levels!.fromCache;
+  bool get recovered => online && levels != null && !levels!.fromStorage;
+
+  @override
+  bool get showingSavedData => levels == null || levels!.fromStorage;
 
   int? get minutesSinceSync {
     final saved = levels?.savedAt;
@@ -73,6 +77,7 @@ class OfflineViewModel extends ChangeNotifier with ConnectivityAware {
       debugPrint('offline map failed: $e');
     }
     pendingActions = await _outbox.pendingCount();
+    lastTry = _clock();
     isLoading = false;
     notifyListeners();
   }

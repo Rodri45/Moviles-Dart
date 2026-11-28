@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/cache/sparse_array_cache.dart';
 import '../../../domain/entities/building.dart';
-import '../../../domain/entities/cached.dart';
 import '../../../domain/entities/level_forecast.dart';
 import '../../../domain/entities/level_recommendation.dart';
 import '../../../domain/entities/levels_overview.dart';
+import '../../../domain/entities/saved.dart';
 import '../../../domain/errors.dart';
 import '../../../domain/ports/connectivity_port.dart';
 import '../../../domain/ports/forecast_store.dart';
@@ -27,12 +28,21 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     this._forecastStore,
     DateTime Function()? clock,
     this.refreshEvery = const Duration(seconds: 15),
-  }) : _clock = clock ?? DateTime.now {
+  }) : _clock = clock ?? DateTime.now,
+       _forecastMemory = SparseArrayCache(
+         maxEntries: forecastMemoryDays,
+         ttl: forecastMemoryTtl,
+         clock: clock,
+       ) {
     arrivalAt = _restoreArrivalTime(_preferences.arrivalTime, _clock());
     watchConnectivity(connectivity, load);
   }
 
   static const defaultLead = Duration(minutes: 20);
+
+  static const forecastMemoryDays = 7;
+
+  static const forecastMemoryTtl = Duration(minutes: 10);
 
   final ParkingRepository _parking;
   final PreferencesStore _preferences;
@@ -40,6 +50,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   final Telemetry _telemetry;
   final DateTime Function() _clock;
   final ForecastStore? _forecastStore;
+  final SparseArrayCache<List<LevelForecast>> _forecastMemory;
 
   final Duration refreshEvery;
   Timer? _timer;
@@ -47,12 +58,12 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
   bool _visible = false;
   bool _forecastReportedForVisit = false;
 
-  Cached<LevelsOverview>? levels;
+  Saved<LevelsOverview>? levels;
   List<Building> buildings = const [];
   List<LevelForecast> _forecasts = const [];
   List<LevelForecast> get forecasts => _forecasts;
   LevelRecommendation? recommendation;
-  bool forecastFromCache = false;
+  bool forecastFromStorage = false;
   DateTime? forecastSavedAt;
   String? forecastErrorMessage;
   String? _forecastDateKey;
@@ -64,11 +75,22 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
 
   String get destination => _preferences.destination;
 
-  bool get showOffline => !online || (levels?.fromCache ?? false);
+  bool get showOffline => !online || (levels?.fromStorage ?? false);
+
+  @override
+  bool get showingSavedData =>
+      (levels?.fromStorage ?? false) || forecastFromStorage;
 
   int get currentHour => _clock().hour;
 
   int get forecastHour => arrivalAt.hour;
+
+  bool get arrivesToday {
+    final now = _clock();
+    return arrivalAt.year == now.year &&
+        arrivalAt.month == now.month &&
+        arrivalAt.day == now.day;
+  }
 
   List<HourlyOccupancy> get forecast {
     if (_forecasts.isEmpty) return const [];
@@ -78,19 +100,21 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     return hourly.sublist(start, start + 8);
   }
 
-  Future<void> load() async {
+  Future<void> load({bool refresh = false}) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
     await Future.wait([
       _loadLevels(),
       _loadBuildings(),
-      _loadForecast(),
+      _loadForecast(refresh: refresh),
       _prefetchLevels(),
     ]);
     isLoading = false;
     notifyListeners();
   }
+
+  Future<void> refresh() => load(refresh: true);
 
   void setVisible(bool visible) {
     _timer?.cancel();
@@ -127,6 +151,16 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     final now = _clock();
     var arrival = DateTime(now.year, now.month, now.day, hour, minute);
     if (arrival.isBefore(now)) arrival = arrival.add(const Duration(days: 1));
+    await _changeArrival(arrival, source: 'arrival_time_changed');
+  }
+
+  Future<void> planArrival(DateTime arrival) =>
+      _changeArrival(arrival, source: 'week_plan');
+
+  Future<void> _changeArrival(
+    DateTime arrival, {
+    required String source,
+  }) async {
     arrivalAt = arrival;
     String? preferenceError;
     try {
@@ -135,7 +169,7 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
       preferenceError = errorMessageFor(e);
       debugPrint('arrival time could not be saved: $e');
     }
-    _telemetry.track('forecast_viewed', {'source': 'arrival_time_changed'});
+    _telemetry.track('forecast_viewed', {'source': source});
     notifyListeners();
     await _loadForecast();
     forecastErrorMessage ??= preferenceError;
@@ -175,26 +209,37 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
     }
   }
 
-  Future<void> _loadForecast() async {
+  Future<void> _loadForecast({bool refresh = false}) async {
     final requestDate = _dateKey(arrivalAt);
     if (_forecastDateKey != requestDate) {
       _forecasts = const [];
       recommendation = null;
       forecastSavedAt = null;
-      forecastFromCache = false;
+      forecastFromStorage = false;
       _forecastDateKey = requestDate;
     }
     forecastErrorMessage = null;
+    final day = _dayNumber(arrivalAt);
+    final remembered = refresh ? null : _forecastMemory.get(day);
+    if (remembered != null) {
+      _forecasts = remembered;
+      forecastFromStorage = false;
+      forecastSavedAt = _forecastMemory.storedAt(day);
+      recommendation = _recommendFromForecast(_forecasts, arrivalAt);
+      _reportForecastViewed();
+      return;
+    }
     try {
       _forecasts = await _parking.getPredictions(date: arrivalAt);
-      forecastFromCache = false;
+      _forecastMemory.put(day, _forecasts);
+      forecastFromStorage = false;
       forecastSavedAt = _clock();
       recommendation = _recommendFromForecast(_forecasts, arrivalAt);
       try {
         await _forecastStore?.write(arrivalAt, _forecasts);
       } catch (e) {
         forecastErrorMessage = errorMessageFor(e);
-        debugPrint('forecast cache write failed: $e');
+        debugPrint('forecast file write failed: $e');
       }
       _reportForecastViewed();
     } catch (e) {
@@ -205,20 +250,20 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
         return;
       }
       try {
-        final cached = await _forecastStore?.read(arrivalAt);
-        if (cached == null) {
+        final stored = await _forecastStore?.read(arrivalAt);
+        if (stored == null) {
           forecastErrorMessage = errorMessageFor(e);
           debugPrint('predictions failed without a saved copy: $e');
           return;
         }
-        _forecasts = cached.data;
-        forecastFromCache = true;
-        forecastSavedAt = cached.savedAt;
+        _forecasts = stored.data;
+        forecastFromStorage = true;
+        forecastSavedAt = stored.savedAt;
         recommendation = _recommendFromForecast(_forecasts, arrivalAt);
         _reportForecastViewed();
-      } catch (cacheError) {
-        forecastErrorMessage = errorMessageFor(cacheError);
-        debugPrint('saved forecast could not be read: $cacheError');
+      } catch (storageError) {
+        forecastErrorMessage = errorMessageFor(storageError);
+        debugPrint('saved forecast could not be read: $storageError');
       }
     }
   }
@@ -284,6 +329,9 @@ class HomeViewModel extends ChangeNotifier with ConnectivityAware {
       predictions: predictions,
     );
   }
+
+  static int _dayNumber(DateTime date) =>
+      date.year * 10000 + date.month * 100 + date.day;
 
   static String _dateKey(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
